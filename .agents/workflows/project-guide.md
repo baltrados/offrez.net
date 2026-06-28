@@ -10,13 +10,19 @@ OFFREZ est un site de recommandation de cadeaux basé sur l'IA. L'utilisateur d�
 
 **Stack** : Node.js/Express (backend) + HTML/CSS/JS vanilla (frontend). Pas de framework, pas de bundler, pas de TypeScript.
 
+**Versionnement** : Git + GitHub privé (`baltrados/offrez.net`, branche `main`). GitHub = source de vérité du code.
+
 ---
 
 ## Architecture des fichiers
 
 ```
-c:\site cadeau\save\          ← Projet local
-~/offrly/                      ← Serveur de production (CM3588)
+GitHub (baltrados/offrez.net)  ← source de vérité
+        ↕ git pull / push
+c:\site cadeau\save\             ← développement local
+        ↕ deploy.sh (git pull)
+~/offrly/                        ← production (CM3588)
+```
 
 ├── server.js                  ← Backend Express (API proxy, sécurité, cache)
 ├── .env                       ← Clés API (JAMAIS exposé publiquement)
@@ -110,10 +116,10 @@ Le CSS est organisé en 12 fichiers dans `css/partials/`. Le fichier servi en pr
 Les partiels sont en **UTF-8**. L'ancien `style.css` était en ISO-8859-1 mais ce n'est plus pertinent.
 
 ⚠️ Après toute modification CSS :
-1. `python minify_css.py` (génère `style.min.css`)
+1. `python tools/minify_css.py` (génère `style.min.css`)
 2. Bumper le `?v=` dans tous les fichiers HTML
-3. `scp style.min.css` + `scp *.html` vers le serveur
-4. `pm2 restart offrly` (le serveur cache les HTML)
+3. `git commit` + `git push`
+4. `ssh pi@192.168.1.100 "~/offrly/deploy.sh"`
 
 ### 2. Fichiers sensibles bloqués côté serveur
 
@@ -152,18 +158,16 @@ Les résultats Amazon sont cachés 24h en mémoire (Map). Le cache est purgé au
 
 ## Processus de déploiement
 
-Voir le [workflow deploy-to-server.md](deploy-to-server.md) pour les commandes exactes.
+Voir le [workflow deploy-to-server.md](deploy-to-server.md) et `documentation/13_GIT_ET_GITHUB.md`.
 
 **Résumé rapide :**
 
 ```
-1. ⚠️ SYNC : Tirer le fichier du serveur → local (scp serveur → PC)
-2. BACKUP : Créer un .bak du fichier sur le serveur
-3. MODIFIER : Faire les modifications localement
-4. DEPLOY : scp fichier(s) → pi@192.168.1.100:~/offrly/
-5. Si fichier JS/serveur → ssh "pm2 restart offrly"
-6. Si CSS/HTML → simple refresh navigateur
-7. Vérifier : ssh "curl -s http://localhost:3000/api/health"
+1. git pull                    ← récupérer la dernière version
+2. MODIFIER                    ← changements locaux
+3. git add / commit / push     ← envoyer sur GitHub
+4. deploy.sh sur le serveur    ← git pull + pm2 restart
+5. Vérifier /api/health
 ```
 
 ### Checklist post-déploiement
@@ -179,8 +183,9 @@ Voir le [workflow deploy-to-server.md](deploy-to-server.md) pour les commandes e
 
 | Piège | Solution |
 |---|---|
-| **Déployer local → serveur sans sync** | **TOUJOURS tirer du serveur d'abord** — le serveur a la version de référence |
-| Modifier un fichier CSS partial sans relancer `python minify_css.py` | Les changements ne seront pas dans `style.min.css` |
+| **Modifier le serveur directement sans commit** | Toujours passer par GitHub : `git pull` → modifier → `push` → `deploy.sh` |
+| **Oublier `git pull` avant de coder** | Risque de conflits — toujours synchroniser depuis GitHub |
+| Modifier un fichier CSS partial sans relancer `python tools/minify_css.py` | Les changements ne seront pas dans `style.min.css` |
 | Oublier de bumper le `?v=` dans les HTML après modif CSS | Le navigateur sert l'ancien CSS depuis le cache |
 | Ajouter un `.json` à la racine et l'exposer | Il sera bloqué automatiquement, l'exclure si besoin |
 | Oublier `pm2 restart offrly` après modif JS | Les fichiers JS backend ne sont PAS rechargés automatiquement |

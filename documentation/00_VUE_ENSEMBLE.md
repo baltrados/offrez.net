@@ -42,6 +42,7 @@ Voici les termes techniques utilisés dans le projet, expliqués simplement :
 | **RGPD** | Règlement européen sur la protection des données personnelles |
 | **XSS** | Une attaque informatique où un pirate injecte du code malveillant dans un site |
 | **Cache** | Une mémoire temporaire qui évite de refaire les mêmes opérations inutilement |
+| **Git / GitHub** | Système de versionnement du code — GitHub est la source de vérité du projet |
 | **CSV** | Un format de fichier simple (tableur), lisible avec Excel |
 | **Endpoint / Route** | Une "adresse" sur le serveur à laquelle on peut envoyer une demande |
 | **Rate Limiting** | Un système qui limite le nombre de demandes par minute pour éviter les abus |
@@ -209,7 +210,9 @@ Les documents sont numérotés dans l'ordre logique de lecture recommandé :
 - **07** → Les pages visuelles
 - **08** → L'aspect "application mobile" (PWA)
 - **09** → Administration et statistiques
+- **11** → Installation du serveur CM3588
+- **13** → Git, GitHub et déploiement
 
 ---
 
-*Document généré le 28/02/2026 — OFFREZ Documentation v2.0*
+*Document généré le 28/02/2026 — OFFREZ Documentation v2.1 (juin 2026 : ajout Git/GitHub)*

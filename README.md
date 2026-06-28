@@ -22,9 +22,9 @@ Application web intelligente qui utilise l'IA (Google Gemini) pour recommander d
 ## 🚀 Installation
 
 ```bash
-# Cloner le projet
-git clone <votre-repo>
-cd OFFREZ
+# Cloner le dépôt (privé)
+git clone https://github.com/baltrados/offrez.net.git
+cd offrez.net
 
 # Installer les dépendances
 npm install
@@ -38,6 +38,8 @@ npm start
 ```
 
 Ouvrir **http://localhost:3000**
+
+> Projet local existant : `c:\site cadeau\save\` — toujours faire `git pull` avant de modifier.
 
 ---
 
@@ -89,13 +91,25 @@ OFFREZ/
 
 ## 🚢 Déploiement
 
-### Serveur CM3588 (Production)
-```bash
-# Déployer sur le serveur
-scp -r . pi@192.168.1.100:~/offrly/
-ssh pi@192.168.1.100 "pm2 restart offrly"
+**Source de vérité :** [GitHub — baltrados/offrez.net](https://github.com/baltrados/offrez.net) (privé)
+
+### Workflow standard
+
+```powershell
+# 1. Sur le PC : committer et pousser
+git add .
+git commit -m "Description du changement"
+git push
+
+# 2. Déployer sur le serveur CM3588
+ssh pi@192.168.1.100 "~/offrly/deploy.sh"
 ```
-Voir `.agents/workflows/deploy-to-server.md` pour le workflow complet.
+
+### Documentation
+
+- **Git & GitHub :** `documentation/13_GIT_ET_GITHUB.md`
+- **Workflow agent :** `.agents/workflows/deploy-to-server.md`
+- **Setup serveur :** `documentation/11_SETUP_CM3588_SERVEUR.md`
 
 ---
 

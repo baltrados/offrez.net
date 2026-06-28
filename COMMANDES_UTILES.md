@@ -41,7 +41,7 @@ npm install
 ### Build CSS (après modification d'un partial)
 ```bash
 # Compiler les 12 partiels en style.min.css
-python minify_css.py
+python tools/minify_css.py
 
 # Bumper le cache-busting dans les HTML
 # Remplacer l'ancien ?v= par un nouveau timestamp
@@ -140,7 +140,38 @@ Get-Content .env
 
 ---
 
+## 📦 Git & GitHub
+
+**Dépôt :** https://github.com/baltrados/offrez.net (privé, branche `main`)
+
+### Workflow quotidien
+```powershell
+cd "C:\site cadeau\save"
+git pull                              # Récupérer la dernière version
+# ... modifications ...
+git add .
+git commit -m "Description"
+git push                              # Envoyer sur GitHub
+ssh pi@192.168.1.100 "~/offrly/deploy.sh"   # Déployer en prod
+```
+
+### Vérifier l'état
+```powershell
+git status
+git log -3 --oneline
+node check_sync.js                    # Comparer local vs serveur (legacy)
+```
+
+> Voir `documentation/13_GIT_ET_GITHUB.md` pour le guide complet.
+
+---
+
 ## 🖥️ Commandes Serveur (CM3588)
+
+### Déployer (méthode recommandée)
+```powershell
+ssh pi@192.168.1.100 "~/offrly/deploy.sh"
+```
 
 ### Voir l'état du serveur
 ```powershell
@@ -152,14 +183,15 @@ ssh pi@192.168.1.100 "pm2 status"
 ssh pi@192.168.1.100 "pm2 logs offrly --lines 20"
 ```
 
-### Redémarrer le serveur
+### Redémarrer sans déployer
 ```powershell
 ssh pi@192.168.1.100 "pm2 restart offrly"
 ```
 
-### Déployer un fichier
+### Déploiement manuel d'un fichier (urgence uniquement)
 ```powershell
 scp "c:\site cadeau\save\FICHIER" pi@192.168.1.100:~/offrly/FICHIER
+ssh pi@192.168.1.100 "pm2 restart offrly"
 ```
 
 ---
@@ -218,4 +250,4 @@ location.href = '/';
 
 ---
 
-*Dernière mise à jour : Mars 2026*
+*Dernière mise à jour : juin 2026*

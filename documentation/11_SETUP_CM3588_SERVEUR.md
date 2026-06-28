@@ -303,25 +303,30 @@ node --version    # Doit afficher v20.x.x ou supérieur
 npm --version     # Doit afficher 10.x.x ou supérieur
 ```
 
-### 6.2 Transférer le projet OFFREZ
+### 6.2 Cloner le projet OFFREZ depuis GitHub
 
-Depuis votre PC Windows (PowerShell) :
+Depuis le CM3588 :
 
-```powershell
-# Copier le projet via SCP
-scp -r "D:\site cadeaux\save\*" pi@192.168.1.100:~/OFFREZ/
-```
-
-Ou depuis le CM3588, si le projet est sur un dépôt Git :
 ```bash
 cd ~
-git clone <votre-repo> OFFREZ
+git clone https://github.com/baltrados/offrez.net.git offrly
+cd ~/offrly
 ```
+
+> Pour un dépôt **privé**, configurer une deploy key SSH. Voir `documentation/13_GIT_ET_GITHUB.md` section 6.
+
+Alternative (PC Windows, transfert initial sans Git) :
+
+```powershell
+scp -r "C:\site cadeau\save\*" pi@192.168.1.100:~/offrly/
+```
+
+> ⚠️ Méthode legacy. Préférer Git pour tous les déploiements futurs.
 
 ### 6.3 Installer les dépendances et configurer
 
 ```bash
-cd ~/OFFREZ
+cd ~/offrly
 
 # Installer les packages Node.js
 npm install
@@ -358,7 +363,7 @@ Si tout fonctionne → le site OFFREZ s'affiche ! 🎉
 sudo npm install -g pm2
 
 # Lancer OFFREZ avec PM2
-pm2 start server.js --name OFFREZ
+pm2 start server.js --name offrly
 
 # Configurer le démarrage automatique au boot
 pm2 startup
@@ -366,11 +371,22 @@ pm2 startup
 pm2 save
 
 # Commandes utiles PM2
-pm2 status          # Voir si OFFREZ tourne
-pm2 logs OFFREZ     # Voir les logs en temps réel
-pm2 restart OFFREZ  # Redémarrer
-pm2 stop OFFREZ     # Arrêter
+pm2 status          # Voir si offrly tourne
+pm2 logs offrly     # Voir les logs en temps réel
+pm2 restart offrly  # Redémarrer
+pm2 stop offrly     # Arrêter
 ```
+
+### 6.6 Déploiements futurs (Git)
+
+Une fois Git configuré sur le serveur :
+
+```powershell
+# Depuis le PC, après git push :
+ssh pi@192.168.1.100 "~/offrly/deploy.sh"
+```
+
+Voir `documentation/13_GIT_ET_GITHUB.md` pour la configuration complète.
 
 ---
 
