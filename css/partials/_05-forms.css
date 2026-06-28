@@ -1,0 +1,406 @@
+/* =========================================
+   05 - FORMULAIRES / INPUTS / CHIPS
+   ========================================= */
+
+/* Inputs, selects, textareas */
+input,
+select,
+textarea {
+    width: 100%;
+    padding: 0.7rem;
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 1rem;
+    /* FIX DEFINITIF : Dark mode inputs */
+    background-color: rgba(15, 23, 42, 0.85) !important;
+    color: #e5e7eb !important;
+    color-scheme: dark;
+}
+
+input::placeholder,
+textarea::placeholder {
+    color: #64748b;
+}
+
+/* Focus states (fusionné L195+L820+L1210) */
+input:focus,
+select:focus,
+textarea:focus {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    border-color: var(--primary);
+    background-color: rgba(15, 23, 42, 0.95) !important;
+    color: #f1f5f9 !important;
+    box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.15);
+    transform: scale(1.01);
+    transition: transform 0.2s ease, outline 0.2s ease, border-color 0.2s ease;
+}
+
+/* Form group & label */
+.form-group {
+    margin-bottom: 1.2rem;
+}
+
+label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+/* Form grid */
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.full-width {
+    grid-column: span 2;
+}
+
+/* Input group (email) */
+.input-group {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.input-group input {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    color: white;
+    font-family: inherit;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+}
+
+.input-group input:focus {
+    border-color: var(--secondary);
+    outline: none;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.input-group .btn {
+    border-radius: 8px;
+    padding: 0 1.25rem;
+}
+
+/* Form check legal */
+.form-check-legal {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.form-check-legal input {
+    margin-top: 0.2rem;
+}
+
+.form-check-legal a {
+    color: var(--text-secondary);
+    text-decoration: underline;
+}
+
+/* Readonly budget input */
+input.readonly {
+    background: rgba(255, 255, 255, 0.05) !important;
+    cursor: not-allowed;
+    opacity: 0.8;
+}
+
+/* Form helper text */
+.form-helper {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: 0.25rem;
+    font-style: italic;
+}
+
+/* Label hints */
+.label-hint {
+    font-weight: 400;
+    color: #9ca3af;
+    font-size: 0.8rem;
+}
+
+/* Tags container - Version chips (garder L3759, supprimer L216) */
+.tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.tag-chip {
+    display: inline-flex;
+    cursor: pointer;
+}
+
+.tag-chip input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.tag-chip-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.5rem 0.85rem;
+    background: rgba(15, 23, 42, 0.85);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50px;
+    font-size: 0.85rem;
+    color: var(--text, #f1f5f9);
+    transition: all 0.2s ease;
+}
+
+.tag-chip-label:hover {
+    border-color: var(--primary, #6366f1);
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.tag-chip input:checked+.tag-chip-label {
+    background: linear-gradient(135deg, var(--primary, #6366f1), #818cf8);
+    border-color: transparent;
+    color: white;
+    box-shadow: 0 2px 10px rgba(99, 102, 241, 0.3);
+}
+
+.tag-emoji {
+    font-size: 1rem;
+}
+
+/* Old tag style override */
+.tag {
+    display: none;
+}
+
+/* Gender chips */
+.gender-chips {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.gender-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.6rem 1rem;
+    background: rgba(15, 23, 42, 0.85);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+    font-size: 0.9rem;
+    color: var(--text, #f1f5f9);
+}
+
+.gender-chip:hover {
+    border-color: var(--primary, #6366f1);
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.gender-chip.selected {
+    background: linear-gradient(135deg, var(--primary, #6366f1), #818cf8);
+    border-color: transparent;
+    color: white;
+    box-shadow: 0 2px 10px rgba(99, 102, 241, 0.3);
+}
+
+.gender-chip .chip-emoji {
+    font-size: 1.1rem;
+}
+
+/* Occasion selector */
+.occasion-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    margin-top: 0.75rem;
+}
+
+.occasion-group {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 8px;
+    padding: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.occasion-group-title {
+    font-size: 0.9rem !important;
+    font-weight: 700 !important;
+    color: #f1f5f9 !important;
+    margin-bottom: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    background: linear-gradient(90deg, rgba(99, 102, 241, 0.3), transparent);
+    border-left: 3px solid #818cf8;
+    border-radius: 0 8px 8px 0;
+    letter-spacing: 0.03em;
+}
+
+.occasion-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.occasion-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1rem;
+    background: rgba(15, 23, 42, 0.85);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+    font-size: 0.9rem;
+    color: var(--text, #f1f5f9);
+}
+
+.occasion-chip:hover {
+    border-color: var(--primary, #6366f1);
+    background: rgba(99, 102, 241, 0.1);
+    transform: translateY(-2px);
+}
+
+.occasion-chip.selected {
+    background: linear-gradient(135deg, var(--primary, #6366f1), #818cf8);
+    border-color: transparent;
+    color: white;
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+}
+
+.occasion-chip.selected .chip-label {
+    font-weight: 600;
+}
+
+.chip-emoji {
+    font-size: 1.1rem;
+}
+
+.chip-label {
+    white-space: nowrap;
+}
+
+/* Select optgroup styling */
+select optgroup {
+    font-weight: 600;
+    font-style: normal;
+    color: var(--primary-light, #a5b4fc);
+    background: rgba(15, 23, 42, 0.85);
+    padding: 8px 0;
+    margin-top: 4px;
+}
+
+select optgroup:first-of-type {
+    margin-top: 0;
+}
+
+select optgroup option {
+    font-weight: 400;
+    color: var(--text, #f1f5f9);
+    background: var(--bg, #0f172a);
+    padding: 8px 12px;
+    padding-left: 20px;
+}
+
+select optgroup option:hover,
+select optgroup option:focus {
+    background: var(--primary, #6366f1);
+    color: white;
+}
+
+select#occasion {
+    padding: 12px 16px;
+    font-size: 1rem;
+}
+
+/* Budget strategy selector */
+.budget-strategy-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+}
+
+.budget-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    background: rgba(15, 23, 42, 0.85);
+    border: 2px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.budget-card:hover {
+    border-color: var(--primary, #6366f1);
+    background: rgba(99, 102, 241, 0.08);
+    transform: translateX(4px);
+}
+
+.budget-card.selected {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(129, 140, 248, 0.1));
+    border-color: var(--primary, #6366f1);
+    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.2);
+}
+
+.budget-card.selected .budget-card-title {
+    color: #a5b4fc;
+}
+
+.budget-card-icon {
+    font-size: 1.75rem;
+    min-width: 40px;
+    text-align: center;
+}
+
+.budget-card-content {
+    flex: 1;
+}
+
+.budget-card-title {
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--text, #f1f5f9);
+    margin-bottom: 0.25rem;
+}
+
+.budget-card-desc {
+    font-size: 0.8rem;
+    color: var(--text-secondary, #94a3b8);
+}
+
+/* Budget calculation info */
+.budget-calculation {
+    margin-top: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: rgba(99, 102, 241, 0.1);
+    border-radius: 8px;
+    font-size: 0.85rem;
+    color: #a5b4fc;
+    border-left: 3px solid var(--primary, #6366f1);
+}
+
+.budget-calculation:empty {
+    display: none;
+}
+
+.budget-calculation strong {
+    color: #c7d2fe;
+}

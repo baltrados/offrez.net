@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="fr">
+<!-- 
+    PAGE DES PROFILS (Étape 2/3)
+    ============================
+    C'est ici que l'utilisateur décrit chaque personne à qui il veut offrir un cadeau.
+    L'interface génère dynamiquement autant de formulaires que nécessaire (via JS).
+-->
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- SEO -->
+    <title>Profils bénéficiaires – OFFREZ</title>
+    <meta name="description"
+        content="Renseignez les profils détaillés de vos bénéficiaires pour qu'OFFREZ trouve des cadeaux parfaitement adaptés à chaque personnalité.">
+    <link rel="canonical" href="https://offrez.net/profils.html">
+    <meta name="robots" content="noindex">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+
+    <!-- Performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800;900&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+
+    <link rel="stylesheet" href="style.min.css?v=202603151840">
+    <link rel="stylesheet" href="css/fontawesome/all.min.css">
+</head>
+
+<body>
+    <div class="app-shell">
+        <header>
+            <div class="header-inner">
+                <a href="index.html" class="logo-link">
+                    <span class="brand-logo">OFFRE<span class="brand-z">Z</span></span>
+                </a>
+                <div class="badge-env">Étape 2/3 · Profils</div>
+            </div>
+        </header>
+
+        <main class="container">
+            <!-- Stepper : Montre étape 2 active -->
+            <div class="steps">
+                <div class="step step--done">
+                    <div class="step-index"><i class="fas fa-check"></i></div>
+                    <div class="step-label">Mission & budget</div>
+                </div>
+                <div class="step-connector step-connector--done"></div>
+                <div class="step step--active">
+                    <div class="step-index">2</div>
+                    <div class="step-label">Profils détaillés</div>
+                </div>
+                <div class="step-connector"></div>
+                <div class="step">
+                    <div class="step-index">3</div>
+                    <div class="step-label">Recommandations</div>
+                </div>
+            </div>
+
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Détails des bénéficiaires</div>
+                        <div class="card-subtitle">Plus le profil est précis, plus OFFREZ trouve des cadeaux pertinents.
+                        </div>
+                    </div>
+                    <span class="badge-step">2 · Profils</span>
+                </div>
+
+                <!-- BARRE DE PROGRESSION (Effet Zeigarnik - 66% déjà fait) -->
+                <div class="progress-container">
+                    <div class="progress-bar-fill" style="width: 66%;"></div>
+                </div>
+
+                <!-- 
+                    CONTENEUR DES PROFILS
+                    Vide au départ. Le JS va cloner le <template id="profileTemplate">
+                    et l'injecter ici pour chaque personne définie à l'étape précédente.
+                -->
+                <div id="profilesList"></div>
+
+                <!-- Endowment Effect : "Créer la fiche" engage plus que "Ajouter" -->
+                <button id="addProfile" class="btn btn-secondary" aria-label="Ajouter un autre profil bénéficiaire">
+                    <i class="fas fa-plus-circle"></i> Ajouter un bénéficiaire
+                </button>
+                <!-- Bouton final avec aversion à la perte -->
+                <button id="launchAnalysis" class="btn-cta-main btn-cta-glow" aria-label="Lancer l'analyse des cadeaux">
+                    <i class="fas fa-sparkles"></i> Révéler LE cadeau qu'il/elle n'oubliera jamais 🎁
+                </button>
+    </div>
+    <p class="cta-microcopy">Étape finale • Résultats en 30 secondes</p>
+    <p class="loss-aversion-hint">
+        <i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i>
+        Sans analyse personnalisée, <strong>68% des cadeaux</strong> finissent oubliés dans un tiroir.
+    </p>
+
+    <!-- Message de réassurance -->
+    <div class="security-note" style="text-align: center; margin-top: 10px; font-size: 0.8rem; color: #64748b;">
+        <i class="fas fa-lock"></i> Vos données sont analysées de manière sécurisée et supprimées immédiatement après.
+    </div>
+    </section>
+    </main>
+
+    <!-- 
+            TEMPLATE HTML (Gabarit)
+            Cette partie n'est pas visible directement. Elle sert de modèle pour créer
+            les cartes de profils dynamiquement avec JavaScript.
+        -->
+    <template id="profileTemplate">
+        <section class="card profile-card">
+            <button class="btn-delete" title="Supprimer" aria-label="Supprimer ce profil">×</button>
+            <h3 class="profile-title">Bénéficiaire</h3>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Prénom</label>
+                    <input type="text" class="p-name" placeholder="Ex: Julie" required>
+                </div>
+                <div class="form-group">
+                    <label>Budget (€)</label>
+                    <input type="number" class="p-budget" placeholder="Ex: 50" min="5" required>
+                </div>
+                <div class="form-group">
+                    <label>Genre</label>
+                    <input type="hidden" class="p-sexe" value="Femme">
+                    <div class="gender-chips">
+                        <button type="button" class="gender-chip selected" data-value="Femme">
+                            <span class="chip-emoji">👩</span>
+                            <span>Femme</span>
+                        </button>
+                        <button type="button" class="gender-chip" data-value="Homme">
+                            <span class="chip-emoji">👨</span>
+                            <span>Homme</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>&Acirc;ge</label>
+                    <input type="number" class="p-age" placeholder="Ex: 28" min="1" max="120">
+                </div>
+
+                <div class="form-group full-width">
+                    <label>Centres d'intérêt</label>
+                    <!-- Les tags (chips) seront générés ici par le JS -->
+                    <div class="tags-container"></div>
+                </div>
+
+                <div class="form-group full-width">
+                    <label>Ce qu'il/elle adore <span class="label-hint">(passions, marques,
+                            hobbies...)</span></label>
+                    <textarea class="p-details" rows="2"
+                        placeholder="Ex: Fan de Star Wars, adore le café italien, collectionne les vinyles..."></textarea>
+                </div>
+
+                <div class="form-group full-width">
+                    <label>À éviter absolument</label>
+                    <input type="text" class="p-hates"
+                        placeholder="Ex: Pas de cuir, allergique aux noix, déteste le rose...">
+                </div>
+            </div>
+        </section>
+    </template>
+    </div>
+
+    <!-- Script logique associé -->
+    <script src="js/profils.js" type="module"></script>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+        <div class="footer-content">
+            <p class="amazon-affiliate">En tant que Partenaire Amazon, je réalise un bénéfice sur les achats remplissant
+                les conditions requises.</p>
+            <div class="footer-links">
+                <a href="mentions-legales.html">Mentions légales</a>
+                <a href="politique-confidentialite.html">Confidentialité</a>
+                <a href="cgu.html">CGU</a>
+                <a href="blog.html">Blog</a>
+            </div>
+            <p class="copyright">© 2026 OFFREZ - Tous droits réservés</p>
+        </div>
+    </footer>
+
+    <!-- Bannière Cookies -->
+    <script type="module" src="js/legal.js"></script>
+</body>
+
+</html>

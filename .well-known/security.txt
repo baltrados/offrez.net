@@ -1,0 +1,37 @@
+# Security Policy
+
+## Reporting Security Issues
+
+If you discover a security vulnerability in OFFRLY, please report it by emailing:
+**contact@offrly.fr**
+
+Please do NOT create public GitHub issues for security vulnerabilities.
+
+## Response Time
+
+We aim to respond to security reports within 48 hours.
+
+## Scope
+
+This security policy applies to the OFFRLY website (https://offrly.fr).
+
+## Preferred Languages
+
+We prefer all communications to be in French or English.
+
+## Policy
+
+We follow responsible disclosure principles. We will:
+- Confirm receipt of your report
+- Provide an estimated timeline for a fix
+- Notify you when the issue is resolved
+- Credit you (if desired) for the discovery
+
+## Encryption
+
+For sensitive reports, please contact us to arrange encrypted communication.
+
+---
+Contact: contact@offrly.fr
+Canonical: https://offrly.fr/.well-known/security.txt
+Expires: 2027-02-02T00:00:00.000Z

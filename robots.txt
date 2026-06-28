@@ -1,0 +1,10 @@
+# OFFREZ - Robots.txt
+# https://offrez.net
+
+User-agent: *
+Allow: /
+Disallow: /analyse.html
+Disallow: /config.html
+Disallow: /profils.html
+
+Sitemap: https://offrez.net/sitemap.xml

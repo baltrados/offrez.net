@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="fr">
+<!-- 
+    PAGE D'ACCUEIL (Landing Page)
+    =============================
+    C'est le point d'entrée du site. Son but est de convertir le visiteur
+    en lui expliquant la proposition de valeur (Value Proposition) :
+    trouver un cadeau rapidement grâce à notre technologie.
+-->
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- 
+        SEO (Référencement Naturel)
+        Ces balises aident Google à comprendre le contenu du site.
+    -->
+    <title>OFFREZ – Trouvez le cadeau parfait en 30 secondes</title>
+    <meta name="description"
+        content="OFFREZ analyse les profils de vos proches et trouve des cadeaux parfaits sur Amazon.fr en respectant votre budget. Recommandations personnalisées en 30 secondes.">
+    <meta name="keywords" content="cadeau, idée cadeau, offrir, Amazon, budget, recommandation, personnalisé">
+    <meta name="author" content="OFFREZ">
+    <link rel="canonical" href="https://offrez.net/">
+    <meta name="robots" content="index,follow">
+
+    <!-- 
+        OPEN GRAPH (Partage Réseaux Sociaux)
+        Définit l'apparence du lien quand il est partagé sur Facebook, LinkedIn, Discord...
+    -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://offrez.net/">
+    <meta property="og:title" content="OFFREZ – Le cadeau parfait en 30 secondes">
+    <meta property="og:description"
+        content="Trouvez des cadeaux parfaits pour vos proches, en respectant votre budget.">
+    <meta property="og:image" content="https://offrez.net/og-image.png">
+    <meta property="og:locale" content="fr_FR">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://offrez.net/">
+    <meta name="twitter:title" content="OFFREZ – Le cadeau parfait en 30 secondes">
+    <meta name="twitter:description"
+        content="Trouvez des cadeaux parfaits pour vos proches, en respectant votre budget.">
+    <meta name="twitter:image" content="https://offrez.net/og-image.png">
+
+    <!-- Favicon (Petite icône dans l'onglet) -->
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+
+
+    <!-- 
+        PWA (Progressive Web App)
+        Permet d'installer le site comme une application sur mobile.
+    -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="OFFREZ">
+
+    <!-- 
+        STRUCTURED DATA (Schema.org)
+        Données structurées pour que Google affiche des "Rich Snippets" (étoiles, prix...).
+    -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "OFFREZ",
+        "description": "Application de recommandation de cadeaux personnalisés",
+        "url": "https://offrez.net",
+        "applicationCategory": "ShoppingApplication",
+        "operatingSystem": "Web",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "EUR"
+        }
+    }
+    </script>
+
+    <!-- Performance: préconnexion et chargement optimisé des polices -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800;900&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+
+    <!-- Styles CSS -->
+    <link rel="stylesheet" href="style.min.css?v=202603151840">
+    <link rel="stylesheet" href="css/fontawesome/all.min.css">
+
+    <!-- Responsive overrides for landing page -->
+    <style>
+        .page-hero {
+            display: block !important;
+            text-align: center;
+        }
+
+        .landing-steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.25rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .landing-step-card {
+            background: var(--bg-card, rgba(30, 41, 59, 0.7));
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-radius: 16px;
+            padding: 2rem 1.5rem;
+            text-align: center;
+        }
+
+        .landing-step-card .step-emoji {
+            font-size: 2.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .landing-step-card .step-num {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #818cf8;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .landing-step-card h4 {
+            font-size: 1.1rem;
+            color: #f1f5f9;
+            margin-bottom: 0.5rem;
+        }
+
+        .landing-step-card p {
+            font-size: 0.9rem;
+            color: #94a3b8;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 640px) {
+            .landing-steps {
+                grid-template-columns: 1fr;
+                padding: 0 0.5rem;
+            }
+
+            .page-hero h2 {
+                font-size: 1.6rem !important;
+            }
+
+            .page-hero .hero-subtitle {
+                font-size: 1rem !important;
+                padding: 0 0.5rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-shell">
+
+        <!-- En-tête -->
+        <header>
+            <div class="header-inner">
+                <h1><span class="brand-logo">OFFRE<span class="brand-z">Z</span></span></h1>
+            </div>
+        </header>
+
+        <main class="container">
+
+            <!-- ═══════════════════════════════════════ -->
+            <!-- SECTION 1 : HERO                       -->
+            <!-- ═══════════════════════════════════════ -->
+            <section class="page-hero" style="text-align: center; display: block; padding: 3rem 1rem 2rem;">
+                <h2 style="font-size: clamp(1.8rem, 5vw, 2.8rem); line-height: 1.2; margin-bottom: 1rem;">
+                    Trouvez le cadeau<br>qui leur ressemble <strong>vraiment</strong>
+                </h2>
+                <p class="hero-subtitle"
+                    style="max-width: 550px; margin: 0 auto 2rem; font-size: 1.1rem; color: #94a3b8; line-height: 1.6;">
+                    Décrivez vos proches, notre algorithme cherche des idées de cadeaux personnalisées parmi les
+                    produits
+                    Amazon.fr — en respectant votre budget.
+                </p>
+
+                <a href="config.html" class="btn-cta-main btn-cta-glow" aria-label="Commencer"
+                    style="font-size: 1.15rem; padding: 1rem 2.5rem;">
+                    <i class="fas fa-magic" aria-hidden="true"></i>
+                    C'est parti !
+                    <i class="fas fa-arrow-right" aria-hidden="true"></i>
+                </a>
+                <p class="cta-microcopy" style="margin-top: 0.75rem;">
+                    <i class="fas fa-bolt"></i> Gratuit · Sans inscription · 30 secondes
+                </p>
+            </section>
+
+            <!-- ═══════════════════════════════════════ -->
+            <!-- SECTION 2 : COMMENT ÇA MARCHE          -->
+            <!-- ═══════════════════════════════════════ -->
+            <section style="margin-top: 2rem; margin-bottom: 2rem;">
+                <h3 style="text-align: center; font-size: 1.4rem; color: #e2e8f0; margin-bottom: 2rem;">
+                    Comment ça marche ?
+                </h3>
+
+                <div class="landing-steps">
+                    <div class="landing-step-card">
+                        <div class="step-emoji">👥</div>
+                        <div class="step-num">Étape 1</div>
+                        <h4>Décrivez vos proches</h4>
+                        <p>&Acirc;ge, centres d'intérêt, budget… Plus vous êtes précis, plus les idées sont pertinentes.
+                        </p>
+                    </div>
+                    <div class="landing-step-card">
+                        <div class="step-emoji">🧠</div>
+                        <div class="step-num">Étape 2</div>
+                        <h4>Notre moteur analyse et cherche</h4>
+                        <p>Notre algorithme génère des suggestions adaptées et trouve les meilleurs produits sur Amazon.
+                        </p>
+                    </div>
+                    <div class="landing-step-card">
+                        <div class="step-emoji">🎁</div>
+                        <div class="step-num">Étape 3</div>
+                        <h4>Choisissez et offrez</h4>
+                        <p>Comparez les recommandations, cliquez, et achetez directement sur Amazon.fr.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ═══════════════════════════════════════ -->
+            <!-- SECTION 3 : CTA DE FERMETURE            -->
+            <!-- ═══════════════════════════════════════ -->
+            <section style="text-align: center; padding: 2rem 1rem 3rem;">
+                <p style="font-size: 1.05rem; color: #cbd5e1; margin-bottom: 1.25rem;">
+                    Prêt à trouver LE cadeau ?
+                </p>
+                <a href="config.html" class="btn-cta-main" aria-label="Commencer la recherche"
+                    style="font-size: 1.1rem; padding: 0.9rem 2rem;">
+                    <i class="fas fa-magic" aria-hidden="true"></i>
+                    Commencer
+                    <i class="fas fa-arrow-right" aria-hidden="true"></i>
+                </a>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Service Worker (externalisé pour CSP) -->
+    <script src="js/sw-register.js"></script>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+        <div class="footer-content">
+            <p class="amazon-affiliate">En tant que Partenaire Amazon, je réalise un bénéfice sur les achats remplissant
+                les conditions requises.</p>
+            <div class="footer-links">
+                <a href="mentions-legales.html">Mentions légales</a>
+                <a href="politique-confidentialite.html">Confidentialité</a>
+                <a href="cgu.html">CGU</a>
+                <a href="blog.html">Blog</a>
+            </div>
+            <p class="copyright">© 2026 OFFREZ - Tous droits réservés</p>
+        </div>
+    </footer>
+
+    <!-- Bannière Cookies -->
+    <script type="module" src="js/legal.js"></script>
+</body>
+
+</html>

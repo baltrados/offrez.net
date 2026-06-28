@@ -1,0 +1,7 @@
+tunnel: 3e1ceb6e-5aa2-4579-a51f-86e1ad33cd32
+credentials-file: /home/pi/.cloudflared/3e1ceb6e-5aa2-4579-a51f-86e1ad33cd32.json
+
+ingress:
+  - hostname: ssh.offrez.net
+    service: ssh://localhost:22
+  - service: http_status:404

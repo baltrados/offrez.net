@@ -1,0 +1,228 @@
+/* =========================================
+   11 - ANIMATIONS (@keyframes + prefers-*)
+   ========================================= */
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.6;
+    }
+}
+
+@keyframes ctaPulse {
+    0% {
+        box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4), 0 0 0 0 rgba(255, 107, 53, 0.4);
+    }
+
+    70% {
+        box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4), 0 0 0 15px rgba(255, 107, 53, 0);
+    }
+
+    100% {
+        box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4), 0 0 0 0 rgba(255, 107, 53, 0);
+    }
+}
+
+@keyframes ctaGlow {
+
+    0%,
+    100% {
+        box-shadow: 0 0 30px rgba(255, 107, 53, 0.4), 0 0 60px rgba(255, 107, 53, 0.2);
+    }
+
+    50% {
+        box-shadow: 0 0 40px rgba(255, 107, 53, 0.6), 0 0 80px rgba(255, 107, 53, 0.3);
+    }
+}
+
+@keyframes shimmer {
+    100% {
+        left: 100%;
+    }
+}
+
+@keyframes cardFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes cartSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes skeleton-loading {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+@keyframes flashPulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+    }
+
+    50% {
+        box-shadow: 0 0 20px 5px rgba(99, 102, 241, 0.4);
+    }
+}
+
+@keyframes unwrapGift {
+    0% {
+        transform: scale(0.7) rotateY(-15deg);
+        opacity: 0;
+        filter: blur(10px);
+    }
+
+    50% {
+        transform: scale(1.05) rotateY(5deg);
+        filter: blur(0);
+    }
+
+    100% {
+        transform: scale(1) rotateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes modalAppear {
+    0% {
+        transform: scale(0.8) translateY(20px);
+        opacity: 0;
+    }
+
+    100% {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes iconPulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+@keyframes countdownBlink {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* Smooth page entrance */
+.app-shell {
+    animation: fadeInUp 0.4s ease-out;
+}
+
+/* Accessibility - Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Dark mode ready */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #0f172a;
+        --card-bg: #1e293b;
+        --text-main: #f1f5f9;
+    }
+
+    .card {
+        background: rgba(30, 41, 59, 0.8);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    input,
+    select,
+    textarea {
+        background: #1e293b;
+        border-color: #334155;
+        color: #f1f5f9;
+    }
+}

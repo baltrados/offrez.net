@@ -1,0 +1,31 @@
+﻿{
+    "name": "OFFREZ",
+    "short_name": "OFFREZ",
+    "description": "Trouvez le cadeau parfait en 30 secondes avec l'IA",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0f172a",
+    "theme_color": "#6366f1",
+    "orientation": "portrait-primary",
+    "lang": "fr",
+    "icons": [
+        {
+            "src": "favicon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any maskable"
+        }
+    ],
+    "categories": [
+        "shopping",
+        "lifestyle"
+    ],
+    "screenshots": [],
+    "shortcuts": [
+        {
+            "name": "Nouvelle recherche",
+            "url": "/config.html",
+            "description": "Démarrer une nouvelle recherche de cadeaux"
+        }
+    ]
+}

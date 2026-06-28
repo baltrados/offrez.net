@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="fr">
+<!-- 
+    PAGE D'ANALYSE & RÉSULTATS (Étape 3/3)
+    ======================================
+    C'est la page finale qui :
+    1. Affiche une barre de progression pendant la recherche des résultats.
+    2. Affiche les résultats (cartes cadeaux) une fois trouvés.
+    3. Permet de naviguer entre les suggestions et d'ajouter au panier.
+-->
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- SEO (Noindex car cette page dépend des données utilisateur locales) -->
+    <title>Analyse et résultats – OFFREZ</title>
+    <meta name="description"
+        content="Suivez en temps réel l'analyse OFFREZ et découvrez les cadeaux parfaits pour chaque bénéficiaire, disponibles sur Amazon.fr.">
+    <link rel="canonical" href="https://offrez.net/analyse.html">
+    <meta name="robots" content="noindex,nofollow">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+
+    <!-- Performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800;900&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+
+    <link rel="stylesheet" href="style.min.css?v=202603151840">
+    <link rel="stylesheet" href="css/fontawesome/all.min.css">
+</head>
+
+<body>
+
+    <div class="app-shell">
+        <header>
+            <div class="header-inner">
+                <a href="index.html" class="logo-link">
+                    <span class="brand-logo">OFFRE<span class="brand-z">Z</span></span>
+                </a>
+                <div class="badge-env">Étape 3/3 · Analyse</div>
+            </div>
+        </header>
+
+        <main class="container">
+            <!-- Stepper : Étape 3 active -->
+            <div class="steps">
+                <div class="step step--done">
+                    <div class="step-index"><i class="fas fa-check"></i></div>
+                    <div class="step-label">Mission & budget</div>
+                </div>
+                <div class="step-connector step-connector--done"></div>
+                <div class="step step--done">
+                    <div class="step-index"><i class="fas fa-check"></i></div>
+                    <div class="step-label">Profils</div>
+                </div>
+                <div class="step-connector step-connector--done"></div>
+                <div class="step step--active">
+                    <div class="step-index">3</div>
+                    <div class="step-label">Recommandations</div>
+                </div>
+            </div>
+
+            <section class="analysis-layout">
+                <!-- COLONNE GAUCHE : État de l'analyse (Loading UI) -->
+                <div>
+                    <h2 class="card-title" style="margin-bottom:0.75rem;">Journal d'analyse en temps réel</h2>
+                    <p class="card-subtitle" style="margin-bottom:1rem;">Suivez l'analyse en direct : profils, recherche
+                        Amazon, filtrage budget.</p>
+
+                    <div id="statusIndicator" class="status-indicator">
+                        <!-- Barre de progression globale animée par JS updateProgress() -->
+                        <div id="globalProgress" style="width: 100%; max-width: 300px; margin: 0 auto 1rem;">
+                            <div
+                                style="background: rgba(99, 102, 241, 0.2); border-radius: 12px; height: 8px; overflow: hidden;">
+                                <div id="progressBar"
+                                    style="background: linear-gradient(90deg, #6366f1, #818cf8); height: 100%; width: 0%; transition: width 0.5s ease; border-radius: 12px;">
+                                </div>
+                            </div>
+                            <span id="progressText"
+                                style="font-size: 0.8rem; color: #9ca3af; margin-top: 0.5rem; display: block;">0% -
+                                Initialisation...</span>
+                        </div>
+                        <div class="spinner"></div>
+                        <p id="statusMessage">Analyse de vos profils en cours...</p>
+                    </div>
+                </div>
+
+                <!-- COLONNE DROITE : Résultats -->
+                <div>
+                    <h2 class="card-title" style="margin-bottom:0.75rem;">🎁 Notre recommandation</h2>
+                    <p class="card-subtitle" style="margin-bottom:1rem;">Le cadeau idéal sélectionné pour vous.</p>
+
+                    <!-- CONTENEUR DES RÉSULTATS : C'est ici que les cartes cadeaux sont injectées -->
+                    <div id="singleResult" class="single-result-container"></div>
+
+                    <!-- Navigation buttons (Ancienne version, maintenant intégré dans les cartes) -->
+                    <div id="resultNavigation" class="result-nav" style="display: none;">
+                        <button id="btnNextSuggestion" class="btn btn-primary btn-large">
+                            <i class="fas fa-shuffle"></i> Pas convaincu ? Autre suggestion
+                        </button>
+                        <p id="suggestionCounter" class="suggestion-counter"></p>
+                    </div>
+
+                    <!-- PANIER GLOBAL : Résumé des sélections et bouton d'achat groupé -->
+                    <div id="cartContainer" class="cart-container" style="display: none;"></div>
+
+                    <!-- COLLECTE EMAILS (Newsletter / Sauvegarde) -->
+                    <div id="emailCapture" class="email-capture-card" style="display: none;">
+                        <div class="email-content">
+                            <div class="email-icon-wrapper">
+                                <i class="fas fa-envelope-open-text"></i>
+                            </div>
+                            <div class="email-text">
+                                <h3>🔔 Un rappel avant le jour J ?</h3>
+                                <p>On vous envoie un seul email de rappel quelques jours avant l'occasion, avec des
+                                    idées fraîches. <strong>Aucune newsletter, aucun spam – uniquement le
+                                        rappel.</strong></p>
+                            </div>
+                        </div>
+
+                        <form id="emailForm" class="email-form">
+                            <div class="input-group">
+                                <input type="email" id="userEmail" placeholder="Votre email" required>
+                                <button type="submit" class="btn btn-secondary">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                            <div class="form-check-legal">
+                                <input type="checkbox" id="emailConsent" required>
+                                <label for="emailConsent">J'accepte que mon email soit utilisé pour m'envoyer ce rappel.
+                                    <a href="politique-confidentialite.html" target="_blank">En savoir
+                                        plus</a>.</label>
+                            </div>
+                        </form>
+                        <div id="emailSuccess" class="email-success" style="display: none;">
+                            <i class="fas fa-check-circle"></i> C'est envoyé !
+                        </div>
+                    </div>
+
+                    <div class="action-buttons" style="margin-top: 2rem;">
+                        <a href="index.html" class="btn btn-secondary"
+                            aria-label="Retour à l'accueil pour une nouvelle recherche">
+                            <i class="fas fa-redo"></i> Nouvelle recherche
+                        </a>
+                    </div>
+                </div>
+            </section>
+
+            <!-- MODAL DE CONFIRMATION D'ACHAT (Peak-End Rule) -->
+            <div id="purchaseModal" class="purchase-confirmation-modal" style="display: none;">
+                <div class="modal-overlay"></div>
+                <div class="modal-content">
+                    <div class="modal-icon-wrapper">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <h3>Excellent choix ! 🎉</h3>
+                    <p>Vous allez offrir un cadeau que <strong id="recipientNameModal">[Prénom]</strong> n'oubliera
+                        jamais.</p>
+                    <p class="modal-countdown">Redirection vers Amazon.fr dans <span id="countdownSeconds">3</span>s...
+                    </p>
+                    <div class="modal-actions">
+                        <button id="skipCountdown" class="btn btn-primary">Continuer maintenant <i
+                                class="fas fa-arrow-right"></i></button>
+                    </div>
+                    <div class="share-prompt">
+                        <p>Un ami cherche aussi des idées cadeaux ?</p>
+                        <button id="shareButton" class="btn btn-secondary btn-share">
+                            <i class="fas fa-share-alt"></i> Partager OFFREZ
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Script logique principal (Le cerveau) -->
+    <script src="js/analyse.js?v=202603151840" type="module"></script>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+        <div class="footer-content">
+            <p class="amazon-affiliate">En tant que Partenaire Amazon, je réalise un bénéfice sur les achats remplissant
+                les conditions requises.</p>
+            <div class="footer-links">
+                <a href="mentions-legales.html">Mentions légales</a>
+                <a href="politique-confidentialite.html">Confidentialité</a>
+                <a href="cgu.html">CGU</a>
+                <a href="blog.html">Blog</a>
+            </div>
+            <p class="copyright">© 2026 OFFREZ - Tous droits réservés</p>
+        </div>
+    </footer>
+
+    <!-- Bannière Cookies -->
+    <script type="module" src="js/legal.js"></script>
+</body>
+
+</html>
+

@@ -1,0 +1,60 @@
+/* =========================================
+   06 - CARDS
+   ========================================= */
+
+/* Card base + hover (fusionné L537+L811) */
+.card {
+    background: rgba(15, 23, 42, 0.96);
+    border-radius: 18px;
+    padding: 1.75rem 1.6rem;
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.95);
+    transition: box-shadow 0.3s ease;
+}
+
+.card:hover {
+    box-shadow: 0 28px 70px rgba(15, 23, 42, 0.98);
+}
+
+/* Card header */
+.card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.card-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.card-subtitle {
+    font-size: 0.85rem;
+    color: #9ca3af;
+}
+
+/* Badge step */
+.badge-step {
+    padding: 0.25rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    background: rgba(99, 102, 241, 0.18);
+    color: #6366f1;
+}
+
+/* Analysis layout */
+.analysis-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.3fr);
+    gap: 2rem;
+    align-items: flex-start;
+}
+
+/* Profile card (fusionné L258+L878) */
+.profile-card {
+    position: relative;
+    border-left: 6px solid var(--primary);
+    animation: slideIn 0.3s ease-out;
+}

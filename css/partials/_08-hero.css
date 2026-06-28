@@ -1,0 +1,42 @@
+/* =========================================
+   08 - HERO / CTA / TRUST
+   ========================================= */
+
+/* Hero subtitle */
+.hero-subtitle {
+    font-size: 1.15rem;
+    color: #e2e8f0;
+    margin-bottom: 1.5rem;
+    line-height: 1.7;
+}
+
+/* Micro-copy sous CTA */
+.cta-microcopy {
+    font-size: 0.85rem;
+    color: #94a3b8;
+    margin-top: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.cta-microcopy i {
+    color: #fbbf24;
+}
+
+/* Loss aversion hint (UTILISEE - profils.html) */
+.loss-aversion-hint {
+    text-align: center;
+    font-size: 0.8rem;
+    color: #64748b;
+    margin-top: 0.75rem;
+    padding: 0.5rem 1rem;
+    background: rgba(245, 158, 11, 0.1);
+    border-radius: 8px;
+    border-left: 3px solid #f59e0b;
+}
+
+.loss-aversion-hint strong {
+    color: #d97706;
+}

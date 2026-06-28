@@ -1,0 +1,280 @@
+/* =========================================
+   04 - BOUTONS
+   ========================================= */
+
+.btn {
+    padding: 0.8rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: 0.3s;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+}
+
+.btn-primary:focus-visible {
+    outline: 3px solid var(--primary-dark);
+    outline-offset: 2px;
+}
+
+.btn-secondary {
+    background: #e2e8f0;
+    color: #475569;
+}
+
+.btn-secondary:hover {
+    background: #cbd5e1;
+}
+
+.btn-secondary:focus-visible {
+    outline: 3px solid #94a3b8;
+    outline-offset: 2px;
+}
+
+/* CTA BUTTON - Version CRO avec pulse (fusionné L132+L1003, garder L1003) */
+.btn-cta-main {
+    position: relative;
+    padding: 1.2rem 2.5rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    background: linear-gradient(135deg, #ff6b35 0%, #e55a2a 100%);
+    color: white;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    box-shadow:
+        0 4px 15px rgba(255, 107, 53, 0.4),
+        0 0 0 0 rgba(255, 107, 53, 0.4);
+    animation: ctaPulse 2s infinite;
+    transition: all 0.3s ease;
+}
+
+.btn-cta-main:hover {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow:
+        0 8px 30px rgba(255, 107, 53, 0.5),
+        0 0 40px rgba(255, 107, 53, 0.3);
+    animation: none;
+}
+
+.btn-cta-main:active {
+    transform: translateY(-1px) scale(0.98);
+}
+
+.btn-cta-main i {
+    transition: transform 0.3s ease;
+}
+
+.btn-cta-main:hover i {
+    transform: translateX(5px);
+}
+
+/* CTA Glow Effect (Von Restorff) */
+.btn-cta-glow {
+    box-shadow: 0 0 30px rgba(255, 107, 53, 0.4), 0 0 60px rgba(255, 107, 53, 0.2);
+    animation: ctaGlow 2s ease-in-out infinite;
+}
+
+/* Amazon button classique */
+.btn-amazon {
+    background: linear-gradient(135deg, #ff9900, #ff7c00);
+    color: white;
+    padding: 1rem 2rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    transition: all 0.3s ease;
+    width: fit-content;
+}
+
+.btn-amazon:hover {
+    background: linear-gradient(135deg, #ffaa22, #ff8c11);
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(255, 153, 0, 0.4);
+}
+
+.btn-amazon i {
+    font-size: 1.3rem;
+}
+
+/* Amazon CTA Button (card version) */
+.btn-amazon-cta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    margin-top: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: linear-gradient(135deg, #ff9900, #ff6b35);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(255, 153, 0, 0.3);
+}
+
+.btn-amazon-cta:hover {
+    background: linear-gradient(135deg, #ffaa22, #ff7c46);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 153, 0, 0.4);
+}
+
+.btn-amazon-cta i {
+    font-size: 1rem;
+}
+
+/* Bouton panier */
+.btn-cart {
+    background: linear-gradient(135deg, #ff9900, #ff6b35);
+    color: white;
+    padding: 1rem 2.5rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 20px rgba(255, 153, 0, 0.3);
+}
+
+.btn-cart:hover {
+    background: linear-gradient(135deg, #ffaa22, #ff7c46);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 30px rgba(255, 153, 0, 0.5);
+}
+
+.btn-cart i {
+    font-size: 1.2rem;
+}
+
+/* Bouton delete (fusionné L264+L895) */
+.btn-delete {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #94a3b8;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-delete:hover {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+    transform: scale(1.1);
+}
+
+/* Bouton share */
+.btn-share {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+.btn-share:hover {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+}
+
+/* Bouton large */
+.btn-large {
+    padding: 1rem 2.5rem;
+    font-size: 1rem;
+    border-radius: 8px;
+}
+
+/* Bouton navigation suggestions */
+.btn-nav-suggestion {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(99, 102, 241, 0.15);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    color: #a5b4fc;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-nav-suggestion:hover:not(:disabled) {
+    background: rgba(99, 102, 241, 0.3);
+    border-color: rgba(99, 102, 241, 0.5);
+    transform: scale(1.1);
+}
+
+.btn-nav-suggestion:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+/* Bouton fermer email popup */
+.btn-close-email {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: transparent;
+    border: none;
+    color: #64748b;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+.btn-close-email:hover {
+    color: #fff;
+}
+
+/* Action buttons container */
+.action-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 2rem;
+    flex-wrap: wrap;
+}
+
+/* Touch targets >= 48px */
+.btn,
+.btn-cta-main,
+.chip-cro {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}

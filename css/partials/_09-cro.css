@@ -1,0 +1,283 @@
+/* =========================================
+   09 - CRO ELEMENTS
+   ========================================= */
+
+/* Progress bar (Zeigarnik) */
+.progress-container {
+    width: 100%;
+    height: 6px;
+    background: rgba(148, 163, 184, 0.2);
+    border-radius: 3px;
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+    border-radius: 3px;
+    transition: width 0.5s ease;
+}
+
+/* Status indicator */
+.status-indicator {
+    text-align: center;
+    padding: 1.5rem;
+}
+
+.status-indicator p {
+    margin-top: 1rem;
+    color: #9ca3af;
+    animation: pulse 2s infinite;
+}
+
+/* Loading overlay */
+.card-loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.95);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    z-index: 10;
+    border-radius: 16px;
+}
+
+.card-loading-overlay span {
+    color: #a5b4fc;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(99, 102, 241, 0.2);
+    border-top-color: #6366f1;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+/* Spinner legacy */
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px;
+}
+
+/* Skeleton loading - version dark (garder L3196, supprimer L1219) */
+.skeleton {
+    background: linear-gradient(90deg, var(--surface) 25%, var(--surface-light) 50%, var(--surface) 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s ease-in-out infinite;
+    border-radius: 8px;
+}
+
+.skeleton-card {
+    height: 300px;
+    margin-bottom: 1rem;
+}
+
+.skeleton-text {
+    height: 1rem;
+    margin-bottom: 0.5rem;
+    width: 80%;
+}
+
+/* Tooltip */
+[data-tooltip] {
+    position: relative;
+    cursor: help;
+}
+
+[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(-5px);
+    background: #1e293b;
+    color: white;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.2s ease;
+    z-index: 100;
+}
+
+[data-tooltip]:hover::after {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-10px);
+}
+
+/* Purchase Confirmation Modal */
+.purchase-confirmation-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.purchase-confirmation-modal .modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+}
+
+.purchase-confirmation-modal .modal-content {
+    position: relative;
+    background: var(--card-bg);
+    border-radius: 20px;
+    padding: 2.5rem;
+    max-width: 420px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5);
+    animation: modalAppear 0.4s ease-out;
+}
+
+.purchase-confirmation-modal .modal-icon-wrapper {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #10b981, #059669);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    animation: iconPulse 1.5s ease-in-out infinite;
+}
+
+.purchase-confirmation-modal .modal-icon-wrapper i {
+    font-size: 2.5rem;
+    color: white;
+}
+
+.purchase-confirmation-modal h3 {
+    font-size: 1.5rem;
+    margin-bottom: 0.75rem;
+    color: var(--text);
+}
+
+.purchase-confirmation-modal p {
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+}
+
+.purchase-confirmation-modal .modal-countdown {
+    font-size: 0.9rem;
+    color: var(--primary);
+    font-weight: 600;
+    margin: 1rem 0;
+}
+
+.purchase-confirmation-modal .modal-countdown span {
+    display: inline-block;
+    min-width: 20px;
+    animation: countdownBlink 1s ease-in-out infinite;
+}
+
+.purchase-confirmation-modal .modal-actions {
+    margin: 1.5rem 0;
+}
+
+.purchase-confirmation-modal .share-prompt {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 1.25rem;
+    margin-top: 1.25rem;
+}
+
+.purchase-confirmation-modal .share-prompt p {
+    font-size: 0.85rem;
+    margin-bottom: 0.75rem;
+}
+
+/* #btnNextSuggestion */
+#btnNextSuggestion {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.2));
+    border: 2px solid rgba(99, 102, 241, 0.5);
+    color: #a5b4fc;
+    transition: all 0.3s ease;
+}
+
+#btnNextSuggestion:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(139, 92, 246, 0.3));
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(99, 102, 241, 0.3);
+}
+
+#btnNextSuggestion:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: rgba(99, 102, 241, 0.1);
+}
+
+/* #liveCounter */
+#liveCounter {
+    transition: transform 0.3s ease;
+}
+
+/* Flash animation class */
+.flash {
+    animation: flashPulse 0.3s ease;
+}
+
+/* Tag checkbox animation */
+.tag span {
+    transition: all 0.2s ease;
+}
+
+.tag:hover span {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.tag input:checked+span {
+    transform: scale(1.05);
+}
+
+/* Chip CRO */
+.chip-cro {
+    padding: 0.75rem 1.25rem;
+    border: 2px solid rgba(148, 163, 184, 0.3);
+    border-radius: 25px;
+    background: transparent;
+    color: #e2e8f0;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.chip-cro:hover {
+    border-color: var(--primary);
+    background: rgba(255, 107, 53, 0.1);
+}
+
+.chip-cro.active {
+    border-color: var(--primary);
+    background: var(--primary);
+    color: white;
+}

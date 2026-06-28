@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Votre Mission – OFFREZ</title>
+    <meta name="description" content="Définissez votre budget et l'occasion pour commencer la recherche de cadeaux.">
+    <link rel="canonical" href="https://offrez.net/config.html">
+    <meta name="robots" content="noindex">
+
+    <!-- Design & Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.min.css?v=202603151840">
+    <link rel="stylesheet" href="css/fontawesome/all.min.css">
+</head>
+
+<body>
+
+    <div class="app-shell">
+        <header>
+            <div class="header-inner">
+                <a href="index.html" class="logo-link">
+                    <span class="brand-logo">OFFRE<span class="brand-z">Z</span></span>
+                </a>
+                <div class="badge-env">Étape 1/3 · Mission</div>
+            </div>
+        </header>
+
+        <main class="container">
+            <!-- Stepper -->
+            <div class="steps">
+                <div class="step step--active">
+                    <div class="step-index">1</div>
+                    <div class="step-label">Mission & budget</div>
+                </div>
+                <div class="step-connector"></div>
+                <div class="step">
+                    <div class="step-index">2</div>
+                    <div class="step-label">Profils</div>
+                </div>
+                <div class="step-connector"></div>
+                <div class="step">
+                    <div class="step-index">3</div>
+                    <div class="step-label">Recommandations</div>
+                </div>
+            </div>
+
+            <!-- Formulaire Principal -->
+            <form id="configForm" class="config-card">
+
+                <h2 class="card-title">🎯 Définissons la mission</h2>
+                <p class="card-subtitle">Dites-nous pour quelle occasion vous cherchez un cadeau.</p>
+
+                <!-- SECTION 1 : OCCASION (Custom Visual Selector) -->
+                <div class="form-group">
+                    <label><i class="fas fa-calendar-alt"></i> Quelle est l'occasion ?</label>
+                    <input type="hidden" id="occasion" name="occasion" value="Anniversaire" required>
+
+                    <div class="occasion-selector">
+                        <!-- Groupe 1 : Occasions fréquentes -->
+                        <div class="occasion-group">
+                            <div class="occasion-group-title">🎁 Occasions fréquentes</div>
+                            <div class="occasion-chips">
+                                <button type="button" class="occasion-chip selected" data-value="Anniversaire">
+                                    <span class="chip-emoji">🎂</span>
+                                    <span class="chip-label">Anniversaire</span>
+                                </button>
+                                <button type="button" class="occasion-chip" data-value="Plaisir d'offrir">
+                                    <span class="chip-emoji">🎁</span>
+                                    <span class="chip-label">Plaisir d'offrir</span>
+                                </button>
+                                <button type="button" class="occasion-chip" data-value="Remerciement">
+                                    <span class="chip-emoji">🙏</span>
+                                    <span class="chip-label">Remerciement</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Groupe 2 : Fêtes du calendrier -->
+                        <div class="occasion-group">
+                            <div class="occasion-group-title">📅 Fêtes du calendrier</div>
+                            <div class="occasion-chips">
+                                <button type="button" class="occasion-chip" data-value="Noël">
+                                    <span class="chip-emoji">🎄</span>
+                                    <span class="chip-label">Noël</span>
+                                </button>
+                                <button type="button" class="occasion-chip" data-value="Saint-Valentin">
+                                    <span class="chip-emoji">💘</span>
+                                    <span class="chip-label">Saint-Valentin</span>
+                                </button>
+                                <button type="button" class="occasion-chip" data-value="Fête des Mères">
+                                    <span class="chip-emoji">💐</span>
+                                    <span class="chip-label">Fête des Mères</span>
+                                </button>
+                                <button type="button" class="occasion-chip" data-value="Fête des Pères">
+                                    <span class="chip-emoji">👔</span>
+                                    <span class="chip-label">Fête des Pères</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Groupe 3 : Événements de vie -->
+                        <div class="occasion-group">
+                            <div class="occasion-group-title">🎊 Événements de vie</div>
+                            <div class="occasion-chips">
+                                <button type="button" class="occasion-chip" data-value="Mariage">
+                                    <span class="chip-emoji">💍</span>
+                                    <span class="chip-label">Mariage</span>
+                                </button>
+                                <button type="button" class="occasion-chip" data-value="Naissance">
+                                    <span class="chip-emoji">👶</span>
+                                    <span class="chip-label">Naissance</span>
+                                </button>
+                                <button type="button" class="occasion-chip" data-value="Crémaillère">
+                                    <span class="chip-emoji">🏠</span>
+                                    <span class="chip-label">Crémaillère</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECTION 2 : QUI ? -->
+                <div class="form-group">
+                    <label for="nbPeople"><i class="fas fa-users"></i> Combien de personnes allez-vous rendre heureuses
+                        ?</label>
+                    <input type="number" id="nbPeople" name="nbPeople" min="1" max="10" value="1" required>
+                    <small class="form-helper">Plus vous décrivez de profils, plus nos suggestions seront
+                        personnalisées.</small>
+                </div>
+
+                <!-- SECTION 3 : STRATÉGIE BUDGET (Visual Cards) -->
+                <div class="form-group">
+                    <label><i class="fas fa-wallet"></i> Comment gérer le budget ?</label>
+                    <input type="hidden" id="budgetStrategy" name="budgetStrategy" value="custom">
+
+                    <div class="budget-strategy-selector">
+                        <!-- Option 1 : Budget personnalisé (par défaut) -->
+                        <div class="budget-card selected" data-strategy="custom">
+                            <div class="budget-card-icon">✏️</div>
+                            <div class="budget-card-content">
+                                <div class="budget-card-title">Budget personnalisé</div>
+                                <div class="budget-card-desc">Définir un montant différent par profil</div>
+                            </div>
+                        </div>
+
+                        <!-- Option 2 : Budget identique par personne -->
+                        <div class="budget-card" data-strategy="same">
+                            <div class="budget-card-icon">👥</div>
+                            <div class="budget-card-content">
+                                <div class="budget-card-title">Même budget par personne</div>
+                                <div class="budget-card-desc">50€ × 3 profils = 150€ total</div>
+                            </div>
+                        </div>
+
+                        <!-- Option 3 : Budget global à répartir -->
+                        <div class="budget-card" data-strategy="global">
+                            <div class="budget-card-icon">📊</div>
+                            <div class="budget-card-content">
+                                <div class="budget-card-title">Budget global à répartir</div>
+                                <div class="budget-card-desc">100€ ÷ 3 profils = ~33€ chacun</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECTION 4 : MONTANT (Conditionnel - affiché selon la stratégie) -->
+                <div id="budgetAmountContainer" class="form-group hidden">
+                    <label for="budgetAmount" id="budgetAmountLabel">💰 Montant (€)</label>
+                    <div class="input-euro-wrapper">
+                        <input type="number" id="budgetAmount" placeholder="Ex: 100" min="5">
+                        <span class="currency-symbol">€</span>
+                    </div>
+
+                    <!-- Info dynamique -->
+                    <div id="budgetCalculation" class="budget-calculation"></div>
+
+                    <!-- Chips CRO (Suggestions rapides) -->
+                    <div class="chips-container">
+                        <button type="button" class="chip-cro" data-amount="30">30€</button>
+                        <button type="button" class="chip-cro" data-amount="50">50€</button>
+                        <button type="button" class="chip-cro" data-amount="100">100€</button>
+                        <button type="button" class="chip-cro" data-amount="200">200€</button>
+                    </div>
+                </div>
+
+                <!-- ACTIONS -->
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary btn-large btn-next">
+                        Suivant : Qui sont-ils ? <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+
+            </form>
+        </main>
+    </div>
+
+    <!-- Script de gestion -->
+    <script src="js/config.js" type="module"></script>
+
+    <!-- Script pour les sélecteurs visuels (externalisé pour CSP) -->
+    <script src="js/config-ui.js" type="module"></script>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+        <div class="footer-content">
+            <p class="amazon-affiliate">En tant que Partenaire Amazon, je réalise un bénéfice sur les achats remplissant
+                les conditions requises.</p>
+            <div class="footer-links">
+                <a href="mentions-legales.html">Mentions légales</a>
+                <a href="politique-confidentialite.html">Confidentialité</a>
+                <a href="cgu.html">CGU</a>
+                <a href="blog.html">Blog</a>
+            </div>
+            <p class="copyright">© 2026 OFFREZ - Tous droits réservés</p>
+        </div>
+    </footer>
+
+    <!-- Bannière Cookies (FIX #12) -->
+    <script type="module" src="js/legal.js"></script>
+
+</body>
+
+</html>
+

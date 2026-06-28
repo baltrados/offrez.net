@@ -1,0 +1,35 @@
+# ==============================
+# OFFREZ - Fichiers à ne JAMAIS versionner
+# ==============================
+
+# Clés API et secrets
+.env
+.env.*
+!.env.example
+
+# Cloudflare (credentials serveur)
+.cloudflared/
+**/cloudflared*.json
+
+# Données utilisateurs (PII / RGPD)
+*.csv
+visitors.json
+
+# Dépendances
+node_modules/
+
+# Backups manuels
+backups_*/
+
+# Fichiers temporaires
+*.bak
+*.bak-encoding
+*.log
+*.tmp
+*.pre_split
+*_test.*
+
+# OS / IDE
+Thumbs.db
+.DS_Store
+.vscode/

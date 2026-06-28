@@ -1,0 +1,46 @@
+/* =========================================
+   01 - VARIABLES CSS
+   ========================================= */
+
+:root {
+    /* Palette principale - Chaleur & Confiance */
+    --primary: #ff6b35;
+    /* Orange action - conservé */
+    --primary-dark: #e55a2a;
+    --secondary: #8b5cf6;
+    /* Violet magie */
+    --secondary-dark: #7c3aed;
+    --accent-gold: #f59e0b;
+    /* Doré festivité */
+
+    /* Fond et surfaces */
+    --bg: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%);
+    /* Bleu nuit confiance */
+    --bg-solid: #1a3350;
+    --card-bg: rgba(15, 23, 42, 0.96);
+    /* Cartes blanches = clarté */
+    --card-bg-dark: rgba(20, 30, 50, 0.95);
+
+    /* Texte */
+    --text-main: #1e293b;
+    /* Texte foncé sur cartes blanches */
+    --text-light: #f1f5f9;
+    /* Texte clair sur fond bleu */
+    --text-muted: #64748b;
+
+    /* États */
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --error: #ef4444;
+
+    /* Autres */
+    --radius: 16px;
+    --shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+
+    /* Variables additionnelles pour les composants UI */
+    --surface: rgba(15, 23, 42, 0.96);
+    --border: rgba(148, 163, 184, 0.4);
+    --text-secondary: #9ca3af;
+    --text-tertiary: #64748b;
+    --primary-light: rgba(255, 107, 53, 0.15);
+}
