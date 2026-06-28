@@ -108,8 +108,9 @@ ssh pi@192.168.1.100 "~/offrly/deploy.sh"
 ### Documentation
 
 - **Git & GitHub :** `documentation/13_GIT_ET_GITHUB.md`
-- **Workflow agent :** `.agents/workflows/deploy-to-server.md`
+- **Commandes :** `COMMANDES_UTILES.md`
 - **Setup serveur :** `documentation/11_SETUP_CM3588_SERVEUR.md`
+- **Archive :** `documentation/archive/` (anciennes docs, lecture seule)
 
 ---
 

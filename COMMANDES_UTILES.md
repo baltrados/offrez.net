@@ -159,7 +159,6 @@ ssh pi@192.168.1.100 "~/offrly/deploy.sh"   # Déployer en prod
 ```powershell
 git status
 git log -3 --oneline
-node check_sync.js                    # Comparer local vs serveur (legacy)
 ```
 
 > Voir `documentation/13_GIT_ET_GITHUB.md` pour le guide complet.

@@ -231,7 +231,7 @@ const BLOCKED_FILES = [
     '.env', '.env.example', 'server.js', 'admin-stats.js', 'package.json', 'package-lock.json',
     'clicks.csv', 'searches.csv',
     'AUDIT_LANCEMENT.md', 'COMMANDES_UTILES.md', 'MANUEL_DE_FONCTIONNEMENT_OFFREZ.md', 'README.md',
-    'replace_ia.js', 'multi_agent.py'
+    'replace_ia.js'
 ];
 app.use((req, res, next) => {
     const fileName = path.basename(req.path).toLowerCase();

@@ -195,24 +195,20 @@ C'est comme si chaque page écrivait un mot sur un tableau blanc, et la page sui
 
 ---
 
-## 7. COMMENT LIRE LA SUITE
+## 7. DOCUMENTATION ACTIVE
 
-Chaque document de cette documentation suit la même structure :
-1. **Rôle du fichier** — À quoi sert-il dans le projet ?
-2. **Explication bloc par bloc** — Chaque section du code est expliquée en langage courant
-3. **Ce qu'on peut modifier facilement** — Les points d'ajustement courants
+| Document | Rôle |
+|----------|------|
+| `README.md` | Point d'entrée du projet |
+| `COMMANDES_UTILES.md` | Commandes npm, Git, serveur |
+| `documentation/00_VUE_ENSEMBLE.md` | Introduction (ce fichier) |
+| `documentation/11_SETUP_CM3588_SERVEUR.md` | Installation serveur |
+| `documentation/12_BREVO.md` | Emails marketing |
+| `documentation/13_GIT_ET_GITHUB.md` | Git, GitHub, déploiement |
+| `.agents/workflows/` | Guides pour agents IA |
 
-Les documents sont numérotés dans l'ordre logique de lecture recommandé :
-- **01** → Le serveur (fondation de tout)
-- **02-03** → L'IA et l'API (le cœur intelligent)
-- **04-05** → Les étapes utilisateur (formulaires)
-- **06** → Sécurité et conformité légale
-- **07** → Les pages visuelles
-- **08** → L'aspect "application mobile" (PWA)
-- **09** → Administration et statistiques
-- **11** → Installation du serveur CM3588
-- **13** → Git, GitHub et déploiement
+Les anciennes docs détaillées (01–10), le manuel et l'audit de lancement sont dans `documentation/archive/`.
 
 ---
 
-*Document généré le 28/02/2026 — OFFREZ Documentation v2.1 (juin 2026 : ajout Git/GitHub)*
+*Dernière mise à jour : juin 2026*

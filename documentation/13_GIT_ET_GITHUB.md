@@ -149,10 +149,10 @@ Au premier lancement, le checkout force (`-f`) aligne les fichiers existants sur
 
 | Script | Emplacement | Rôle |
 |--------|-------------|------|
-| `tools/deploy-server.sh` | GitHub (source) | Recette de déploiement versionnée |
-| `~/offrly/deploy.sh` | Serveur (copie active) | Raccourci exécuté en prod |
+| `tools/deploy-server.sh` | GitHub | Recette de déploiement versionnée |
+| `~/offrly/deploy.sh` | Serveur | Raccourci exécuté en prod |
 | `tools/setup-server-git.sh` | GitHub | Installation Git initiale serveur |
-| `check_sync.js` | GitHub | Comparer MD5 local vs serveur (legacy) |
+| `tools/minify_css.py` | GitHub | Compilation CSS → `style.min.css` |
 
 > Après modification de `tools/deploy-server.sh`, recopier sur le serveur :
 > ```powershell
