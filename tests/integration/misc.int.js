@@ -1,0 +1,202 @@
+'use strict';
+// Tests d'intégration : rate limits des endpoints d'écriture, tracking sans consentement, inscription Brevo.
+// Chaque scénario utilise sa propre IP (X-Forwarded-For, trust proxy = 1) : les compteurs en mémoire
+// du process ne se « volent » pas les requêtes entre tests.
+// Aucun test n'envoie consent:true à /api/track-click : clicks.csv ne doit jamais être créé.
+
+const { test, describe, before, after, beforeEach } = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const {
+    TEST_KEYS, configureEnv, installFetchMock, jsonResponse, startServer, uniqueIp, assertNoLeak
+} = require('./helpers');
+
+configureEnv({ BREVO_API_KEY: TEST_KEYS.BREVO_API_KEY });
+const { app } = require('../../server.js');
+
+const ROOT = path.resolve(__dirname, '..', '..');
+const CSV_FILES = ['clicks.csv', 'searches.csv'].map(f => path.join(ROOT, f));
+
+let srv;
+let mock;
+let csvBefore;
+
+before(async () => {
+    csvBefore = CSV_FILES.map(f => fs.existsSync(f));
+    mock = installFetchMock();
+    srv = await startServer(app);
+});
+
+after(async () => {
+    await srv.close();
+    mock.restore();
+});
+
+beforeEach(() => mock.reset());
+
+async function postJson(p, body, ip) {
+    const res = await fetch(`${srv.base}${p}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': ip },
+        body: JSON.stringify(body)
+    });
+    const text = await res.text();
+    let json;
+    try { json = JSON.parse(text); } catch { json = undefined; }
+    return { status: res.status, text, json, headers: res.headers };
+}
+
+describe('POST /api/subscribe', () => {
+    test('email valide + consentement → 200, Brevo appelé avec la clé en header', async () => {
+        mock.handlers.brevo = () => jsonResponse(201, { id: 42 });
+        const r = await postJson('/api/subscribe', {
+            email: 'test@example.com', consent: true, prenomCible: 'Marie', cadeauChoisi: 'Coffret thé'
+        }, uniqueIp());
+        assert.equal(r.status, 200);
+        assert.deepEqual(r.json, { success: true, message: 'Email enregistré' });
+        const calls = mock.callsTo('brevo');
+        assert.equal(calls.length, 1);
+        assert.equal(calls[0].headers['api-key'], TEST_KEYS.BREVO_API_KEY);
+        assert.ok(!calls[0].url.includes(TEST_KEYS.BREVO_API_KEY));
+        assert.deepEqual(calls[0].json, {
+            email: 'test@example.com',
+            listIds: [2],
+            updateEnabled: true,
+            attributes: { PRENOM_CIBLE: 'Marie', CADEAU_CHOISI: 'Coffret thé' }
+        });
+    });
+
+    test('erreur Brevo → 502 générique sans détails', async () => {
+        mock.handlers.brevo = () => jsonResponse(400, { code: 'invalid_parameter', message: 'email test@example.com is invalid' });
+        const r = await postJson('/api/subscribe', { email: 'test@example.com', consent: true }, uniqueIp());
+        assert.equal(r.status, 502);
+        assert.ok(!r.text.includes('invalid_parameter'));
+        assertNoLeak(assert, r.text);
+    });
+
+    for (const [label, body] of [
+        ['email invalide', { email: 'pas-un-email', consent: true }],
+        ['email tableau', { email: ['a@b.fr'], consent: true }],
+        ['email trop long', { email: `${'a'.repeat(250)}@b.fr`, consent: true }],
+        ['consentement absent', { email: 'a@b.fr' }],
+        ['consentement chaîne "true"', { email: 'a@b.fr', consent: 'true' }]
+    ]) {
+        test(`${label} → 400, Brevo non appelé`, async () => {
+            const r = await postJson('/api/subscribe', body, uniqueIp());
+            assert.equal(r.status, 400);
+            assert.equal(mock.calls.length, 0);
+        });
+    }
+
+    test('rate limit : la 6e tentative en 15 min depuis la même IP → 429', async () => {
+        const ip = uniqueIp();
+        for (let i = 1; i <= 5; i++) {
+            const r = await postJson('/api/subscribe', { email: 'invalide', consent: true }, ip);
+            assert.equal(r.status, 400, `tentative ${i}`);
+        }
+        const r6 = await postJson('/api/subscribe', { email: 'test@example.com', consent: true }, ip);
+        assert.equal(r6.status, 429);
+        assert.match(r6.json.error, /15 minutes/);
+        assert.ok(r6.headers.get('ratelimit-policy') || r6.headers.get('ratelimit'), 'en-têtes RateLimit standard');
+        assert.equal(mock.calls.length, 0, 'Brevo non appelé une fois la limite atteinte');
+        // Une autre IP n'est pas impactée
+        const other = await postJson('/api/subscribe', { email: 'invalide', consent: true }, uniqueIp());
+        assert.equal(other.status, 400);
+    });
+});
+
+describe('POST /api/track-profiles', () => {
+    test('sans consentement → success:false, rien n\'est traité', async () => {
+        const r = await postJson('/api/track-profiles', { profiles: [{ nom: 'A' }], consent: false }, uniqueIp());
+        assert.equal(r.status, 200);
+        assert.deepEqual(r.json, { success: false, reason: 'no_consent' });
+    });
+
+    test('profils absents → 400', async () => {
+        const r = await postJson('/api/track-profiles', { profiles: [], consent: true }, uniqueIp());
+        assert.equal(r.status, 400);
+    });
+
+    test('rate limit : la 11e requête en 1 min → 429', async () => {
+        const ip = uniqueIp();
+        for (let i = 1; i <= 10; i++) {
+            const r = await postJson('/api/track-profiles', { profiles: [{ nom: 'A' }], consent: true }, ip);
+            assert.equal(r.status, 200, `requête ${i}`);
+            assert.deepEqual(r.json, { success: true, count: 1 });
+        }
+        const r11 = await postJson('/api/track-profiles', { profiles: [{ nom: 'A' }], consent: true }, ip);
+        assert.equal(r11.status, 429);
+    });
+});
+
+describe('POST /api/track-click', () => {
+    test('consent:false → success:false, aucun CSV écrit', async () => {
+        const r = await postJson('/api/track-click', {
+            product: 'Coffret', price: '29,99 €', asin: 'B0TESTOK01', consent: false
+        }, uniqueIp());
+        assert.equal(r.status, 200);
+        assert.deepEqual(r.json, { success: false, reason: 'Consent required' });
+        await new Promise(res => setTimeout(res, 100)); // laisse le temps à une éventuelle écriture async
+        assert.deepEqual(CSV_FILES.map(f => fs.existsSync(f)), csvBefore, 'aucun fichier CSV créé à la racine');
+    });
+
+    test('consent chaîne "true" (non booléen) → success:false', async () => {
+        const r = await postJson('/api/track-click', { product: 'X', consent: 'true' }, uniqueIp());
+        assert.deepEqual(r.json, { success: false, reason: 'Consent required' });
+        await new Promise(res => setTimeout(res, 50));
+        assert.deepEqual(CSV_FILES.map(f => fs.existsSync(f)), csvBefore);
+    });
+
+    test('rate limit : la 31e requête en 1 min → 429 (sans consentement, donc sans écriture)', async () => {
+        const ip = uniqueIp();
+        for (let i = 1; i <= 30; i++) {
+            const r = await postJson('/api/track-click', { consent: false }, ip);
+            assert.equal(r.status, 200, `requête ${i}`);
+        }
+        const r31 = await postJson('/api/track-click', { consent: false }, ip);
+        assert.equal(r31.status, 429);
+        assert.deepEqual(CSV_FILES.map(f => fs.existsSync(f)), csvBefore);
+    });
+});
+
+describe('divers', () => {
+    test('payload > 50 ko → 413 générique', async () => {
+        const r = await postJson('/api/track-profiles', { profiles: ['x'.repeat(60 * 1024)], consent: true }, uniqueIp());
+        assert.equal(r.status, 413);
+        assert.deepEqual(r.json, { error: 'Requête invalide' });
+    });
+
+    test('méthode non gérée sur une route API → 404 (pas de stack)', async () => {
+        const res = await fetch(`${srv.base}/api/analyze`, { method: 'GET' });
+        const text = await res.text();
+        assert.equal(res.status, 404);
+        // Page 404.html (elle référence Google Fonts : pas d'assertNoLeak ici) sans trace de pile
+        assert.match(text, /<html/i);
+        assert.ok(!/node:internal|\bat\s+\S+\s+\(/.test(text));
+    });
+
+    test('/api/health → statut healthy sans données sensibles', async () => {
+        const res = await fetch(`${srv.base}/api/health`);
+        const json = await res.json();
+        assert.equal(res.status, 200);
+        assert.equal(json.status, 'healthy');
+        assert.deepEqual(Object.keys(json).sort(), ['cacheSize', 'memoryUsage', 'status', 'timestamp', 'uptime']);
+    });
+});
+
+describe('X-Forwarded-For : usurpation d\'IP (trust proxy = 1)', () => {
+    test('faire varier les entrées forgées en tête de X-Forwarded-For ne contourne pas le rate limit', async () => {
+        // Avec trust proxy = 1, seule l'entrée la plus à droite (ajoutée par le proxy) est retenue.
+        // Un client qui préfixe des IP aléatoires reste identifié par son IP réelle.
+        const realIp = uniqueIp();
+        const statuses = [];
+        for (let i = 1; i <= 11; i++) {
+            const r = await postJson('/api/track-profiles', { profiles: [{ nom: 'A' }], consent: true },
+                `198.18.${i}.${i}, ${realIp}`);
+            statuses.push(r.status);
+        }
+        assert.deepEqual(statuses.slice(0, 10), Array(10).fill(200));
+        assert.equal(statuses[10], 429, '11e requête limitée malgré des IP forgées différentes');
+    });
+});

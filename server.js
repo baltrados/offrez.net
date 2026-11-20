@@ -157,7 +157,7 @@ setInterval(() => {
         }
     }
     if (purged > 0) log(`[CACHE PURGE] ${purged} entrées expirées supprimées`);
-}, 30 * 60 * 1000);
+}, 30 * 60 * 1000).unref(); // [LOT2] ne maintient pas le process en vie (tests) ; le serveur HTTP le fait en prod
 
 // ============================================
 // INTÉGRATION BREVO (Email Marketing)
@@ -853,25 +853,33 @@ app.use((err, req, res, next) => {
 // ======================
 // DÉMARRAGE SERVEUR
 // ======================
-const server = app.listen(PORT, () => {
-    console.log(`🎁 OFFREZ Server running on http://localhost:${PORT}`);
-    console.log(`📦 Cache Amazon (RapidAPI) activé (TTL: 24h)`);
-});
-
-// Graceful Shutdown (pour déploiements propres)
-process.on('SIGTERM', () => {
-    console.log('⚠️ SIGTERM reçu - Arrêt gracieux...');
-    server.close(() => {
-        console.log('✅ Serveur arrêté proprement');
-        process.exit(0);
+// [LOT2] Démarrage uniquement si lancé directement (`node server.js`) ;
+// require('./server.js') (tests d'intégration) obtient l'app sans écouter de port ni handlers process.
+// pm_id : défini par PM2 (prod), dont certaines versions/modes chargent le script via leur propre
+// conteneur (require.main !== module) ; garantit que le serveur démarre toujours sous PM2.
+if (require.main === module || process.env.pm_id !== undefined) {
+    const server = app.listen(PORT, () => {
+        console.log(`🎁 OFFREZ Server running on http://localhost:${PORT}`);
+        console.log(`📦 Cache Amazon (RapidAPI) activé (TTL: 24h)`);
     });
-});
 
-process.on('uncaughtException', (err) => {
-    console.error('❌ Uncaught Exception:', err);
-    // En production, on continue (le serveur reste up)
-});
+    // Graceful Shutdown (pour déploiements propres)
+    process.on('SIGTERM', () => {
+        console.log('⚠️ SIGTERM reçu - Arrêt gracieux...');
+        server.close(() => {
+            console.log('✅ Serveur arrêté proprement');
+            process.exit(0);
+        });
+    });
 
-process.on('unhandledRejection', (reason, promise) => {
-    console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
-});
+    process.on('uncaughtException', (err) => {
+        console.error('❌ Uncaught Exception:', err);
+        // En production, on continue (le serveur reste up)
+    });
+
+    process.on('unhandledRejection', (reason, promise) => {
+        console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+    });
+}
+
+module.exports = { app };

@@ -27,9 +27,13 @@ backups_*/
 *.log
 *.tmp
 *.pre_split
-*_test.*
+
 
 # OS / IDE
 Thumbs.db
 .DS_Store
 .vscode/
+# Tests & rapports Playwright
+playwright-report/
+test-results/
+.playwright-mcp/
