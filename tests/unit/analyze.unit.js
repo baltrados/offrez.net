@@ -15,6 +15,7 @@ const {
     parsePriceValue,
     createDailyQuota,
     createPerKeyDailyQuota,
+    quotaClientKey,
     parsePositiveIntEnv,
     fetchWithTimeout,
     fetchJsonWithTimeout,
@@ -495,4 +496,25 @@ test('normalizeProduct : hôte image strict (pas de evilmedia-amazon.com)', () =
     assert.equal(normalizeProduct({ ...base, product_photo: 'https://evilmedia-amazon.com/x.jpg' }).image, null);
     assert.equal(normalizeProduct({ ...base, product_photo: 'https://m.media-amazon.com/images/I/x.jpg' }).image,
         'https://m.media-amazon.com/images/I/x.jpg');
+});
+
+test('quotaClientKey : IPv4 complète, IPv6 regroupée en /64', () => {
+    assert.equal(quotaClientKey('203.0.113.7'), '203.0.113.7');
+    assert.equal(quotaClientKey('::ffff:203.0.113.7'), '203.0.113.7', 'IPv4-mappée');
+    const a = quotaClientKey('2001:db8:abcd:12:1111:2222:3333:4444');
+    const b = quotaClientKey('2001:0db8:ABCD:0012::9');
+    assert.equal(a, '2001:db8:abcd:12::/64');
+    assert.equal(a, b, 'même /64 malgré forme compressée, zéros et casse');
+    assert.notEqual(a, quotaClientKey('2001:db8:abcd:13::1'), '/64 voisin distinct');
+    assert.equal(quotaClientKey('::1'), '0:0:0:0::/64');
+    assert.equal(quotaClientKey('fe80::1%eth0'), 'fe80:0:0:0::/64', 'identifiant de zone ignoré');
+    assert.equal(quotaClientKey('64:ff9b::192.0.2.33'), '64:ff9b:0:0::/64', 'suffixe IPv4 embarqué');
+    assert.equal(quotaClientKey(''), 'unknown');
+    assert.equal(quotaClientKey(undefined), 'unknown');
+});
+
+test('quotaClientKey + createPerKeyDailyQuota : rotation d\'adresses dans un /64 bloquée', () => {
+    const q = createPerKeyDailyQuota(3);
+    const results = [1, 2, 3, 4, 5].map(i => q.tryConsume(quotaClientKey(`2001:db8:1:2::${i}`)));
+    assert.deepEqual(results, [true, true, true, false, false]);
 });

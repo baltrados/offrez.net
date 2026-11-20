@@ -37,6 +37,7 @@ const {
     normalizeProducts,
     createDailyQuota,
     createPerKeyDailyQuota,
+    quotaClientKey,
     parsePositiveIntEnv,
     fetchWithTimeout,
     fetchJsonWithTimeout
@@ -497,7 +498,7 @@ app.post('/api/analyze', strictLimiter, async (req, res) => {
         }
 
         // Quota consommé uniquement juste avant un appel upstream réel (par IP, puis global)
-        if (!geminiIpQuota.tryConsume(hashIp(req.ip || req.socket?.remoteAddress))) {
+        if (!geminiIpQuota.tryConsume(hashIp(quotaClientKey(req.ip || req.socket?.remoteAddress)))) {
             return sendIpQuotaExceeded(res);
         }
         if (!geminiQuota.tryConsume()) {
@@ -614,7 +615,7 @@ app.get('/api/search', apiLimiter, async (req, res) => {
         }
 
         // Quota consommé uniquement juste avant un appel upstream réel (pas sur cache hit), par IP puis global
-        if (!rapidApiIpQuota.tryConsume(hashIp(req.ip || req.socket?.remoteAddress))) {
+        if (!rapidApiIpQuota.tryConsume(hashIp(quotaClientKey(req.ip || req.socket?.remoteAddress)))) {
             return sendIpQuotaExceeded(res);
         }
         if (!rapidApiQuota.tryConsume()) {
