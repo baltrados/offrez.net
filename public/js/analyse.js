@@ -1,5 +1,5 @@
-import { callGemini, searchAmazon } from './api.js';
-import { escapeHtml, sanitizeUrl, truncateText } from './security.js';
+import { callGemini, searchAmazon } from './api.js?v=2026112001';
+import { escapeHtml, sanitizeUrl, buildAffiliateUrl, truncateText } from './security.js?v=2026112001';
 import { STORAGE_KEYS } from './constants.js';
 
 /**
@@ -7,7 +7,7 @@ import { STORAGE_KEYS } from './constants.js';
  * ================================================
  * Ce script orchestre tout le processus de recommandation :
  * 1. Récupération des profils depuis le localStorage.
- * 2. Génération de prompts complexes pour l'IA (Gemini).
+ * 2. Envoi du profil au serveur, qui interroge l'IA (Gemini).
  * 3. Recherche de produits correspondants sur Amazon (via serveur).
  * 4. Filtrage, scoring et sélection des meilleurs cadeaux.
  * 5. Affichage interactif des résultats et gestion du panier.
@@ -176,77 +176,19 @@ async function lancerAnalyse() {
         const profileProgress = 10 + (processedProfiles / totalProfiles) * 70;
         updateProgress(profileProgress, `Analyse de ${personne.nom}...`);
 
-        // ============================================
-        // PROMPT ENGINEERING (Le cœur de l'intelligence)
-        // ============================================
-        const sexeLabel = personne.sexe === 'Homme' ? 'un homme' : personne.sexe === 'Femme' ? 'une femme' : 'une personne';
-        const ageLabel = personne.age ? `de ${personne.age} ans` : '';
-
-        const prompt = `
-# RÔLE
-Tu es OFFREZ, un expert en recommandation de cadeaux avec 15 ans d'expérience dans le e-commerce et la psychologie du consommateur. Tu connais parfaitement Amazon.fr et ses catégories de produits.
-
-# FRAÎCHEUR DES PRODUITS 📅
-- Nous sommes en ${new Date().getFullYear()}
-- Pour tout produit daté (édition annuelle, version millésimée) : propose UNIQUEMENT la version la plus récente disponible
-- Privilégie les produits INTEMPORELS qui ne se démodent pas
-
-# MISSION CRITIQUE
-Trouver 2 idées de cadeaux PARFAITES pour ${personne.nom} (${sexeLabel} ${ageLabel}).
-
-# CONTEXTE
-- **Occasion** : ${data.contexte}
-- **Budget MAXIMUM** : ${personne.budget}€ (INTERDIT de dépasser, vise 60-90% du budget)
-- **Centres d'intérêt** : ${personne.tags.length > 0 ? personne.tags.join(', ') : 'Non spécifiés - propose des cadeaux universels appréciés'}
-- **Ce qu'il/elle adore** : ${personne.details?.adore || 'Non précisé'}
-
-⛔⛔⛔ LISTE NOIRE - À NE JAMAIS PROPOSER ⛔⛔⛔
-${personne.details?.eviter || 'Rien de spécifié'}
-
-${personne.details?.eviter?.toLowerCase().includes('technologie') || personne.details?.eviter?.toLowerCase().includes('tech') ? `
-⚠️ ATTENTION SPÉCIALE : Cette personne n'aime PAS la technologie !
-INTERDIT de proposer : souris, clavier, écran, ordinateur, smartphone, tablette, casque, enceinte, tapis de souris, accessoires PC/gaming, gadgets électroniques, objets connectés, etc.
-` : ''}
-
-# PROCESSUS DE RÉFLEXION (Chain of Thought)
-Avant de répondre, réfléchis silencieusement :
-1. Quels produits sont dans la LISTE NOIRE ? → Les exclure totalement
-2. Quel type de personne est-ce ? (personnalité supposée)
-3. Pour cette occasion, qu'est-ce qui ferait vraiment plaisir ?
-4. Quels produits Amazon.fr correspondent ET respectent le budget ?
-5. Les termes de recherche sont-ils optimisés pour Amazon.fr ?
-
-# RÈGLES STRICTES POUR LES TERMES DE RECHERCHE
-✅ BON : Court (2-5 mots), descriptif, catégorie + caractéristique
-   Exemples : "montre connectée femme", "coffret whisky dégustation", "lampe bureau LED design"
-   
-❌ MAUVAIS : Phrases, articles (un/une/le/la), marques inventées, termes vagues
-   Exemples à éviter : "un beau cadeau pour elle", "quelque chose de sympa", "produit de qualité"
-
-# FORMAT DE SORTIE (JSON STRICT)
-Réponds UNIQUEMENT avec ce JSON, sans texte avant/après, sans markdown :
-{
-  "suggestions": [
-    {
-      "term": "terme recherche amazon optimisé",
-      "reason": "Pourquoi ce cadeau est parfait pour cette personne",
-      "prix_estime": "XX€"
-    },
-    {
-      "term": "deuxième terme recherche",
-      "reason": "Justification personnalisée",
-      "prix_estime": "XX€"
-    }
-  ]
-}
-
-# ANTI-HALLUCINATION
-- Ne propose QUE des produits qui existent réellement sur Amazon.fr
-- Les prix estimés doivent être réalistes (vérifie mentalement)
-- Si un centre d'intérêt est vague, propose des valeurs sûres universelles
-- VÉRIFIE que tes suggestions ne sont PAS dans la liste noire !
-
-GÉNÈRE LE JSON MAINTENANT :`;
+        // Données envoyées au serveur : le prompt Gemini est construit côté serveur
+        const payload = {
+            contexte: data.contexte,
+            profile: {
+                nom: personne.nom,
+                sexe: personne.sexe,
+                age: personne.age,
+                budget: personne.budget,
+                tags: personne.tags,
+                adore: personne.details?.adore || '',
+                eviter: personne.details?.eviter || ''
+            }
+        };
 
         try {
             log("ANALYSE", "Génération des suggestions...", "warning");
@@ -261,7 +203,7 @@ GÉNÈRE LE JSON MAINTENANT :`;
             let iaResult = null;
             for (let attempt = 0; attempt < 2; attempt++) {
                 try {
-                    iaResult = await callGemini(prompt);
+                    iaResult = await callGemini(payload);
                     if (iaResult?.suggestions?.length > 0) break;
                     log("RETRY", `Tentative ${attempt + 1} : réponse vide, retry...`, "warning");
                 } catch (geminiErr) {
@@ -544,9 +486,8 @@ GÉNÈRE LE JSON MAINTENANT :`;
             const priceValue = Number(product.price?.value);
             const priceRaw = escapeHtml(product.price?.raw || `${priceValue}€`);
             const pct = Math.round((priceValue / personne.budget) * 100);
-            const baseLink = product.link || '#';
-            // Ajout du tag affilié + sécurisation URL
-            const link = sanitizeUrl(`${baseLink}${baseLink.includes('?') ? '&' : '?'}tag=${AFFILIATE_TAG}`);
+            // Ajout du tag affilié + sécurisation URL (https + domaine Amazon) ; échappée à l'interpolation
+            const link = buildAffiliateUrl(product.link, AFFILIATE_TAG);
 
             // Sécurisation XSS des données textuelles
             const titleShort = escapeHtml((product.title || 'Produit sans titre').substring(0, 80));
@@ -565,7 +506,7 @@ GÉNÈRE LE JSON MAINTENANT :`;
                 <div class="gift-card" data-person-index="${personIndex}">
                     <div class="gift-image">
                         <img src="${imageUrl}" alt="${titleShort}" loading="lazy">
-                        ${product.rating ? `<div class="gift-rating-badge">⭐ ${product.rating}</div>` : ''}
+                        ${product.rating ? `<div class="gift-rating-badge">⭐ ${escapeHtml(String(product.rating))}</div>` : ''}
                     </div>
                     <div class="gift-content">
                         <div class="gift-owner">🎁 ${safePersonName}</div>
@@ -576,12 +517,12 @@ GÉNÈRE LE JSON MAINTENANT :`;
                             ${savingsDisplay}
                         </div>
                         <p class="gift-reason">${displayReason}</p>
-                        <a href="${link}" target="_blank" rel="noopener" class="btn-amazon-cta js-track-click js-purchase-btn"
+                        <a href="${escapeHtml(link)}" target="_blank" rel="noopener" class="btn-amazon-cta js-track-click js-purchase-btn"
                            data-product="${escapeHtml(product.title)}"
                            data-price="${priceRaw}"
                            data-asin="${escapeHtml(product.asin || '')}"
                            data-recipient="${safePersonName}"
-                           data-link="${link}">
+                           data-link="${escapeHtml(link)}">
                             <i class="fab fa-amazon"></i> Voir sur Amazon
                             <i class="fas fa-external-link-alt"></i>
                         </a>
@@ -727,7 +668,7 @@ GÉNÈRE LE JSON MAINTENANT :`;
                     <span class="cart-count">${selectedProducts.length} cadeau${selectedProducts.length > 1 ? 'x' : ''} sélectionné${selectedProducts.length > 1 ? 's' : ''}</span>
                     <span class="cart-total">Total: ${totalPrice.toFixed(2)}€</span>
                 </div>
-                <a href="${cartURL}" target="_blank" rel="noopener noreferrer" class="btn btn-cart">
+                <a href="${escapeHtml(cartURL)}" target="_blank" rel="noopener noreferrer" class="btn btn-cart">
                     <i class="fas fa-shopping-cart"></i> Ajouter tout au panier Amazon
                 </a>
             </div>
@@ -847,7 +788,8 @@ document.addEventListener('click', (e) => {
             e.preventDefault(); // On bloque la navigation pour afficher le modal
 
             const recipientName = btn.dataset.recipient || 'cette personne';
-            const productLink = btn.dataset.link || btn.href;
+            // Re-validation : ne jamais ouvrir une URL hors domaine Amazon/https
+            const productLink = sanitizeUrl(btn.dataset.link || btn.href);
 
             showPurchaseModal(recipientName, productLink);
         }
@@ -896,7 +838,7 @@ function showPurchaseModal(recipientName, productLink) {
 
     if (!modal) {
         // Fallback si pas de modal: ouvrir directement
-        window.open(productLink, '_blank');
+        if (productLink !== '#') window.open(productLink, '_blank', 'noopener,noreferrer');
         return;
     }
 
@@ -968,7 +910,8 @@ function showPurchaseModal(recipientName, productLink) {
 function redirectToAmazon(link) {
     const modal = document.getElementById('purchaseModal');
     if (modal) modal.style.display = 'none';
-    window.open(link, '_blank');
+    const safeLink = sanitizeUrl(link);
+    if (safeLink !== '#') window.open(safeLink, '_blank', 'noopener,noreferrer');
 }
 
 // Lancement automatique au chargement du module avec sécurité globale

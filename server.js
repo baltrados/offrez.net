@@ -28,9 +28,69 @@ function hashIp(ip) {
     return crypto.createHash('sha256').update(ip + IP_HASH_SALT).digest('hex').slice(0, 16);
 }
 
-// FIX #16 : Import top-level au lieu de dynamic import à chaque appel
-let fetch;
-import('node-fetch').then(mod => { fetch = mod.default; });
+// [LOT1] fetch global natif (Node >= 18) via fetchWithTimeout : plus de dépendance node-fetch
+const {
+    validateAnalyzeInput,
+    buildGiftPrompt,
+    parseSuggestions,
+    normalizeSearchParams,
+    normalizeProducts,
+    createDailyQuota,
+    createPerKeyDailyQuota,
+    parsePositiveIntEnv,
+    fetchWithTimeout,
+    fetchJsonWithTimeout
+} = require('./lib/analyze');
+
+// Timeouts des appels externes (ms)
+const GEMINI_TIMEOUT_MS = 20000;
+const RAPIDAPI_TIMEOUT_MS = 10000;
+const BREVO_TIMEOUT_MS = 8000;
+
+// [LOT1] Modèle Gemini configurable, format strictement contrôlé (il est inséré dans l'URL)
+const DEFAULT_GEMINI_MODEL = 'gemini-2.0-flash';
+const GEMINI_MODEL = (() => {
+    const raw = (process.env.GEMINI_MODEL || '').trim();
+    if (!raw) return DEFAULT_GEMINI_MODEL;
+    if (!/^[a-z0-9.\-]{1,60}$/.test(raw)) {
+        console.warn('[GEMINI] GEMINI_MODEL invalide, modèle par défaut utilisé');
+        return DEFAULT_GEMINI_MODEL;
+    }
+    return raw;
+})();
+
+// [LOT1] Quotas journaliers globaux (plafond de coût des API payantes), en mémoire
+const GEMINI_DAILY_LIMIT = parsePositiveIntEnv(process.env.GEMINI_DAILY_LIMIT, 1000,
+    () => console.warn('[QUOTA] GEMINI_DAILY_LIMIT invalide, valeur par défaut utilisée (1000)'));
+const RAPIDAPI_DAILY_LIMIT = parsePositiveIntEnv(process.env.RAPIDAPI_DAILY_LIMIT, 500,
+    () => console.warn('[QUOTA] RAPIDAPI_DAILY_LIMIT invalide, valeur par défaut utilisée (500)'));
+const geminiQuota = createDailyQuota(GEMINI_DAILY_LIMIT);
+const rapidApiQuota = createDailyQuota(RAPIDAPI_DAILY_LIMIT);
+const quotaWarnedDay = new Map(); // nom du quota -> date du dernier warning (1 log / jour)
+
+// [LOT1] Quotas journaliers par IP (hashée) : un seul client ne peut pas épuiser le quota global
+const GEMINI_DAILY_LIMIT_PER_IP = parsePositiveIntEnv(process.env.GEMINI_DAILY_LIMIT_PER_IP, 60,
+    () => console.warn('[QUOTA] GEMINI_DAILY_LIMIT_PER_IP invalide, valeur par défaut utilisée (60)'));
+const RAPIDAPI_DAILY_LIMIT_PER_IP = parsePositiveIntEnv(process.env.RAPIDAPI_DAILY_LIMIT_PER_IP, 200,
+    () => console.warn('[QUOTA] RAPIDAPI_DAILY_LIMIT_PER_IP invalide, valeur par défaut utilisée (200)'));
+const geminiIpQuota = createPerKeyDailyQuota(GEMINI_DAILY_LIMIT_PER_IP);
+const rapidApiIpQuota = createPerKeyDailyQuota(RAPIDAPI_DAILY_LIMIT_PER_IP);
+
+function sendIpQuotaExceeded(res) {
+    return res.status(429).json({ error: 'Limite quotidienne de recherches atteinte. Réessayez demain.' });
+}
+
+function warnQuotaExceeded(name, quota, limit) {
+    const day = quota.day();
+    if (quotaWarnedDay.get(name) !== day) {
+        quotaWarnedDay.set(name, day);
+        console.warn(`[QUOTA] Quota journalier ${name} atteint (${limit}/jour) : appels refusés jusqu'à demain`);
+    }
+}
+
+function sendQuotaExceeded(res) {
+    return res.status(503).json({ error: 'Service temporairement indisponible, réessayez plus tard.' });
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -69,7 +129,7 @@ function getCacheKey(term, minPrice, maxPrice) {
 function getFromCache(key) {
     const cached = searchCache.get(key);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-        log(`[CACHE HIT] ${key}`);
+        log('[CACHE HIT]'); // pas de terme saisi dans les logs
         return cached.data;
     }
     if (cached) searchCache.delete(key); // Nettoyage si expiré
@@ -120,21 +180,27 @@ async function sendToBrevo(email, attributes = {}) {
         if (attributes.cadeauChoisi) attrs.CADEAU_CHOISI = String(attributes.cadeauChoisi).slice(0, 200);
         if (Object.keys(attrs).length > 0) body.attributes = attrs;
 
-        const res = await fetch('https://api.brevo.com/v3/contacts', {
+        const res = await fetchWithTimeout('https://api.brevo.com/v3/contacts', {
             method: 'POST',
             headers: {
                 'api-key': process.env.BREVO_API_KEY,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(body)
-        });
+        }, BREVO_TIMEOUT_MS);
         if (!res.ok) {
-            const errData = await res.json().catch(() => ({}));
-            console.error('[BREVO] Erreur API:', res.status, errData);
+            // [LOT1] Statut seul : le corps d'erreur Brevo peut contenir l'email ou des détails internes
+            console.error('[BREVO] Erreur API: HTTP', res.status);
         }
+        // Libère la connexion sans exploiter le corps
+        res.body?.cancel?.().catch?.(() => {});
         return res.ok;
     } catch (e) {
-        console.error('[BREVO] Erreur réseau:', e.message);
+        if (e && e.name === 'AbortError') {
+            console.error('[BREVO] Timeout upstream');
+        } else {
+            console.error('[BREVO] Erreur réseau:', safeErrorInfo(e));
+        }
         return false;
     }
 }
@@ -390,17 +456,39 @@ app.use(express.static(PUBLIC_DIR, {
 // ============================================
 // ENDPOINT IA : /api/analyze (Google Gemini)
 // ============================================
+// [LOT1] Le prompt est construit côté serveur à partir d'un profil validé :
+// le client n'envoie plus jamais de prompt libre (fin du proxy Gemini ouvert).
+const GEMINI_RESPONSE_SCHEMA = {
+    type: 'OBJECT',
+    properties: {
+        suggestions: {
+            type: 'ARRAY',
+            items: {
+                type: 'OBJECT',
+                properties: {
+                    term: { type: 'STRING' },
+                    reason: { type: 'STRING' },
+                    prix_estime: { type: 'STRING' }
+                },
+                required: ['term', 'reason']
+            }
+        }
+    },
+    required: ['suggestions']
+};
+
 app.post('/api/analyze', strictLimiter, async (req, res) => {
-    let timeoutId;
     try {
-        const { prompt } = req.body || {};
-        if (typeof prompt !== 'string' || !prompt.trim()) {
-            return res.status(400).json({ error: 'Requête invalide : description manquante.' });
+        const body = req.body;
+
+        // Ancien frontend en cache (envoyait un prompt libre) : refus explicite, rien n'est relayé
+        if (body && typeof body === 'object' && Object.prototype.hasOwnProperty.call(body, 'prompt')) {
+            return res.status(400).json({ error: 'OFFREZ a été mis à jour. Rechargez la page pour continuer.' });
         }
 
-        // FIX #18 : Limiter la taille du prompt (max 8000 caractères ~2000 tokens)
-        if (prompt.length > 8000) {
-            return res.status(400).json({ error: 'Prompt trop long (max 8000 caractères)' });
+        const validation = validateAnalyzeInput(body);
+        if (!validation.ok) {
+            return res.status(400).json({ error: validation.error });
         }
 
         if (!process.env.GEMINI_API_KEY) {
@@ -408,38 +496,43 @@ app.post('/api/analyze', strictLimiter, async (req, res) => {
             return res.status(500).json({ error: 'Service d\'analyse temporairement indisponible.' });
         }
 
-        log('[GEMINI] Envoi du prompt (' + prompt.length + ' caractères)');
+        // Quota consommé uniquement juste avant un appel upstream réel (par IP, puis global)
+        if (!geminiIpQuota.tryConsume(hashIp(req.ip || req.socket?.remoteAddress))) {
+            return sendIpQuotaExceeded(res);
+        }
+        if (!geminiQuota.tryConsume()) {
+            warnQuotaExceeded('GEMINI', geminiQuota, GEMINI_DAILY_LIMIT);
+            return sendQuotaExceeded(res);
+        }
+
+        const { systemInstruction, userText } = buildGiftPrompt(validation.value);
+        log('[GEMINI] Génération (' + validation.value.tags.length + ' centre(s) d\'intérêt, contexte: ' + validation.value.contexte + ')');
 
         // [LOT0 C1] Clé envoyée en header (jamais dans l'URL, donc jamais dans les logs/erreurs réseau)
-        const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
-        // Timeout serveur : 20s (le client frontend a 15s, on laisse une marge)
-        const controller = new AbortController();
-        timeoutId = setTimeout(() => controller.abort(), 20000);
-
-        const response = await fetch(url, {
+        const { ok, status, data } = await fetchJsonWithTimeout(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'x-goog-api-key': process.env.GEMINI_API_KEY
             },
-            signal: controller.signal,
             body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }],
+                systemInstruction: { parts: [{ text: systemInstruction }] },
+                contents: [{ role: 'user', parts: [{ text: userText }] }],
                 generationConfig: {
                     temperature: 0.7, // Créativité modérée
-                    maxOutputTokens: 1024
+                    maxOutputTokens: 1024,
+                    responseMimeType: 'application/json',
+                    responseSchema: GEMINI_RESPONSE_SCHEMA
                 }
             })
-        });
-
-        const data = await response.json().catch(() => null);
-        clearTimeout(timeoutId);
+        }, GEMINI_TIMEOUT_MS);
 
         // Gestion erreurs API Google (corps upstream jamais renvoyé au client)
-        if (!response.ok) {
-            console.error('[GEMINI] Erreur API: HTTP', response.status, safeReasonCode(data?.error?.status));
-            return sendUpstreamError(res, response.status);
+        if (!ok) {
+            console.error('[GEMINI] Erreur API: HTTP', status, safeReasonCode(data?.error?.status));
+            return sendUpstreamError(res, status);
         }
         if (!data || typeof data !== 'object') {
             console.error('[GEMINI] Réponse non JSON');
@@ -456,8 +549,10 @@ app.post('/api/analyze', strictLimiter, async (req, res) => {
             });
         }
 
-        // FIX #4 : Vérification intégrité réponse (ne plus envoyer de réponse vide)
-        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        const parts = data.candidates?.[0]?.content?.parts;
+        const text = Array.isArray(parts)
+            ? parts.map(p => (p && typeof p.text === 'string' ? p.text : '')).join('')
+            : '';
         if (!text) {
             const finishReason = data.candidates?.[0]?.finishReason;
             if (finishReason && finishReason !== 'STOP') {
@@ -468,15 +563,20 @@ app.post('/api/analyze', strictLimiter, async (req, res) => {
                     reason
                 });
             }
-            // Réponse vide même avec finishReason STOP → erreur au lieu de renvoyer du vide
             console.error('[GEMINI] Réponse vide');
             return res.status(502).json({ error: 'Réponse vide du service d\'analyse. Réessayez.' });
         }
 
-        log('[GEMINI] Texte reçu (' + text.length + ' caractères)');
-        res.json(data);
+        // Réponse IA non fiable : parsing + validation stricte, seul { suggestions } est renvoyé
+        const suggestions = parseSuggestions(text);
+        if (suggestions.length === 0) {
+            console.error('[GEMINI] Réponse inexploitable (' + text.length + ' caractères)');
+            return sendUpstreamError(res, 502);
+        }
+
+        log('[GEMINI] ' + suggestions.length + ' suggestion(s) valide(s)');
+        res.json({ suggestions });
     } catch (error) {
-        clearTimeout(timeoutId);
         if (error && error.name === 'AbortError') {
             console.error('[GEMINI] Timeout upstream');
             return res.status(504).json({ error: 'Le service d\'analyse met trop de temps à répondre. Réessayez.' });
@@ -491,51 +591,53 @@ app.post('/api/analyze', strictLimiter, async (req, res) => {
 // ============================================
 app.get('/api/search', apiLimiter, async (req, res) => {
     try {
-        let { term, min_price, max_price, consent } = req.query;
+        const { consent } = req.query;
 
-        // [LOT0] Paramètres dupliqués (?term=a&term=b → tableau) ou non-texte refusés
-        if (typeof term !== 'string' || !term.trim()) {
-            return res.status(400).json({ error: 'Terme de recherche requis.' });
+        // [LOT1] Validation stricte : terme borné, prix entiers uniquement (aucune injection
+        // de paramètres possible dans l'URL RapidAPI), garde-fous min 4€ / max 5000€ / max >= min.
+        const params = normalizeSearchParams(req.query);
+        if (!params.ok) {
+            return res.status(400).json({ error: params.error });
         }
-        if ((min_price !== undefined && typeof min_price !== 'string') ||
-            (max_price !== undefined && typeof max_price !== 'string')) {
-            return res.status(400).json({ error: 'Paramètres de prix invalides.' });
-        }
-
-        // Guardrail: L'API Amazon refuse les prix <= 0. On force un minimum de 4€.
-        if (min_price) {
-            let pMin = parseInt(min_price, 10);
-            if (isNaN(pMin) || pMin < 4) min_price = '4';
-        }
-
-        // FIX #12 : Valider que max_price >= min_price
-        if (min_price && max_price) {
-            const pMin = parseInt(min_price, 10);
-            const pMax = parseInt(max_price, 10);
-            if (!isNaN(pMin) && !isNaN(pMax) && pMax < pMin) {
-                max_price = min_price; // Correction silencieuse
-            }
-        }
+        const { term, minPrice, maxPrice } = params.value;
 
         if (!process.env.RAPIDAPI_KEY) {
             console.error('[RAPIDAPI AMAZON] Configuration manquante : RAPIDAPI_KEY');
             return res.status(500).json({ error: 'Service de recherche temporairement indisponible.' });
         }
 
-        // 1. VÉRIFICATION CACHE (Hit or Miss)
-        const cacheKey = getCacheKey(term, min_price, max_price);
+        // 1. VÉRIFICATION CACHE (Hit or Miss) — clé construite sur les valeurs normalisées
+        const cacheKey = getCacheKey(term, minPrice ?? '', maxPrice ?? '');
         const cached = getFromCache(cacheKey);
         if (cached) {
             return res.json(cached);
         }
 
-        const cleanTerm = encodeURIComponent(term.trim());
+        // Quota consommé uniquement juste avant un appel upstream réel (pas sur cache hit), par IP puis global
+        if (!rapidApiIpQuota.tryConsume(hashIp(req.ip || req.socket?.remoteAddress))) {
+            return sendIpQuotaExceeded(res);
+        }
+        if (!rapidApiQuota.tryConsume()) {
+            warnQuotaExceeded('RAPIDAPI', rapidApiQuota, RAPIDAPI_DAILY_LIMIT);
+            return sendQuotaExceeded(res);
+        }
 
         // 2. APPEL API EXTERNE (RapidAPI Real-Time Amazon Data)
         // Paramètres optimisés : France, Pertinence, Prime ignoré pour plus de choix
-        const url = `https://real-time-amazon-data.p.rapidapi.com/search?query=${cleanTerm}&page=1&country=FR&sort_by=RELEVANCE&product_condition=ALL&is_prime=false&deals_and_discounts=NONE${min_price ? `&min_price=${min_price}` : ''}${max_price ? `&max_price=${max_price}` : ''}`;
+        const qs = new URLSearchParams({
+            query: term,
+            page: '1',
+            country: 'FR',
+            sort_by: 'RELEVANCE',
+            product_condition: 'ALL',
+            is_prime: 'false',
+            deals_and_discounts: 'NONE'
+        });
+        if (minPrice !== undefined) qs.set('min_price', String(minPrice));
+        if (maxPrice !== undefined) qs.set('max_price', String(maxPrice));
+        const url = `https://real-time-amazon-data.p.rapidapi.com/search?${qs.toString()}`;
 
-        log(`[RAPIDAPI AMAZON] Requête pour: "${term}" (${min_price}€-${max_price}€)`);
+        log(`[RAPIDAPI AMAZON] Requête (${term.length} car., ${minPrice ?? '-'}€-${maxPrice ?? '-'}€)`);
 
         // FIX #14 : Normalisation du consentement (string 'true' depuis query params)
         const hasConsent = consent === 'true' || consent === true;
@@ -546,56 +648,44 @@ app.get('/api/search', apiLimiter, async (req, res) => {
             const searchLogPath = path.join(__dirname, 'searches.csv');
             const searchTimestamp = new Date().toISOString();
             // FIX #7 : Échappement CSV renforcé (protection injection formules) + longueurs bornées
-            const searchLine = `"${searchTimestamp}","${csvField(term, 200)}","${csvField(min_price, 20)}","${csvField(max_price, 20)}"\n`;
+            const searchLine = `"${searchTimestamp}","${csvField(term, 200)}","${csvField(minPrice ?? '', 20)}","${csvField(maxPrice ?? '', 20)}"\n`;
             appendCsvLine(searchLogPath, '"timestamp","term","min_price","max_price"\n', searchLine)
                 .catch(err => console.error('[ANALYTICS] Erreur écriture searches.csv:', safeErrorInfo(err)));
         }
 
-        const response = await fetch(url, {
+        const { ok, status, data } = await fetchJsonWithTimeout(url, {
             method: 'GET',
             headers: {
                 'x-rapidapi-key': process.env.RAPIDAPI_KEY,
                 'x-rapidapi-host': 'real-time-amazon-data.p.rapidapi.com'
             }
-        });
+        }, RAPIDAPI_TIMEOUT_MS);
 
-        const data = await response.json().catch(() => null);
-
-        if (!response.ok) {
-            console.error('[RAPIDAPI AMAZON] Erreur API: HTTP', response.status);
-            return sendUpstreamError(res, response.status);
+        if (!ok) {
+            console.error('[RAPIDAPI AMAZON] Erreur API: HTTP', status);
+            return sendUpstreamError(res, status);
         }
         if (!data || typeof data !== 'object') {
             console.error('[RAPIDAPI AMAZON] Réponse non JSON');
             return sendUpstreamError(res, 502);
         }
 
-        // 3. NORMALISATION DONNÉES
-        // On transforme la réponse complexe de RapidAPI en un format plus simple pour notre front
+        // 3. NORMALISATION DONNÉES (réponse externe non fiable : liens/images filtrés, types stricts)
         const adaptedData = {
-            search_results: (data.data?.products || []).map(product => ({
-                title: product.product_title,
-                link: product.product_url,
-                image: product.product_photo,
-                price: {
-                    value: parseFloat(product.product_price?.replace(/[^0-9.,]/g, '').replace(/\./g, '').replace(',', '.')) || 0,
-                    raw: product.product_price || 'Prix non disponible',
-                    currency: 'EUR'
-                },
-                rating: product.product_star_rating,
-                reviews: product.product_num_ratings,
-                asin: product.asin,
-                is_prime: product.is_prime,
-                is_best_seller: product.is_best_seller
-            }))
+            search_results: normalizeProducts(data.data?.products)
         };
 
         // 4. SAUVEGARDE CACHE
-        setCache(cacheKey, adaptedData);
-        log(`[CACHE SET] ${cacheKey} (${adaptedData.search_results?.length || 0} résultats)`);
+        // Un résultat vide n'est pas mis en cache 24h (permet un nouvel essai)
+        if (adaptedData.search_results.length > 0) setCache(cacheKey, adaptedData);
+        log(`[CACHE SET] ${adaptedData.search_results.length} résultats`);
 
         res.json(adaptedData);
     } catch (error) {
+        if (error && error.name === 'AbortError') {
+            console.error('[RAPIDAPI AMAZON] Timeout upstream');
+            return res.status(504).json({ error: 'Le service de recherche met trop de temps à répondre. Réessayez.' });
+        }
         console.error('[RAPIDAPI AMAZON] Erreur serveur:', safeErrorInfo(error));
         res.status(502).json({ error: 'Service de recherche momentanément indisponible. Réessayez plus tard.' });
     }

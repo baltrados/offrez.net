@@ -19,37 +19,56 @@ export function escapeHtml(str) {
         .replace(/'/g, '&#039;');
 }
 
+// Domaines Amazon autorisés (sous-domaines acceptés via endsWith('.' + domaine))
+const ALLOWED_URL_DOMAINS = [
+    'amazon.fr',
+    'amazon.com',
+    'www.amazon.fr',
+    'www.amazon.com',
+    'amzn.to'
+];
+
+/**
+ * Parse une URL et la retourne seulement si elle est en https et sur un domaine autorisé.
+ * @param {string} url
+ * @returns {URL|null}
+ */
+function parseAllowedUrl(url) {
+    if (!url || typeof url !== 'string') return null;
+    try {
+        const parsed = new URL(url);
+        if (parsed.protocol !== 'https:') return null;
+        const hostname = parsed.hostname.toLowerCase();
+        const allowed = ALLOWED_URL_DOMAINS.some(domain =>
+            hostname === domain || hostname.endsWith('.' + domain)
+        );
+        return allowed ? parsed : null;
+    } catch (e) {
+        return null; // URL invalide
+    }
+}
+
 /**
  * Valide et nettoie une URL (pour les liens Amazon).
  * @param {string} url - URL à valider
- * @returns {string} - URL sécurisée ou chaîne vide
+ * @returns {string} - URL normalisée (href encodé) ou '#'
  */
 export function sanitizeUrl(url) {
-    if (!url || typeof url !== 'string') return '#';
+    const parsed = parseAllowedUrl(url);
+    return parsed ? parsed.href : '#';
+}
 
-    // N'accepter que les URLs Amazon
-    const allowedDomains = [
-        'amazon.fr',
-        'amazon.com',
-        'www.amazon.fr',
-        'www.amazon.com',
-        'amzn.to'
-    ];
-
-    try {
-        const parsed = new URL(url);
-        const hostname = parsed.hostname.toLowerCase();
-
-        if (allowedDomains.some(domain =>
-            hostname === domain || hostname.endsWith('.' + domain)
-        )) {
-            return url;
-        }
-    } catch (e) {
-        // URL invalide
-    }
-
-    return '#';
+/**
+ * Construit un lien affilié Amazon : remplace/ajoute le paramètre `tag`.
+ * @param {string} url - URL produit Amazon
+ * @param {string} tag - Tag partenaire
+ * @returns {string} - URL normalisée avec tag, ou '#'
+ */
+export function buildAffiliateUrl(url, tag) {
+    const parsed = parseAllowedUrl(url);
+    if (!parsed) return '#';
+    parsed.searchParams.set('tag', String(tag));
+    return parsed.href;
 }
 
 /**

@@ -10,7 +10,7 @@
  * 3. Fallback hors-ligne pour les erreurs réseaux.
  */
 
-const CACHE_NAME = 'OFFREZ-v14'; // v14 — constants.js ajouté au cache
+const CACHE_NAME = 'OFFREZ-v15'; // v15 — contrat /api/analyze (profil au lieu du prompt) + imports versionnés
 const STATIC_ASSETS = [
     '/',
     '/index.html',
@@ -37,7 +37,7 @@ const STATIC_ASSETS = [
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME)
-            .then(cache => cache.addAll(STATIC_ASSETS))
+            .then(cache => cache.addAll(STATIC_ASSETS.map(u => new Request(u, { cache: 'reload' })))) // contourne le cache HTTP
             .then(() => self.skipWaiting()) // Force l'activation immédiate
     );
 });
