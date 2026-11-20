@@ -36,6 +36,10 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
+// [LOT0 C2/C3] Seul le dossier public/ est servi (le code, les CSV et la config restent hors web)
+const PUBLIC_DIR = path.resolve(__dirname, 'public');
+const NOT_FOUND_PAGE = path.join(PUBLIC_DIR, '404.html');
+
 // FIX #9 : Avertissement si NODE_ENV pas défini
 if (!process.env.NODE_ENV) {
     console.warn('⚠️  NODE_ENV non défini ! Ajoutez NODE_ENV=production dans .env pour la production.');
@@ -172,6 +176,111 @@ const strictLimiter = rateLimit({
     message: { error: 'Limite d\'analyses atteinte, patientez une minute.' },
 });
 
+// [LOT0 H3] Limites dédiées aux endpoints d'écriture / tracking
+const subscribeLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    limit: 5,
+    message: { error: 'Trop de tentatives d\'inscription. Réessayez dans 15 minutes.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+const trackClickLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000,
+    limit: 30,
+    message: { error: 'Trop de requêtes. Veuillez patienter une minute.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+const trackProfilesLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000,
+    limit: 10,
+    message: { error: 'Trop de requêtes. Veuillez patienter une minute.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// ----------------------
+// Helpers erreurs (ne jamais exposer de détails internes / upstream au client)
+// ----------------------
+
+// Résumé d'erreur sûr pour les logs : nom, code, message court sans URL (pas d'objet brut)
+function safeErrorInfo(err) {
+    if (!err) return 'Erreur inconnue';
+    const parts = [err.name || 'Error'];
+    if (err.code) parts.push(String(err.code));
+    if (err.type) parts.push(String(err.type));
+    const msg = String(err.message || '').replace(/https?:\/\/\S+/gi, '[url]').slice(0, 200);
+    if (msg) parts.push(msg);
+    return parts.join(' | ');
+}
+
+// Code machine court et non sensible (enum Gemini ex: SAFETY, MAX_TOKENS)
+function safeReasonCode(value) {
+    return typeof value === 'string' && /^[A-Z_]{1,40}$/.test(value) ? value : 'UNKNOWN';
+}
+
+// Mapping générique des échecs d'API externes : 429 -> 429, le reste -> 502
+function sendUpstreamError(res, upstreamStatus) {
+    if (upstreamStatus === 429) {
+        return res.status(429).json({ error: 'Service saturé, réessayez dans quelques instants.' });
+    }
+    return res.status(502).json({ error: 'Service momentanément indisponible. Réessayez plus tard.' });
+}
+
+// ----------------------
+// [LOT0 H3] Écriture CSV analytics plafonnée
+// ----------------------
+// Taille max par fichier CSV : 10 Mo par défaut, surchargeable via la variable
+// d'environnement MAX_CSV_BYTES (entier positif en octets ; valeur invalide ignorée).
+const DEFAULT_MAX_CSV_BYTES = 10 * 1024 * 1024;
+const MAX_CSV_BYTES = (() => {
+    const raw = (process.env.MAX_CSV_BYTES || '').trim();
+    if (!raw) return DEFAULT_MAX_CSV_BYTES;
+    const n = /^\d+$/.test(raw) ? Number(raw) : NaN;
+    if (!Number.isSafeInteger(n) || n <= 0) {
+        console.warn('[ANALYTICS] MAX_CSV_BYTES invalide, valeur par défaut utilisée (10 Mo)');
+        return DEFAULT_MAX_CSV_BYTES;
+    }
+    return n;
+})();
+const csvCapWarned = new Set();
+
+// Neutralise un champ CSV : une ligne = un enregistrement, longueur bornée,
+// guillemets échappés et protection contre l'injection de formules.
+function csvField(value, maxLen) {
+    let s = String(value ?? '').replace(/[\r\n\t]+/g, ' ').slice(0, maxLen);
+    s = s.replace(/"/g, '""');
+    if (/^[=+\-@]/.test(s)) s = "'" + s;
+    return s;
+}
+
+// Ajoute une ligne (asynchrone) ; crée le fichier avec l'en-tête si absent.
+// Si le fichier atteint le plafond, l'écriture est ignorée (warning une seule fois par fichier).
+async function appendCsvLine(filePath, header, line) {
+    let size = 0;
+    try {
+        size = (await fs.promises.stat(filePath)).size;
+    } catch (e) {
+        if (e.code !== 'ENOENT') throw e;
+        try {
+            await fs.promises.writeFile(filePath, header, { flag: 'wx' });
+        } catch (e2) {
+            if (e2.code !== 'EEXIST') throw e2;
+        }
+    }
+    if (size >= MAX_CSV_BYTES) {
+        if (!csvCapWarned.has(filePath)) {
+            csvCapWarned.add(filePath);
+            console.warn(`[ANALYTICS] ${path.basename(filePath)} a atteint la taille max (${MAX_CSV_BYTES} octets) : écritures ignorées`);
+        }
+        return false;
+    }
+    await fs.promises.appendFile(filePath, line);
+    return true;
+}
+
 // ----------------------
 // Middleware Globaux
 // ----------------------
@@ -225,38 +334,48 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '50kb' })); // Protection contre payloads géants
 
-// FIX #17 : Middleware de blocage des fichiers sensibles AVANT express.static
-// [TASK-004] Liste étendue des fichiers bloqués
-const BLOCKED_FILES = [
-    '.env', '.env.example', 'server.js', 'admin-stats.js', 'package.json', 'package-lock.json',
-    'clicks.csv', 'searches.csv',
-    'AUDIT_LANCEMENT.md', 'COMMANDES_UTILES.md', 'MANUEL_DE_FONCTIONNEMENT_OFFREZ.md', 'README.md',
-    'replace_ia.js'
-];
+function sendNotFound(res) {
+    return res.status(404).sendFile(NOT_FOUND_PAGE);
+}
+
+// FIX #17 / [LOT0 C2/C3] Défense en profondeur AVANT express.static.
+// public/ ne contient que des assets publics ; ce filtre bloque en plus, sur le chemin DÉCODÉ :
+// encodage invalide, octets NUL, segments '..', dotfiles et extensions sensibles.
+const BLOCKED_EXTENSIONS = new Set(['.csv', '.md', '.log', '.env', '.py', '.sh', '.yml', '.yaml', '.json']);
+const ALLOWED_JSON_FILES = new Set(['manifest.json']);
 app.use((req, res, next) => {
-    const fileName = path.basename(req.path).toLowerCase();
-    const ext = path.extname(req.path).toLowerCase();
-    // Bloquer les fichiers sensibles et les dotfiles
-    if (BLOCKED_FILES.includes(fileName) || fileName.startsWith('.')) {
-        return res.status(404).sendFile(path.join(__dirname, '404.html'));
+    let decodedPath;
+    try {
+        decodedPath = decodeURIComponent(req.path);
+    } catch {
+        return sendNotFound(res); // Encodage malformé
+    }
+    if (decodedPath.includes('\0')) return sendNotFound(res);
+
+    const segments = decodedPath.split(/[\\/]+/).filter(Boolean);
+    // '..' (traversal), '.' et tout segment commençant par '.' (dotfiles / dossiers cachés)
+    if (segments.some(seg => seg.startsWith('.'))) return sendNotFound(res);
+
+    // Nom de fichier normalisé (les points/espaces finaux sont ignorés par certains FS)
+    const fileName = (segments[segments.length - 1] || '').toLowerCase().replace(/[. ]+$/, '');
+    const ext = path.extname(fileName);
+    if (BLOCKED_EXTENSIONS.has(ext) && !ALLOWED_JSON_FILES.has(fileName)) {
+        return sendNotFound(res);
     }
     // [TASK-004] Bloquer les fichiers test et backup par pattern
     if (fileName.includes('_test.') || fileName.includes('_backup') || fileName.includes('.pre_split')) {
-        return res.status(404).sendFile(path.join(__dirname, '404.html'));
-    }
-    // [TASK-004] Bloquer les extensions sensibles (ajout .py)
-    if (['.json', '.csv', '.md', '.log', '.env', '.py'].includes(ext) && fileName !== 'manifest.json') {
-        return res.status(404).sendFile(path.join(__dirname, '404.html'));
+        return sendNotFound(res);
     }
     next();
 });
 
-// Serveur de fichiers statiques (Frontend)
-app.use(express.static(path.join(__dirname, '.'), {
+// Serveur de fichiers statiques (Frontend) — uniquement public/
+app.use(express.static(PUBLIC_DIR, {
     maxAge: IS_PRODUCTION ? '1d' : 0, // Cache navigateur pour assets
     etag: true,
     lastModified: true,
     dotfiles: 'deny', // Bloque les fichiers .env, .git, etc.
+    redirect: false, // Pas de /blog -> /blog/ : la route fallback redirige directement vers /blog.html
     setHeaders: (res, filePath) => {
         // Cache agressif pour CSS/JS/Fonts
         if (filePath.endsWith('.css') || filePath.endsWith('.js')) {
@@ -272,9 +391,12 @@ app.use(express.static(path.join(__dirname, '.'), {
 // ENDPOINT IA : /api/analyze (Google Gemini)
 // ============================================
 app.post('/api/analyze', strictLimiter, async (req, res) => {
+    let timeoutId;
     try {
-        const { prompt } = req.body;
-        if (!prompt) return res.status(400).json({ error: 'Prompt required' });
+        const { prompt } = req.body || {};
+        if (typeof prompt !== 'string' || !prompt.trim()) {
+            return res.status(400).json({ error: 'Requête invalide : description manquante.' });
+        }
 
         // FIX #18 : Limiter la taille du prompt (max 8000 caractères ~2000 tokens)
         if (prompt.length > 8000) {
@@ -282,21 +404,25 @@ app.post('/api/analyze', strictLimiter, async (req, res) => {
         }
 
         if (!process.env.GEMINI_API_KEY) {
-            return res.status(500).json({ error: 'Server misconfiguration: Gemini API Key missing' });
+            console.error('[GEMINI] Configuration manquante : GEMINI_API_KEY');
+            return res.status(500).json({ error: 'Service d\'analyse temporairement indisponible.' });
         }
 
         log('[GEMINI] Envoi du prompt (' + prompt.length + ' caractères)');
 
-        // Appel direct à l'API REST Google Gemini
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+        // [LOT0 C1] Clé envoyée en header (jamais dans l'URL, donc jamais dans les logs/erreurs réseau)
+        const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
         // Timeout serveur : 20s (le client frontend a 15s, on laisse une marge)
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 20000);
+        timeoutId = setTimeout(() => controller.abort(), 20000);
 
         const response = await fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'x-goog-api-key': process.env.GEMINI_API_KEY
+            },
             signal: controller.signal,
             body: JSON.stringify({
                 contents: [{ parts: [{ text: prompt }] }],
@@ -306,23 +432,27 @@ app.post('/api/analyze', strictLimiter, async (req, res) => {
                 }
             })
         });
+
+        const data = await response.json().catch(() => null);
         clearTimeout(timeoutId);
 
-        const data = await response.json();
-
-        // Gestion erreurs API Google
+        // Gestion erreurs API Google (corps upstream jamais renvoyé au client)
         if (!response.ok) {
-            console.error('[GEMINI] Erreur API:', data);
-            return res.status(response.status).json(data);
+            console.error('[GEMINI] Erreur API: HTTP', response.status, safeReasonCode(data?.error?.status));
+            return sendUpstreamError(res, response.status);
+        }
+        if (!data || typeof data !== 'object') {
+            console.error('[GEMINI] Réponse non JSON');
+            return sendUpstreamError(res, 502);
         }
 
         // Vérification Safety Filters (Contenu bloqué)
         if (data.promptFeedback?.blockReason) {
-            console.error('[GEMINI] Contenu bloqué:', data.promptFeedback);
+            const reason = safeReasonCode(data.promptFeedback.blockReason);
+            console.warn('[GEMINI] Contenu bloqué:', reason);
             return res.status(400).json({
-                error: 'Contenu bloqué par Gemini',
-                reason: data.promptFeedback.blockReason,
-                details: data.promptFeedback
+                error: 'Votre demande a été refusée par le filtre de contenu. Modifiez la description et réessayez.',
+                reason
             });
         }
 
@@ -331,23 +461,28 @@ app.post('/api/analyze', strictLimiter, async (req, res) => {
         if (!text) {
             const finishReason = data.candidates?.[0]?.finishReason;
             if (finishReason && finishReason !== 'STOP') {
+                const reason = safeReasonCode(finishReason);
+                console.warn('[GEMINI] Génération interrompue:', reason);
                 return res.status(400).json({
-                    error: `Génération interrompue: ${finishReason}`,
-                    details: data.candidates?.[0]
+                    error: 'La génération a été interrompue. Réessayez.',
+                    reason
                 });
             }
             // Réponse vide même avec finishReason STOP → erreur au lieu de renvoyer du vide
-            return res.status(502).json({
-                error: 'Réponse vide de Gemini',
-                details: 'L\'IA n\'a généré aucun texte malgré un statut OK.'
-            });
+            console.error('[GEMINI] Réponse vide');
+            return res.status(502).json({ error: 'Réponse vide du service d\'analyse. Réessayez.' });
         }
 
         log('[GEMINI] Texte reçu (' + text.length + ' caractères)');
         res.json(data);
     } catch (error) {
-        console.error('[GEMINI] Erreur serveur:', error);
-        res.status(500).json({ error: error.message });
+        clearTimeout(timeoutId);
+        if (error && error.name === 'AbortError') {
+            console.error('[GEMINI] Timeout upstream');
+            return res.status(504).json({ error: 'Le service d\'analyse met trop de temps à répondre. Réessayez.' });
+        }
+        console.error('[GEMINI] Erreur serveur:', safeErrorInfo(error));
+        res.status(502).json({ error: 'Service d\'analyse momentanément indisponible. Réessayez plus tard.' });
     }
 });
 
@@ -357,6 +492,15 @@ app.post('/api/analyze', strictLimiter, async (req, res) => {
 app.get('/api/search', apiLimiter, async (req, res) => {
     try {
         let { term, min_price, max_price, consent } = req.query;
+
+        // [LOT0] Paramètres dupliqués (?term=a&term=b → tableau) ou non-texte refusés
+        if (typeof term !== 'string' || !term.trim()) {
+            return res.status(400).json({ error: 'Terme de recherche requis.' });
+        }
+        if ((min_price !== undefined && typeof min_price !== 'string') ||
+            (max_price !== undefined && typeof max_price !== 'string')) {
+            return res.status(400).json({ error: 'Paramètres de prix invalides.' });
+        }
 
         // Guardrail: L'API Amazon refuse les prix <= 0. On force un minimum de 4€.
         if (min_price) {
@@ -373,10 +517,9 @@ app.get('/api/search', apiLimiter, async (req, res) => {
             }
         }
 
-        if (!term) return res.status(400).json({ error: 'Search term required' });
-
         if (!process.env.RAPIDAPI_KEY) {
-            return res.status(500).json({ error: 'Server misconfiguration: RapidAPI Key missing' });
+            console.error('[RAPIDAPI AMAZON] Configuration manquante : RAPIDAPI_KEY');
+            return res.status(500).json({ error: 'Service de recherche temporairement indisponible.' });
         }
 
         // 1. VÉRIFICATION CACHE (Hit or Miss)
@@ -399,22 +542,13 @@ app.get('/api/search', apiLimiter, async (req, res) => {
 
         // TRACKING ANALYTICS (Recherches populaires)
         if (hasConsent) {
-            try {
-                const searchLogPath = path.join(__dirname, 'searches.csv');
-                const searchTimestamp = new Date().toISOString();
-                // FIX #7 : Échappement CSV renforcé (protection injection formules)
-                const safeTerm = term.replace(/"/g, '""').replace(/^[=+\-@]/g, "'$&");
-                const searchLine = `"${searchTimestamp}","${safeTerm}","${min_price || ''}","${max_price || ''}"\n`;
-
-                if (!fs.existsSync(searchLogPath)) {
-                    fs.writeFileSync(searchLogPath, '"timestamp","term","min_price","max_price"\n');
-                }
-                // FIX #15 : Logger l'erreur au lieu d'ignorer le callback
-                fs.appendFile(searchLogPath, searchLine, (err) => {
-                    if (err) console.error('[ANALYTICS] Erreur écriture searches.csv:', err.message);
-                });
-
-            } catch (e) { console.error('Analytics error:', e); }
+            // Fichier hors du dossier public (racine du repo). Écriture async, plafonnée, non bloquante.
+            const searchLogPath = path.join(__dirname, 'searches.csv');
+            const searchTimestamp = new Date().toISOString();
+            // FIX #7 : Échappement CSV renforcé (protection injection formules) + longueurs bornées
+            const searchLine = `"${searchTimestamp}","${csvField(term, 200)}","${csvField(min_price, 20)}","${csvField(max_price, 20)}"\n`;
+            appendCsvLine(searchLogPath, '"timestamp","term","min_price","max_price"\n', searchLine)
+                .catch(err => console.error('[ANALYTICS] Erreur écriture searches.csv:', safeErrorInfo(err)));
         }
 
         const response = await fetch(url, {
@@ -425,11 +559,15 @@ app.get('/api/search', apiLimiter, async (req, res) => {
             }
         });
 
-        const data = await response.json();
+        const data = await response.json().catch(() => null);
 
         if (!response.ok) {
-            console.error('[RAPIDAPI AMAZON] Error:', data);
-            return res.status(response.status).json({ error: data.message || 'API Error' });
+            console.error('[RAPIDAPI AMAZON] Erreur API: HTTP', response.status);
+            return sendUpstreamError(res, response.status);
+        }
+        if (!data || typeof data !== 'object') {
+            console.error('[RAPIDAPI AMAZON] Réponse non JSON');
+            return sendUpstreamError(res, 502);
         }
 
         // 3. NORMALISATION DONNÉES
@@ -458,8 +596,8 @@ app.get('/api/search', apiLimiter, async (req, res) => {
 
         res.json(adaptedData);
     } catch (error) {
-        console.error('RapidAPI Amazon Error:', error);
-        res.status(500).json({ error: error.message });
+        console.error('[RAPIDAPI AMAZON] Erreur serveur:', safeErrorInfo(error));
+        res.status(502).json({ error: 'Service de recherche momentanément indisponible. Réessayez plus tard.' });
     }
 });
 
@@ -467,13 +605,13 @@ app.get('/api/search', apiLimiter, async (req, res) => {
 // ENDPOINT EMAILS : /api/subscribe (Lead Magnet)
 // ============================================
 
-app.post('/api/subscribe', async (req, res) => {
+app.post('/api/subscribe', subscribeLimiter, async (req, res) => {
     try {
-        const { email, consent, prenomCible, cadeauChoisi } = req.body;
+        const { email, consent, prenomCible, cadeauChoisi } = req.body || {};
 
-        // Validation stricte (Regex standard)
+        // Validation stricte (Regex standard) — chaîne uniquement (pas de tableau coercé), 254 car. max (RFC 5321)
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!email || !emailRegex.test(email)) {
+        if (typeof email !== 'string' || email.length > 254 || !emailRegex.test(email)) {
             return res.status(400).json({ error: 'Format email invalide (ex: nom@domaine.com)' });
         }
         // Vérification consent normalisée (boolean depuis JSON body)
@@ -482,7 +620,10 @@ app.post('/api/subscribe', async (req, res) => {
         }
 
         // Envoi vers Brevo avec attributs de contexte cadeau
-        const success = await sendToBrevo(email, { prenomCible, cadeauChoisi });
+        const success = await sendToBrevo(email, {
+            prenomCible: typeof prenomCible === 'string' ? prenomCible : undefined,
+            cadeauChoisi: typeof cadeauChoisi === 'string' ? cadeauChoisi : undefined
+        });
         if (success) {
             log(`[BREVO] Nouvel inscrit envoyé vers Brevo`);
             res.json({ success: true, message: 'Email enregistré' });
@@ -491,17 +632,17 @@ app.post('/api/subscribe', async (req, res) => {
         }
 
     } catch (error) {
-        console.error('Erreur subscribe:', error);
-        res.status(500).json({ error: IS_PRODUCTION ? 'Erreur serveur' : error.message });
+        console.error('[SUBSCRIBE] Erreur serveur:', safeErrorInfo(error));
+        res.status(500).json({ error: 'Erreur serveur. Réessayez plus tard.' });
     }
 });
 
 // ============================================
 // ENDPOINT TRACKING CLICS : /api/track-click
 // ============================================
-app.post('/api/track-click', (req, res) => {
+app.post('/api/track-click', trackClickLimiter, (req, res) => {
     try {
-        const { product, price, asin, consent } = req.body;
+        const { product, price, asin, consent } = req.body || {};
 
         // FIX #14 : Vérification consent normalisée (boolean depuis JSON body)
         if (consent !== true) {
@@ -512,39 +653,36 @@ app.post('/api/track-click', (req, res) => {
         const ip = hashIp(req.ip || req.socket?.remoteAddress); // RGPD : IP hashée
         const timestamp = new Date().toISOString();
 
-        // FIX #7 : Échappement CSV renforcé (protection injection formules)
-        const safeProduct = (product || 'Inconnu').replace(/"/g, '""').replace(/^[=+\-@]/g, "'$&");
-        const safePrice = (price || '0').toString().replace('€', '').trim();
-        const safeAsin = (asin || '').replace(/"/g, '');
+        // FIX #7 : Échappement CSV renforcé (protection injection formules) + longueurs bornées
+        // Types stricts : seules les chaînes (et nombres pour le prix) sont acceptées, sinon valeur par défaut
+        const asText = (v, allowNumber = false) =>
+            typeof v === 'string' ? v : (allowNumber && typeof v === 'number' && Number.isFinite(v) ? String(v) : '');
+        const safeProduct = csvField(asText(product) || 'Inconnu', 300);
+        const safePrice = csvField((asText(price, true) || '0').replace('€', '').trim(), 20);
+        const safeAsin = csvField(asText(asin).replace(/"/g, ''), 20);
 
         const csvLine = `"${timestamp}","${ip}","${safeProduct}","${safePrice}","${safeAsin}"\n`;
 
+        // Fichier hors du dossier public (racine du repo). Écriture async, plafonnée, non bloquante :
+        // la réponse au client reste 200 même si le plafond est atteint ou l'écriture échoue.
         const filePath = path.join(__dirname, 'clicks.csv');
-
-        if (!fs.existsSync(filePath)) {
-            fs.writeFileSync(filePath, '"timestamp","ip","product_name","price","asin"\n');
-        }
-
-        fs.appendFile(filePath, csvLine, (err) => {
-            if (err) console.error('Erreur log click:', err);
-        });
-
-
+        appendCsvLine(filePath, '"timestamp","ip","product_name","price","asin"\n', csvLine)
+            .catch(err => console.error('[ANALYTICS] Erreur écriture clicks.csv:', safeErrorInfo(err)));
 
         res.json({ success: true });
     } catch (e) {
-        console.error('Erreur tracking click:', e);
-        // FIX #9 : Ne pas exposer le message d'erreur en production
-        res.status(500).json({ error: IS_PRODUCTION ? 'Erreur serveur' : e.message });
+        console.error('[TRACK-CLICK] Erreur serveur:', safeErrorInfo(e));
+        // [LOT0 C1] Jamais de message d'erreur brut côté client, quel que soit NODE_ENV
+        res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 
 // ============================================
 // ENDPOINT TRACKING PROFILS : /api/track-profiles
 // ============================================
-app.post('/api/track-profiles', (req, res) => {
+app.post('/api/track-profiles', trackProfilesLimiter, (req, res) => {
     try {
-        const { profiles, consent } = req.body;
+        const { profiles, consent } = req.body || {};
 
         if (consent !== true) {
             return res.json({ success: false, reason: 'no_consent' });
@@ -558,8 +696,8 @@ app.post('/api/track-profiles', (req, res) => {
         log(`[PROFILES] ${profiles.length} profil(s) reçu(s) (non stockés)`);
         res.json({ success: true, count: profiles.length });
     } catch (e) {
-        console.error('Erreur track-profiles:', e);
-        res.status(500).json({ error: IS_PRODUCTION ? 'Erreur serveur' : e.message });
+        console.error('[TRACK-PROFILES] Erreur serveur:', safeErrorInfo(e));
+        res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 
@@ -579,26 +717,46 @@ app.get('/api/health', (req, res) => {
 // ======================
 // ROUTE FALLBACK (404 & Redirections)
 // ======================
-app.get('*', (req, res) => {
+app.get('*', async (req, res) => {
     // 1. Redirection SEO pour les dossiers (ex: /blog ou /blog/ -> /blog.html)
-    const cleanPath = req.path.replace(/\/$/, '');
-    // [TASK-008] Utiliser les constantes fs/path déjà importées en haut du fichier
-    if (cleanPath && fs.existsSync(path.join(__dirname, cleanPath + '.html'))) {
-        return res.redirect(301, cleanPath + '.html');
+    // [LOT0 C2/C3] Recherche limitée à PUBLIC_DIR, résistante au path traversal
+    let decodedPath;
+    try {
+        decodedPath = decodeURIComponent(req.path);
+    } catch {
+        return sendNotFound(res);
+    }
+    const cleanPath = decodedPath.replace(/[\\/]+$/, '');
+    if (cleanPath && !cleanPath.includes('\0')) {
+        const candidate = path.resolve(PUBLIC_DIR, '.' + path.sep + cleanPath + '.html');
+        if (candidate.startsWith(PUBLIC_DIR + path.sep)) {
+            try {
+                const stat = await fs.promises.stat(candidate);
+                if (stat.isFile()) {
+                    // Un seul '/' en tête : empêche une redirection "//hote" (open redirect)
+                    const target = '/' + req.path.replace(/[\\/]+$/, '').replace(/^[\\/]+/, '') + '.html';
+                    return res.redirect(301, target);
+                }
+            } catch { /* inexistant → 404 */ }
+        }
     }
     // 2. Vraie erreur 404
-    res.status(404).sendFile(path.join(__dirname, '404.html'));
+    sendNotFound(res);
 });
 
 // ======================
 // GESTION D'ERREUR GLOBALE
 // ======================
+// [LOT0 C1] Message générique quel que soit NODE_ENV ; log sans objet brut (ni body ni stack).
+// Les erreurs client (ex: JSON malformé → entity.parse.failed, 400 ; payload trop gros, 413) gardent leur statut 4xx.
 app.use((err, req, res, next) => {
-    console.error('[GLOBAL ERROR]', err);
-    res.status(500).json({
-        error: 'Erreur serveur interne',
-        message: IS_PRODUCTION ? 'Une erreur est survenue' : err.message
-    });
+    const status = Number.isInteger(err?.status) && err.status >= 400 && err.status < 500 ? err.status : 500;
+    if (status === 500) {
+        console.error('[GLOBAL ERROR]', safeErrorInfo(err));
+        return res.status(500).json({ error: 'Erreur serveur interne' });
+    }
+    log('[CLIENT ERROR]', status, err?.type || '');
+    res.status(status).json({ error: 'Requête invalide' });
 });
 
 // ======================

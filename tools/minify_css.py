@@ -1,7 +1,7 @@
 import re
 import os
 
-PARTIALS_DIR = 'css/partials'
+PARTIALS_DIR = 'public/css/partials'
 PARTIALS_ORDER = [
     '_01-variables.css',
     '_02-base.css',
@@ -32,14 +32,14 @@ def minify_css():
     css = re.sub(r'\s+', ' ', css)
     css = css.strip()
 
-    with open('style.min.css', 'w', encoding='utf-8') as f:
+    with open('public/style.min.css', 'w', encoding='utf-8') as f:
         f.write(css)
 
     orig = sum(
         os.path.getsize(os.path.join(PARTIALS_DIR, f))
         for f in PARTIALS_ORDER
     )
-    final = os.path.getsize('style.min.css')
+    final = os.path.getsize('public/style.min.css')
     print(f"Source totale: {orig // 1024} KB ({len(PARTIALS_ORDER)} fichiers)")
     print(f"Minifié: {final // 1024} KB")
 
