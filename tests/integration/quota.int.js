@@ -8,7 +8,7 @@ const { configureEnv, installFetchMock, jsonResponse, startServer, assertNoLeak 
 
 configureEnv({
     GEMINI_DAILY_LIMIT_PER_IP: '1',
-    GEMINI_DAILY_LIMIT: '2',
+    GEMINI_DAILY_LIMIT: '3',
     RAPIDAPI_DAILY_LIMIT_PER_IP: '1',
     RAPIDAPI_DAILY_LIMIT: '2'
 });
@@ -62,7 +62,7 @@ async function search(ip, term) {
     return { status: res.status, text: await res.text(), headers: res.headers };
 }
 
-describe('quotas Gemini (par IP = 1, global = 2)', () => {
+describe('quotas Gemini (par IP = 1, global = 3)', () => {
     test('requête invalide ne consomme pas de quota', async () => {
         const r = await analyze('203.0.113.1', { profile: { budget: -1 } });
         assert.equal(r.status, 400);
@@ -83,7 +83,14 @@ describe('quotas Gemini (par IP = 1, global = 2)', () => {
         assert.equal((await analyze('203.0.113.2')).status, 200);
     });
 
-    test('IP C : quota global (2/jour) atteint → 503 générique, sans appel upstream', async () => {
+    test('IPv6 : deux adresses du même /56 partagent le quota', async () => {
+        assert.equal((await analyze('2001:db8:1:2::1')).status, 200, '1re adresse : 3e et dernier appel global');
+        const r2 = await analyze('2001:db8:1:2::ffff');
+        assert.equal(r2.status, 429, '2e adresse du même /56 : quota IP déjà consommé');
+        assert.equal(mock.callsTo('gemini').length, 1);
+    });
+
+    test('IP C : quota global (3/jour) atteint → 503 générique, sans appel upstream', async () => {
         const r = await analyze('203.0.113.3');
         assert.equal(r.status, 503);
         assert.match(JSON.parse(r.text).error, /indisponible/);
@@ -91,13 +98,11 @@ describe('quotas Gemini (par IP = 1, global = 2)', () => {
         assert.equal(mock.calls.length, 0);
     });
 
-    test('IPv6 : deux adresses du même /56 partagent le quota', async () => {
-        // Le quota global est épuisé : on vérifie ici l'ordre des contrôles (IP avant global)
-        // via le message 429 pour la 2e adresse du même /56.
-        const r1 = await analyze('2001:db8:1:2::1');
-        assert.equal(r1.status, 503, '1re adresse : quota IP libre mais global épuisé');
-        const r2 = await analyze('2001:db8:1:2::ffff');
-        assert.equal(r2.status, 429, '2e adresse du même /56 : quota IP déjà consommé');
+    test('ordre des contrôles : IP au maximum → 429 même global épuisé ; un 503 ne débite pas l\'IP', async () => {
+        assert.equal((await analyze('203.0.113.1')).status, 429, 'IP A : quota IP vérifié avant le global');
+        // IP C a reçu un 503 au test précédent : son quota IP (1) n'a pas été débité → encore 503, pas 429
+        assert.equal((await analyze('203.0.113.3')).status, 503);
+        assert.equal(mock.calls.length, 0);
     });
 });
 
@@ -118,6 +123,13 @@ describe('quotas RapidAPI (par IP = 1, global = 2)', () => {
         assert.equal(r503.status, 503);
         assertRetryAfter(r503);
         assert.equal(mock.callsTo('rapid').length, 1);
+    });
+
+    test('RapidAPI : un 503 (plafond global) ne débite pas le quota de l\'IP', async () => {
+        // IP C a reçu un 503 au test précédent : avec son quota IP (1) intact, elle reçoit encore 503 et non 429
+        assert.equal((await search('198.51.100.3', 'quota-terme-5')).status, 503);
+        assert.equal((await search('198.51.100.1', 'quota-terme-6')).status, 429, 'IP A : quota IP vérifié avant le global');
+        assert.equal(mock.calls.length, 0);
     });
 
     test('un terme en cache reste servi même quota épuisé', async () => {
