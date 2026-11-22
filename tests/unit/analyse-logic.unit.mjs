@@ -30,10 +30,10 @@ globalThis.sessionStorage = new MemoryStorage();
 
 const JS = new URL('../../public/js/', import.meta.url);
 // Mêmes URL (avec ?v=) que celles importées par analyse.js : une seule instance par module.
-const products = await import(new URL('analyse/products.js?v=2026112202', JS).href);
-const cart = await import(new URL('analyse/cart.js?v=2026112202', JS).href);
-const session = await import(new URL('analyse/session-data.js?v=2026112202', JS).href);
-const settings = await import(new URL('analyse/settings.js?v=2026112202', JS).href);
+const products = await import(new URL('analyse/products.js?v=2026112203', JS).href);
+const cart = await import(new URL('analyse/cart.js?v=2026112203', JS).href);
+const session = await import(new URL('analyse/session-data.js?v=2026112203', JS).href);
+const settings = await import(new URL('analyse/settings.js?v=2026112203', JS).href);
 const { isTrackingAllowed, hasConsentDecision } = await import(new URL('consent.js', JS).href);
 
 const {
@@ -601,19 +601,13 @@ describe('non-régression différentielle vs implémentation d\'origine', () => 
 });
 
 // ============================================================================
-// Payloads de suivi / inscription (aucune donnée de profil superflue)
+// Payloads de suivi (aucune donnée de profil superflue)
 // ============================================================================
-const { buildTrackClickPayload } = await import(new URL('analyse/purchase.js?v=2026112202', JS).href);
-const { buildSubscribeContext } = await import(new URL('analyse/email-capture.js?v=2026112202', JS).href);
+const { buildTrackClickPayload } = await import(new URL('analyse/purchase.js?v=2026112203', JS).href);
 
 describe('payloads analyse', () => {
     test('buildTrackClickPayload : valeurs par défaut et champs limités', () => {
         assert.deepEqual(buildTrackClickPayload({}), { product: 'Produit Inconnu', price: '0', asin: '', consent: true });
         assert.deepEqual(buildTrackClickPayload({ product: 'P', price: '9 €', asin: 'B0', recipient: 'Julie' }), { product: 'P', price: '9 €', asin: 'B0', consent: true });
-    });
-    test('buildSubscribeContext : première personne et produit affiché', () => {
-        assert.deepEqual(buildSubscribeContext([]), { prenomCible: null, cadeauChoisi: null });
-        assert.deepEqual(buildSubscribeContext([{ personne: { nom: 'Julie' }, currentIndex: 1, products: [{ title: 'a' }, { title: 'b' }] }]),
-            { prenomCible: 'Julie', cadeauChoisi: 'b' });
     });
 });

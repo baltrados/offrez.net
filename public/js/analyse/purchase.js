@@ -6,7 +6,7 @@
 
 import { sanitizeUrl } from '../security.js?v=2026112001';
 import { isTrackingAllowed } from '../consent.js';
-import { PURCHASE_COUNTDOWN_SECONDS, SHARE_FEEDBACK_MS } from './settings.js?v=2026112202';
+import { PURCHASE_COUNTDOWN_SECONDS, SHARE_FEEDBACK_MS } from './settings.js?v=2026112203';
 
 const SHARE_URL = 'https://offrez.net';
 

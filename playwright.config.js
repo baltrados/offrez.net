@@ -32,7 +32,6 @@ module.exports = defineConfig({
             // Valeurs vides : dotenv ne réinjecte pas un éventuel .env local (aucune vraie clé en E2E)
             GEMINI_API_KEY: '',
             RAPIDAPI_KEY: '',
-            BREVO_API_KEY: '',
         },
     },
     projects: [

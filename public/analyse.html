@@ -100,50 +100,8 @@
                     <!-- CONTENEUR DES RÉSULTATS : C'est ici que les cartes cadeaux sont injectées -->
                     <div id="singleResult" class="single-result-container"></div>
 
-                    <!-- Navigation buttons (Ancienne version, maintenant intégré dans les cartes) -->
-                    <div id="resultNavigation" class="result-nav" style="display: none;">
-                        <button id="btnNextSuggestion" class="btn btn-primary btn-large">
-                            <i class="fas fa-shuffle"></i> Pas convaincu ? Autre suggestion
-                        </button>
-                        <p id="suggestionCounter" class="suggestion-counter"></p>
-                    </div>
-
                     <!-- PANIER GLOBAL : Résumé des sélections et bouton d'achat groupé -->
                     <div id="cartContainer" class="cart-container" style="display: none;"></div>
-
-                    <!-- COLLECTE EMAILS (Newsletter / Sauvegarde) -->
-                    <div id="emailCapture" class="email-capture-card" style="display: none;">
-                        <div class="email-content">
-                            <div class="email-icon-wrapper">
-                                <i class="fas fa-envelope-open-text"></i>
-                            </div>
-                            <div class="email-text">
-                                <h3>🔔 Un rappel avant le jour J ?</h3>
-                                <p>On vous envoie un seul email de rappel quelques jours avant l'occasion, avec des
-                                    idées fraîches. <strong>Aucune newsletter, aucun spam – uniquement le
-                                        rappel.</strong></p>
-                            </div>
-                        </div>
-
-                        <form id="emailForm" class="email-form">
-                            <div class="input-group">
-                                <input type="email" id="userEmail" placeholder="Votre email" required>
-                                <button type="submit" class="btn btn-secondary">
-                                    <i class="fas fa-paper-plane"></i>
-                                </button>
-                            </div>
-                            <div class="form-check-legal">
-                                <input type="checkbox" id="emailConsent" required>
-                                <label for="emailConsent">J'accepte que mon email soit utilisé pour m'envoyer ce rappel.
-                                    <a href="politique-confidentialite.html" target="_blank">En savoir
-                                        plus</a>.</label>
-                            </div>
-                            <p id="emailError" class="form-error" role="alert"></p>
-                        </form>
-                        <div id="emailSuccess" class="email-success" style="display: none;">
-                            <i class="fas fa-check-circle"></i> C'est envoyé !
-                        </div>
-                    </div>
 
                     <div class="action-buttons" style="margin-top: 2rem;">
                         <a href="index.html" class="btn btn-secondary"
@@ -182,7 +140,7 @@
     </div>
 
     <!-- Script logique principal (Le cerveau) -->
-    <script src="js/analyse.js?v=2026112202" type="module"></script>
+    <script src="js/analyse.js?v=2026112203" type="module"></script>
 
     <!-- Footer -->
     <footer class="site-footer">

@@ -4,16 +4,16 @@
  * 1. Récupère les profils de l'étape 2 (et les retire du localStorage, voir analyse/session-data.js).
  * 2. Pour chaque profil : suggestions IA (serveur → Gemini), recherches Amazon (serveur → RapidAPI),
  *    filtrage / scoring / déduplication (analyse/products.js), recherche de secours si besoin.
- * 3. Affiche les résultats (analyse/render.js), la modale email et le suivi des clics d'achat.
+ * 3. Affiche les résultats (analyse/render.js) et le suivi des clics d'achat.
  *
  * Modules : analyse/settings.js (constantes), products.js et cart.js (logique pure, testée sous Node),
  * session-data.js (cycle de vie de finalData), ui.js (progression, erreurs), render.js (cartes, panier),
- * email-capture.js, purchase.js.
+ * purchase.js.
  * Versionnage : tout module versionné importé ici porte le même ?v= que ce fichier dans analyse.html
  * (voir documentation/14_SUIVI_CHANTIER_QUALITE.md §3).
  */
 
-import { callGemini, searchAmazon } from './api.js?v=2026112202';
+import { callGemini, searchAmazon } from './api.js?v=2026112203';
 import {
     normalizeProfile,
     buildAnalyzePayload,
@@ -23,12 +23,11 @@ import {
     dedupeProducts,
     buildFallbackTerms,
     filterFallbackProducts
-} from './analyse/products.js?v=2026112202';
-import { takeAnalysisData, purgeAnalysisData } from './analyse/session-data.js?v=2026112202';
-import { updateProgress, hideStatusIndicator, showMissingDataState, showFatalErrorOverlay } from './analyse/ui.js?v=2026112202';
-import { renderResults } from './analyse/render.js?v=2026112202';
-import { initEmailCapture } from './analyse/email-capture.js?v=2026112202';
-import { initPurchaseTracking } from './analyse/purchase.js?v=2026112202';
+} from './analyse/products.js?v=2026112203';
+import { takeAnalysisData, purgeAnalysisData } from './analyse/session-data.js?v=2026112203';
+import { updateProgress, hideStatusIndicator, showMissingDataState, showFatalErrorOverlay } from './analyse/ui.js?v=2026112203';
+import { renderResults } from './analyse/render.js?v=2026112203';
+import { initPurchaseTracking } from './analyse/purchase.js?v=2026112203';
 import {
     GEMINI_MAX_ATTEMPTS,
     GEMINI_RETRY_DELAY_MS,
@@ -39,7 +38,7 @@ import {
     PROGRESS_START,
     PROGRESS_PROFILES_BASE,
     PROGRESS_PROFILES_SPAN
-} from './analyse/settings.js?v=2026112202';
+} from './analyse/settings.js?v=2026112203';
 
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -178,12 +177,6 @@ async function lancerAnalyse() {
     // RGPD : profils purgés une fois l'analyse terminée ; copie de session gardée seulement si
     // l'échec est technique (« Réessayer » recharge la page et relance l'analyse).
     purgeAnalysisData({ keepForRetry: personResults.length === 0 && apiFailures > 0 });
-
-    // Les résultats sont déjà affichés et les données purgées : un échec de la modale email
-    // (fonction annexe) ne doit pas déclencher l'écran d'erreur fatal avec un « Réessayer » sans données.
-    try {
-        initEmailCapture(personResults);
-    } catch { /* modale email indisponible : sans impact sur les résultats */ }
 }
 
 initPurchaseTracking();

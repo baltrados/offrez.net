@@ -87,17 +87,6 @@ export function truncateText(text, maxLength = 50) {
 }
 
 /**
- * Valide un email côté client.
- * @param {string} email - Email à valider
- * @returns {boolean}
- */
-export function isValidEmail(email) {
-    if (!email || typeof email !== 'string') return false;
-    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return regex.test(email.trim());
-}
-
-/**
  * Génère un ID unique pour les éléments DOM.
  * @returns {string}
  */

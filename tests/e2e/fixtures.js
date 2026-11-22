@@ -42,7 +42,6 @@ async function isolateNetwork(page, baseURL) {
     // Tracking : jamais transmis au vrai serveur (pas d'écriture CSV, pas de rate limit consommé)
     await page.route('**/api/track-click', (route) => route.fulfill({ json: { success: true } }));
     await page.route('**/api/track-profiles', (route) => route.fulfill({ json: { success: true, count: 1 } }));
-    await page.route('**/api/subscribe', (route) => route.fulfill({ json: { success: true } }));
 }
 
 const test = base.test.extend({

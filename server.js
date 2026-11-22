@@ -39,14 +39,12 @@ const {
     createPerKeyDailyQuota,
     quotaClientKey,
     parsePositiveIntEnv,
-    fetchWithTimeout,
     fetchJsonWithTimeout
 } = require('./lib/analyze');
 
 // Timeouts des appels externes (ms)
 const GEMINI_TIMEOUT_MS = 20000;
 const RAPIDAPI_TIMEOUT_MS = 10000;
-const BREVO_TIMEOUT_MS = 8000;
 
 // [LOT1] Modèle Gemini configurable, format strictement contrôlé (il est inséré dans l'URL)
 // gemini-2.0-flash et gemini-2.5-flash-lite ne sont plus disponibles pour les nouvelles clés (404, nov. 2026).
@@ -162,53 +160,6 @@ setInterval(() => {
     if (purged > 0) log(`[CACHE PURGE] ${purged} entrées expirées supprimées`);
 }, 30 * 60 * 1000).unref(); // [LOT2] ne maintient pas le process en vie (tests) ; le serveur HTTP le fait en prod
 
-// ============================================
-// INTÉGRATION BREVO (Email Marketing)
-// ============================================
-async function sendToBrevo(email, attributes = {}) {
-    if (!process.env.BREVO_API_KEY) {
-        console.warn('[BREVO] API Key manquante, email non envoyé');
-        return false;
-    }
-    try {
-        // Construction du body avec attributs optionnels
-        const body = {
-            email: email,
-            listIds: [2],
-            updateEnabled: true
-        };
-
-        // Ajout des attributs de contexte cadeau (si fournis)
-        const attrs = {};
-        if (attributes.prenomCible) attrs.PRENOM_CIBLE = String(attributes.prenomCible).slice(0, 100);
-        if (attributes.cadeauChoisi) attrs.CADEAU_CHOISI = String(attributes.cadeauChoisi).slice(0, 200);
-        if (Object.keys(attrs).length > 0) body.attributes = attrs;
-
-        const res = await fetchWithTimeout('https://api.brevo.com/v3/contacts', {
-            method: 'POST',
-            headers: {
-                'api-key': process.env.BREVO_API_KEY,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(body)
-        }, BREVO_TIMEOUT_MS);
-        if (!res.ok) {
-            // [LOT1] Statut seul : le corps d'erreur Brevo peut contenir l'email ou des détails internes
-            console.error('[BREVO] Erreur API: HTTP', res.status);
-        }
-        // Libère la connexion sans exploiter le corps
-        res.body?.cancel?.().catch?.(() => {});
-        return res.ok;
-    } catch (e) {
-        if (e && e.name === 'AbortError') {
-            console.error('[BREVO] Timeout upstream');
-        } else {
-            console.error('[BREVO] Erreur réseau:', safeErrorInfo(e));
-        }
-        return false;
-    }
-}
-
 // ======================
 // CONFIGURATION EXPRESS
 // ======================
@@ -247,14 +198,6 @@ const strictLimiter = rateLimit({
 });
 
 // [LOT0 H3] Limites dédiées aux endpoints d'écriture / tracking
-const subscribeLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    limit: 5,
-    message: { error: 'Trop de tentatives d\'inscription. Réessayez dans 15 minutes.' },
-    standardHeaders: true,
-    legacyHeaders: false,
-});
-
 const trackClickLimiter = rateLimit({
     windowMs: 1 * 60 * 1000,
     limit: 30,
@@ -703,42 +646,6 @@ app.get('/api/search', apiLimiter, async (req, res) => {
         }
         console.error('[RAPIDAPI AMAZON] Erreur serveur:', safeErrorInfo(error));
         res.status(502).json({ error: 'Service de recherche momentanément indisponible. Réessayez plus tard.' });
-    }
-});
-
-// ============================================
-// ENDPOINT EMAILS : /api/subscribe (Lead Magnet)
-// ============================================
-
-app.post('/api/subscribe', subscribeLimiter, async (req, res) => {
-    try {
-        const { email, consent, prenomCible, cadeauChoisi } = req.body || {};
-
-        // Validation stricte (Regex standard) — chaîne uniquement (pas de tableau coercé), 254 car. max (RFC 5321)
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (typeof email !== 'string' || email.length > 254 || !emailRegex.test(email)) {
-            return res.status(400).json({ error: 'Format email invalide (ex: nom@domaine.com)' });
-        }
-        // Vérification consent normalisée (boolean depuis JSON body)
-        if (consent !== true) {
-            return res.status(400).json({ error: 'Consentement requis (RGPD)' });
-        }
-
-        // Envoi vers Brevo avec attributs de contexte cadeau
-        const success = await sendToBrevo(email, {
-            prenomCible: typeof prenomCible === 'string' ? prenomCible : undefined,
-            cadeauChoisi: typeof cadeauChoisi === 'string' ? cadeauChoisi : undefined
-        });
-        if (success) {
-            log(`[BREVO] Nouvel inscrit envoyé vers Brevo`);
-            res.json({ success: true, message: 'Email enregistré' });
-        } else {
-            res.status(502).json({ error: 'Erreur lors de l\'envoi. Réessayez plus tard.' });
-        }
-
-    } catch (error) {
-        console.error('[SUBSCRIBE] Erreur serveur:', safeErrorInfo(error));
-        res.status(500).json({ error: 'Erreur serveur. Réessayez plus tard.' });
     }
 });
 

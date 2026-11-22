@@ -62,9 +62,6 @@ export const REVEAL_STAGGER_MS = 150;
 /** Effet de chargement à la découverte d'une nouvelle suggestion : 800 à 1500 ms. */
 export const DISCOVERY_DELAY_MIN_MS = 800;
 export const DISCOVERY_DELAY_JITTER_MS = 700;
-/** Modale email : apparition après ce délai (ms) et durée de l'animation de fermeture (ms). */
-export const EMAIL_MODAL_DELAY_MS = 5000;
-export const EMAIL_MODAL_CLOSE_ANIMATION_MS = 500;
 /** Modale d'achat : compte à rebours avant redirection (secondes). */
 export const PURCHASE_COUNTDOWN_SECONDS = 3;
 /** Retour visuel « Lien copié ! » (ms). */

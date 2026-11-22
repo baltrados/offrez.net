@@ -1,5 +1,5 @@
 'use strict';
-// Tests d'intégration : rate limits des endpoints d'écriture, tracking sans consentement, inscription Brevo.
+// Tests d'intégration : rate limits des endpoints d'écriture, tracking sans consentement, route d'inscription supprimée.
 // Chaque scénario utilise sa propre IP (X-Forwarded-For, trust proxy = 1) : les compteurs en mémoire
 // du process ne se « volent » pas les requêtes entre tests.
 // Aucun test n'envoie consent:true à /api/track-click : clicks.csv ne doit jamais être créé.
@@ -9,10 +9,10 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const {
-    TEST_KEYS, configureEnv, installFetchMock, jsonResponse, startServer, uniqueIp, assertNoLeak
+    configureEnv, installFetchMock, startServer, uniqueIp
 } = require('./helpers');
 
-configureEnv({ BREVO_API_KEY: TEST_KEYS.BREVO_API_KEY });
+configureEnv();
 const { app } = require('../../server.js');
 
 const ROOT = path.resolve(__dirname, '..', '..');
@@ -47,62 +47,11 @@ async function postJson(p, body, ip) {
     return { status: res.status, text, json, headers: res.headers };
 }
 
-describe('POST /api/subscribe', () => {
-    test('email valide + consentement → 200, Brevo appelé avec la clé en header', async () => {
-        mock.handlers.brevo = () => jsonResponse(201, { id: 42 });
-        const r = await postJson('/api/subscribe', {
-            email: 'test@example.com', consent: true, prenomCible: 'Marie', cadeauChoisi: 'Coffret thé'
-        }, uniqueIp());
-        assert.equal(r.status, 200);
-        assert.deepEqual(r.json, { success: true, message: 'Email enregistré' });
-        const calls = mock.callsTo('brevo');
-        assert.equal(calls.length, 1);
-        assert.equal(calls[0].headers['api-key'], TEST_KEYS.BREVO_API_KEY);
-        assert.ok(!calls[0].url.includes(TEST_KEYS.BREVO_API_KEY));
-        assert.deepEqual(calls[0].json, {
-            email: 'test@example.com',
-            listIds: [2],
-            updateEnabled: true,
-            attributes: { PRENOM_CIBLE: 'Marie', CADEAU_CHOISI: 'Coffret thé' }
-        });
-    });
-
-    test('erreur Brevo → 502 générique sans détails', async () => {
-        mock.handlers.brevo = () => jsonResponse(400, { code: 'invalid_parameter', message: 'email test@example.com is invalid' });
+describe('POST /api/subscribe (route supprimée)', () => {
+    test('renvoie 404 et ne contacte aucun service externe', async () => {
         const r = await postJson('/api/subscribe', { email: 'test@example.com', consent: true }, uniqueIp());
-        assert.equal(r.status, 502);
-        assert.ok(!r.text.includes('invalid_parameter'));
-        assertNoLeak(assert, r.text);
-    });
-
-    for (const [label, body] of [
-        ['email invalide', { email: 'pas-un-email', consent: true }],
-        ['email tableau', { email: ['a@b.fr'], consent: true }],
-        ['email trop long', { email: `${'a'.repeat(250)}@b.fr`, consent: true }],
-        ['consentement absent', { email: 'a@b.fr' }],
-        ['consentement chaîne "true"', { email: 'a@b.fr', consent: 'true' }]
-    ]) {
-        test(`${label} → 400, Brevo non appelé`, async () => {
-            const r = await postJson('/api/subscribe', body, uniqueIp());
-            assert.equal(r.status, 400);
-            assert.equal(mock.calls.length, 0);
-        });
-    }
-
-    test('rate limit : la 6e tentative en 15 min depuis la même IP → 429', async () => {
-        const ip = uniqueIp();
-        for (let i = 1; i <= 5; i++) {
-            const r = await postJson('/api/subscribe', { email: 'invalide', consent: true }, ip);
-            assert.equal(r.status, 400, `tentative ${i}`);
-        }
-        const r6 = await postJson('/api/subscribe', { email: 'test@example.com', consent: true }, ip);
-        assert.equal(r6.status, 429);
-        assert.match(r6.json.error, /15 minutes/);
-        assert.ok(r6.headers.get('ratelimit-policy') || r6.headers.get('ratelimit'), 'en-têtes RateLimit standard');
-        assert.equal(mock.calls.length, 0, 'Brevo non appelé une fois la limite atteinte');
-        // Une autre IP n'est pas impactée
-        const other = await postJson('/api/subscribe', { email: 'invalide', consent: true }, uniqueIp());
-        assert.equal(other.status, 400);
+        assert.equal(r.status, 404);
+        assert.equal(mock.calls.length, 0);
     });
 });
 
