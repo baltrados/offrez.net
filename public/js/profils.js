@@ -7,7 +7,6 @@
 
 import { STORAGE_KEYS, LIMITS } from './constants.js';
 import { escapeHtml } from './security.js';
-import { isTrackingAllowed } from './consent.js';
 
 const interets = [
     { value: "Sport", emoji: "⚽" },
@@ -253,19 +252,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 contexte: currentConfig.occasion,
                 equipe
             }));
-
-            // TRACKING (RGPD) — seulement si le suivi est autorisé (consentement accepté et non expiré).
-            // Contrat /api/track-profiles : uniquement le NOMBRE de profils, jamais leur contenu
-            // (prénoms, âges, intérêts, texte libre restent dans le navigateur).
-            if (isTrackingAllowed()) {
-                // FIX #9 : sendBeacon au lieu de fetch (évite l'annulation lors de la navigation)
-                try {
-                    navigator.sendBeacon('/api/track-profiles', new Blob([JSON.stringify({
-                        count: equipe.length,
-                        consent: true
-                    })], { type: 'application/json' }));
-                } catch (e) { } // Fire-and-forget
-            }
 
             window.location.href = 'analyse.html';
         } catch (e) {

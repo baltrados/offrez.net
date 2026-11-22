@@ -1,6 +1,5 @@
 // @ts-check
-// Fixtures E2E partagées : aucune requête ne sort de 127.0.0.1:3100 et les endpoints d'écriture
-// (tracking) sont mockés, pour ne jamais créer de CSV ni consommer les rate limits du serveur.
+// Fixtures E2E partagées : aucune requête ne sort de 127.0.0.1:3100.
 const base = require('@playwright/test');
 
 const CONSENT_KEY = 'OFFREZ_cookie_consent';
@@ -39,9 +38,6 @@ async function isolateNetwork(page, baseURL) {
         }
         return route.fulfill({ status: 204, body: '' });
     });
-    // Tracking : jamais transmis au vrai serveur (pas d'écriture CSV, pas de rate limit consommé)
-    await page.route('**/api/track-click', (route) => route.fulfill({ json: { success: true } }));
-    await page.route('**/api/track-profiles', (route) => route.fulfill({ json: { success: true, count: 1 } }));
 }
 
 const test = base.test.extend({

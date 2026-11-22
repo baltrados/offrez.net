@@ -197,23 +197,6 @@ const strictLimiter = rateLimit({
     message: { error: 'Limite d\'analyses atteinte, patientez une minute.' },
 });
 
-// [LOT0 H3] Limites dédiées aux endpoints d'écriture / tracking
-const trackClickLimiter = rateLimit({
-    windowMs: 1 * 60 * 1000,
-    limit: 30,
-    message: { error: 'Trop de requêtes. Veuillez patienter une minute.' },
-    standardHeaders: true,
-    legacyHeaders: false,
-});
-
-const trackProfilesLimiter = rateLimit({
-    windowMs: 1 * 60 * 1000,
-    limit: 10,
-    message: { error: 'Trop de requêtes. Veuillez patienter une minute.' },
-    standardHeaders: true,
-    legacyHeaders: false,
-});
-
 // ----------------------
 // Helpers erreurs (ne jamais exposer de détails internes / upstream au client)
 // ----------------------
@@ -240,58 +223,6 @@ function sendUpstreamError(res, upstreamStatus) {
         return res.status(429).json({ error: 'Service saturé, réessayez dans quelques instants.' });
     }
     return res.status(502).json({ error: 'Service momentanément indisponible. Réessayez plus tard.' });
-}
-
-// ----------------------
-// [LOT0 H3] Écriture CSV analytics plafonnée
-// ----------------------
-// Taille max par fichier CSV : 10 Mo par défaut, surchargeable via la variable
-// d'environnement MAX_CSV_BYTES (entier positif en octets ; valeur invalide ignorée).
-const DEFAULT_MAX_CSV_BYTES = 10 * 1024 * 1024;
-const MAX_CSV_BYTES = (() => {
-    const raw = (process.env.MAX_CSV_BYTES || '').trim();
-    if (!raw) return DEFAULT_MAX_CSV_BYTES;
-    const n = /^\d+$/.test(raw) ? Number(raw) : NaN;
-    if (!Number.isSafeInteger(n) || n <= 0) {
-        console.warn('[ANALYTICS] MAX_CSV_BYTES invalide, valeur par défaut utilisée (10 Mo)');
-        return DEFAULT_MAX_CSV_BYTES;
-    }
-    return n;
-})();
-const csvCapWarned = new Set();
-
-// Neutralise un champ CSV : une ligne = un enregistrement, longueur bornée,
-// guillemets échappés et protection contre l'injection de formules.
-function csvField(value, maxLen) {
-    let s = String(value ?? '').replace(/[\r\n\t]+/g, ' ').slice(0, maxLen);
-    s = s.replace(/"/g, '""');
-    if (/^[=+\-@]/.test(s)) s = "'" + s;
-    return s;
-}
-
-// Ajoute une ligne (asynchrone) ; crée le fichier avec l'en-tête si absent.
-// Si le fichier atteint le plafond, l'écriture est ignorée (warning une seule fois par fichier).
-async function appendCsvLine(filePath, header, line) {
-    let size = 0;
-    try {
-        size = (await fs.promises.stat(filePath)).size;
-    } catch (e) {
-        if (e.code !== 'ENOENT') throw e;
-        try {
-            await fs.promises.writeFile(filePath, header, { flag: 'wx' });
-        } catch (e2) {
-            if (e2.code !== 'EEXIST') throw e2;
-        }
-    }
-    if (size >= MAX_CSV_BYTES) {
-        if (!csvCapWarned.has(filePath)) {
-            csvCapWarned.add(filePath);
-            console.warn(`[ANALYTICS] ${path.basename(filePath)} a atteint la taille max (${MAX_CSV_BYTES} octets) : écritures ignorées`);
-        }
-        return false;
-    }
-    await fs.promises.appendFile(filePath, line);
-    return true;
 }
 
 // ----------------------
@@ -549,8 +480,6 @@ app.post('/api/analyze', strictLimiter, async (req, res) => {
 // ============================================
 app.get('/api/search', apiLimiter, async (req, res) => {
     try {
-        const { consent } = req.query;
-
         // [LOT1] Validation stricte : terme borné, prix entiers uniquement (aucune injection
         // de paramètres possible dans l'URL RapidAPI), garde-fous min 4€ / max 5000€ / max >= min.
         const params = normalizeSearchParams(req.query);
@@ -597,20 +526,6 @@ app.get('/api/search', apiLimiter, async (req, res) => {
 
         log(`[RAPIDAPI AMAZON] Requête (${term.length} car., ${minPrice ?? '-'}€-${maxPrice ?? '-'}€)`);
 
-        // FIX #14 : Normalisation du consentement (string 'true' depuis query params)
-        const hasConsent = consent === 'true' || consent === true;
-
-        // TRACKING ANALYTICS (Recherches populaires)
-        if (hasConsent) {
-            // Fichier hors du dossier public (racine du repo). Écriture async, plafonnée, non bloquante.
-            const searchLogPath = path.join(__dirname, 'searches.csv');
-            const searchTimestamp = new Date().toISOString();
-            // FIX #7 : Échappement CSV renforcé (protection injection formules) + longueurs bornées
-            const searchLine = `"${searchTimestamp}","${csvField(term, 200)}","${csvField(minPrice ?? '', 20)}","${csvField(maxPrice ?? '', 20)}"\n`;
-            appendCsvLine(searchLogPath, '"timestamp","term","min_price","max_price"\n', searchLine)
-                .catch(err => console.error('[ANALYTICS] Erreur écriture searches.csv:', safeErrorInfo(err)));
-        }
-
         const { ok, status, data } = await fetchJsonWithTimeout(url, {
             method: 'GET',
             headers: {
@@ -646,87 +561,6 @@ app.get('/api/search', apiLimiter, async (req, res) => {
         }
         console.error('[RAPIDAPI AMAZON] Erreur serveur:', safeErrorInfo(error));
         res.status(502).json({ error: 'Service de recherche momentanément indisponible. Réessayez plus tard.' });
-    }
-});
-
-// ============================================
-// ENDPOINT TRACKING CLICS : /api/track-click
-// ============================================
-app.post('/api/track-click', trackClickLimiter, (req, res) => {
-    try {
-        const { product, price, asin, consent } = req.body || {};
-
-        // FIX #14 : Vérification consent normalisée (boolean depuis JSON body)
-        if (consent !== true) {
-            return res.json({ success: false, reason: 'Consent required' });
-        }
-
-        // FIX #13 : req.socket au lieu de req.connection
-        const ip = hashIp(req.ip || req.socket?.remoteAddress); // RGPD : IP hashée
-        const timestamp = new Date().toISOString();
-
-        // FIX #7 : Échappement CSV renforcé (protection injection formules) + longueurs bornées
-        // Types stricts : seules les chaînes (et nombres pour le prix) sont acceptées, sinon valeur par défaut
-        const asText = (v, allowNumber = false) =>
-            typeof v === 'string' ? v : (allowNumber && typeof v === 'number' && Number.isFinite(v) ? String(v) : '');
-        const safeProduct = csvField(asText(product) || 'Inconnu', 300);
-        const safePrice = csvField((asText(price, true) || '0').replace('€', '').trim(), 20);
-        const safeAsin = csvField(asText(asin).replace(/"/g, ''), 20);
-
-        const csvLine = `"${timestamp}","${ip}","${safeProduct}","${safePrice}","${safeAsin}"\n`;
-
-        // Fichier hors du dossier public (racine du repo). Écriture async, plafonnée, non bloquante :
-        // la réponse au client reste 200 même si le plafond est atteint ou l'écriture échoue.
-        const filePath = path.join(__dirname, 'clicks.csv');
-        appendCsvLine(filePath, '"timestamp","ip","product_name","price","asin"\n', csvLine)
-            .catch(err => console.error('[ANALYTICS] Erreur écriture clicks.csv:', safeErrorInfo(err)));
-
-        res.json({ success: true });
-    } catch (e) {
-        console.error('[TRACK-CLICK] Erreur serveur:', safeErrorInfo(e));
-        // [LOT0 C1] Jamais de message d'erreur brut côté client, quel que soit NODE_ENV
-        res.status(500).json({ error: 'Erreur serveur' });
-    }
-});
-
-// ============================================
-// ENDPOINT TRACKING PROFILS : /api/track-profiles
-// ============================================
-// [LOT4b] Contrat : { count: entier 1..10, consent: true } — le navigateur n'envoie plus que le NOMBRE
-// de profils. Transition : l'ancien format { profiles: [...], consent } reste accepté (seule la longueur
-// est utilisée, plafonnée à MAX_TRACKED_PROFILES ; le contenu n'est jamais lu ni journalisé).
-const MAX_TRACKED_PROFILES = 10;
-function resolveTrackedProfileCount(body) {
-    if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
-    if (Object.prototype.hasOwnProperty.call(body, 'count')) {
-        const { count } = body;
-        return Number.isInteger(count) && count >= 1 && count <= MAX_TRACKED_PROFILES ? count : null;
-    }
-    if (Array.isArray(body.profiles) && body.profiles.length > 0) {
-        return Math.min(body.profiles.length, MAX_TRACKED_PROFILES);
-    }
-    return null;
-}
-
-app.post('/api/track-profiles', trackProfilesLimiter, (req, res) => {
-    try {
-        const body = req.body || {};
-
-        if (body.consent !== true) {
-            return res.json({ success: false, reason: 'no_consent' });
-        }
-
-        const count = resolveTrackedProfileCount(body);
-        if (count === null) {
-            return res.status(400).json({ error: 'Requête invalide' });
-        }
-
-        // Plus de stockage de profils (RGPD) : seul le nombre est journalisé (hors production)
-        log(`[PROFILES] ${count} profil(s) signalé(s) (non stockés)`);
-        res.json({ success: true, count });
-    } catch (e) {
-        console.error('[TRACK-PROFILES] Erreur serveur:', safeErrorInfo(e));
-        res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 

@@ -9,8 +9,6 @@
  * Les clés API (Gemini, RapidAPI) ne sont JAMAIS exposées ici, elles restent sur le serveur.
  */
 
-import { isTrackingAllowed } from './consent.js';
-
 // ============================================
 // MODE DEBUG VERBEUX - Console F12
 // ============================================
@@ -31,15 +29,6 @@ function apiError(label, error) {
 // Détermine l'URL de base du serveur (même origine en production)
 const API_BASE = window.location.origin;
 apiLog('🌐', 'API_BASE configuré', API_BASE);
-
-/**
- * Statut de consentement transmis au serveur (paramètre `consent` de /api/search).
- * Basé sur isTrackingAllowed() : consentement accepté ET non expiré.
- * @returns {string} 'true' ou 'false'
- */
-function getConsentStatus() {
-    return isTrackingAllowed() ? 'true' : 'false';
-}
 
 /**
  * Demande des suggestions de cadeaux au serveur (qui construit le prompt Gemini).
@@ -157,8 +146,7 @@ export async function searchAmazon(term, budget, minPrice = 10) {
     const params = new URLSearchParams({
         term: safeTerm,
         min_price: String(safeMin),
-        max_price: String(safeBudget),
-        consent: getConsentStatus()
+        max_price: String(safeBudget)
     });
 
     const controller = new AbortController();

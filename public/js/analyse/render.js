@@ -5,8 +5,8 @@
  */
 
 import { escapeHtml, buildAffiliateUrl } from '../security.js?v=2026112001';
-import { getSelectedProducts, computeCartTotal, generateCartURL } from './cart.js?v=2026112203';
-import { buildAnalysisFailedState } from './ui.js?v=2026112203';
+import { getSelectedProducts, computeCartTotal, generateCartURL } from './cart.js?v=2026112204';
+import { buildAnalysisFailedState } from './ui.js?v=2026112204';
 import {
     AFFILIATE_TAG,
     TITLE_MAX_CHARS,
@@ -14,7 +14,7 @@ import {
     REVEAL_STAGGER_MS,
     DISCOVERY_DELAY_MIN_MS,
     DISCOVERY_DELAY_JITTER_MS
-} from './settings.js?v=2026112203';
+} from './settings.js?v=2026112204';
 
 const PLACEHOLDER_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect fill='%231e293b' width='200' height='200'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%2394a3b8' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E";
 

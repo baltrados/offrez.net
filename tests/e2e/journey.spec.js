@@ -94,7 +94,8 @@ test('parcours utilisateur complet jusqu\'à la carte cadeau affiliée', async (
     // Recherche : prix entiers (le serveur n'accepte que ^\d{1,5}$), max 2 recherches
     expect(searchRequests.length).toBeGreaterThanOrEqual(1);
     expect(searchRequests.length).toBeLessThanOrEqual(2);
-    expect(searchRequests[0]).toMatchObject({ term: 'montre sport homme', min_price: '9', max_price: '49', consent: 'true' });
+    expect(searchRequests[0]).toMatchObject({ term: 'montre sport homme', min_price: '9', max_price: '49' });
+    expect(searchRequests[0]).not.toHaveProperty('consent');
 
     // CTA affilié : https://www.amazon.fr/..., un seul tag, celui d'OFFREZ
     const cta = giftCard.locator('a.btn-amazon-cta');

@@ -114,13 +114,11 @@ document.cookie;
 | Fichier | Contenu | Ouvrir avec |
 |---------|---------|-------------|
 | `emails.csv` | Liste des inscrits email | Excel |
-| `searches.csv` | Historique des recherches | Excel |
-| `clicks.csv` | Clics vers Amazon | Excel |
 
 ### Exporter les données (PowerShell)
 ```powershell
 # Copier les CSV vers le Bureau
-Copy-Item emails.csv, searches.csv, clicks.csv $env:USERPROFILE\Desktop\
+Copy-Item emails.csv $env:USERPROFILE\Desktop\
 ```
 
 ---

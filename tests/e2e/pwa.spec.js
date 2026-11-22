@@ -5,7 +5,7 @@ const { test, expect } = require('./fixtures');
 
 test.use({ serviceWorkers: 'allow' });
 
-const CACHE_NAME = 'OFFREZ-v18';
+const CACHE_NAME = 'OFFREZ-v19';
 
 /** Attend que le SW soit actif et contrôle la page (après rechargement si nécessaire). */
 async function waitForControl(page) {
