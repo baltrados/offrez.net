@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <base href="/">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page non trouvée - OFFREZ</title>
+    <meta name="robots" content="noindex">
+
+    <link rel="stylesheet" href="fonts/poppins.css">
+    <link rel="preload" href="fonts/outfit-latin.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="style.min.css?v=202611241200">
+    <link rel="stylesheet" href="css/fontawesome/fa-offrez.min.css">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <script src="/js/sw-register.js" defer></script>
+
+    <style>
+        .error-container {
+            min-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .error-code {
+            font-size: 8rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+            margin-bottom: 1rem;
+        }
+
+        .error-title {
+            font-size: 2rem;
+            color: var(--text);
+            margin-bottom: 1rem;
+        }
+
+        .error-message {
+            color: var(--text-secondary);
+            max-width: 500px;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .error-actions {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .error-illustration {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-shell">
+        <header class="app-header">
+            <div class="header-inner">
+                <a href="index.html" class="logo-link">
+                    <span class="brand-logo">OFFRE<span class="brand-z">Z</span></span>
+                </a>
+            </div>
+        </header>
+
+        <main class="error-container">
+            <div class="error-illustration">???</div>
+            <div class="error-code">404</div>
+            <h1 class="error-title">Oups ! Page introuvable</h1>
+            <p class="error-message">
+                Le cadeau parfait n'est pas ici... mais on peut quand même t'aider à le trouver !
+                La page que tu cherches n'existe pas ou a été déplacée.
+            </p>
+            <div class="error-actions">
+                <a href="index.html" class="btn btn-primary">
+                    <i class="fas fa-home"></i> Retour à l'accueil
+                </a>
+                <a href="config.html" class="btn btn-secondary">
+                    <i class="fas fa-magic"></i> Trouver un cadeau
+                </a>
+            </div>
+        </main>
+
+        <footer class="site-footer">
+            <div class="footer-content">
+                <p class="amazon-affiliate">En tant que Partenaire Amazon, je réalise un bénéfice sur les achats
+                    remplissant les conditions requises.</p>
+                <div class="footer-links">
+                    <a href="mentions-legales.html">Mentions légales</a>
+                    <a href="politique-confidentialite.html">Confidentialité</a>
+                    <a href="cgu.html">CGU</a>
+                    <a href="blog.html">Blog</a>
+            </div>
+                <p class="copyright">© 2026 OFFREZ - Tous droits réservés</p>
+            </div>
+        </footer>
+    </div>
+</body>
+
+</html>
+
+

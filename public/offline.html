@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hors ligne - OFFREZ</title>
+    <meta name="robots" content="noindex">
+
+    <!-- Page de secours servie par le service worker (sw.js) : chemins absolus car elle peut
+         remplacer n'importe quelle URL, y compris /blog/*.html -->
+    <link rel="stylesheet" href="/style.min.css?v=202611241200">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <script src="/js/sw-register.js" defer></script>
+</head>
+
+<body>
+    <div class="app-shell">
+        <header class="app-header">
+            <div class="header-inner">
+                <a href="/" class="logo-link">
+                    <span class="brand-logo">OFFRE<span class="brand-z">Z</span></span>
+                </a>
+            </div>
+        </header>
+
+        <main class="container legal-page">
+            <div class="card">
+                <h1>Vous êtes hors ligne</h1>
+                <p class="legal-intro">Cette page n'est pas disponible sans connexion internet.
+                    Vérifiez votre connexion puis réessayez : les pages déjà consultées restent accessibles.</p>
+                <p>
+                    <a href="/" class="btn btn-primary">Réessayer</a>
+                </p>
+            </div>
+        </main>
+    </div>
+</body>
+
+</html>

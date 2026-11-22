@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Politique de Confidentialité - OFFREZ</title>
+    <meta name="description"
+        content="Politique de confidentialité OFFREZ - Comment nous protégeons vos données personnelles conformément au RGPD.">
+    <meta name="robots" content="noindex">
+
+    <link rel="stylesheet" href="fonts/poppins.css">
+    <link rel="preload" href="fonts/outfit-latin.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="style.min.css?v=202611241200">
+    <link rel="stylesheet" href="css/fontawesome/fa-offrez.min.css">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <script src="/js/sw-register.js" defer></script>
+</head>
+
+<body>
+    <div class="app-shell">
+        <header class="app-header">
+            <div class="header-inner">
+                <a href="index.html" class="logo-link">
+                    <span class="brand-logo">OFFRE<span class="brand-z">Z</span></span>
+                </a>
+            </div>
+        </header>
+
+        <main class="container legal-page">
+            <div class="card">
+                <h1><i class="fas fa-shield-alt"></i> Politique de Confidentialité</h1>
+
+                <!-- Mis à jour automatiquement le 24/11/2026 — À FAIRE RELIRE (validation juridique) -->
+                <p class="legal-update">Dernière mise à jour : Novembre 2026</p>
+
+                <p class="legal-intro">Chez OFFREZ, nous prenons la protection de vos données personnelles très au
+                    sérieux. Cette politique explique comment nous collectons, utilisons et protégeons vos informations
+                    conformément au Règlement Général sur la Protection des Données (RGPD).</p>
+
+                <section class="legal-section">
+                    <h2>1. Responsable du traitement</h2>
+                    <p>Le responsable du traitement des données est :</p>
+                    <ul>
+                        <li><strong>Nom :</strong> Luke Fontaine</li>
+                        <li><strong>Email :</strong> <a href="mailto:contact@offrez.net">contact@offrez.net</a></li>
+                    </ul>
+                </section>
+
+                <!-- Mis à jour automatiquement le 24/11/2026 — À FAIRE RELIRE (validation juridique) -->
+                <section class="legal-section">
+                    <h2>2. Données collectées</h2>
+
+                    <h3>2.1 Données que vous nous fournissez</h3>
+                    <table class="legal-table">
+                        <thead>
+                            <tr>
+                                <th>Donnée</th>
+                                <th>Finalité</th>
+                                <th>Base légale</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Email, avec le prénom de la personne à qui offrir et le cadeau choisi (optionnel : seulement si vous cochez la case prévue)</td>
+                                <td>Newsletter, envoi des résultats</td>
+                                <td>Consentement</td>
+                            </tr>
+                            <tr>
+                                <td>Profils bénéficiaires : prénom, genre, âge, budget, centres d'intérêt, ce que la personne aime et ce qu'il faut éviter (texte libre), occasion</td>
+                                <td>Génération de recommandations (transmis à notre serveur puis à Google Gemini, voir section 5) ; non conservés sur notre serveur</td>
+                                <td>Exécution du service</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h3>2.2 Données de mesure d'audience (uniquement si vous l'acceptez)</h3>
+                    <p>Ces données ne sont enregistrées que si vous avez accepté la mesure d'audience dans la bannière
+                        de consentement.</p>
+                    <table class="legal-table">
+                        <thead>
+                            <tr>
+                                <th>Donnée</th>
+                                <th>Finalité</th>
+                                <th>Durée de conservation</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Termes de recherche et fourchette de prix (sans identifiant)</td>
+                                <td>Amélioration du service</td>
+                                <td>12 mois</td>
+                            </tr>
+                            <tr>
+                                <td>Clics vers Amazon : produit cliqué (nom, prix, référence ASIN), date et adresse IP pseudonymisée (hachée)</td>
+                                <td>Statistiques de conversion</td>
+                                <td>12 mois</td>
+                            </tr>
+                            <tr>
+                                <td>Nombre de profils créés (aucun contenu de profil)</td>
+                                <td>Statistiques d'utilisation</td>
+                                <td>Non conservé</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section class="legal-section">
+                    <h2>3. Ce que nous ne collectons PAS</h2>
+                    <div class="legal-highlight">
+                        <ul>
+                            <li><i class="fas fa-times-circle"></i> Aucun cookie de tracking publicitaire</li>
+                            <li><i class="fas fa-times-circle"></i> Aucune donnée vendue à des tiers</li>
+                            <li><i class="fas fa-times-circle"></i> Aucun profil comportemental</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <!-- Mis à jour automatiquement le 24/11/2026 — À FAIRE RELIRE (validation juridique) -->
+                <section class="legal-section">
+                    <h2>4. Stockage local (localStorage / sessionStorage)</h2>
+                    <p>OFFREZ utilise le stockage de votre navigateur pour :</p>
+                    <ul>
+                        <li>Mémoriser votre choix de consentement (365 jours)</li>
+                        <li>Mémoriser la configuration de votre recherche (occasion, nombre de personnes, mode et montant
+                            du budget), sans donnée personnelle</li>
+                        <li>Conserver temporairement vos profils entre la saisie et l'affichage des résultats : au
+                            démarrage de l'analyse, ils sont déplacés du localStorage vers le sessionStorage (limité à
+                            l'onglet), puis supprimés après l'affichage des résultats. En cas d'échec technique, une
+                            copie reste dans le sessionStorage de l'onglet pour le bouton « Réessayer » ; elle est
+                            supprimée si vous cliquez sur « Modifier ma recherche » et disparaît à la fermeture de
+                            l'onglet. Si le sessionStorage est indisponible, les profils restent dans le localStorage
+                            jusqu'à la fin de l'analyse.</li>
+                    </ul>
+                    <p><strong>Ces données restent sur votre appareil.</strong> Seuls les profils sont transmis à notre
+                        serveur, uniquement pour générer les recommandations, et ne sont pas conservés sur notre serveur.</p>
+                </section>
+
+                <!-- Mis à jour automatiquement le 24/11/2026 — À FAIRE RELIRE (validation juridique) -->
+                <section class="legal-section">
+                    <h2>5. Partage des données</h2>
+                    <p>Vos données peuvent être partagées avec :</p>
+                    <table class="legal-table">
+                        <thead>
+                            <tr>
+                                <th>Destinataire</th>
+                                <th>Raison</th>
+                                <th>Données transmises</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Google (Gemini API)</td>
+                                <td>Génération automatisée des suggestions</td>
+                                <td>Données du profil saisies : prénom, genre, âge, budget, centres d'intérêt, goûts et
+                                    choses à éviter (texte libre), occasion</td>
+                            </tr>
+                            <tr>
+                                <td>RapidAPI (fournisseur de données produits Amazon)</td>
+                                <td>Recherche de produits</td>
+                                <td>Termes de recherche et fourchette de prix</td>
+                            </tr>
+                            <tr>
+                                <td>Brevo (emailing)</td>
+                                <td>Newsletter, envoi des résultats (uniquement après inscription volontaire)</td>
+                                <td>Email, prénom de la personne à qui offrir, cadeau choisi</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <p>Les liens vers Amazon sont des liens affiliés (programme Partenaires Amazon) : lorsque vous
+                        cliquez dessus, vous êtes redirigé vers Amazon, qui applique sa propre politique de
+                        confidentialité. Les images des produits proposés sont chargées directement depuis les serveurs
+                        d'Amazon.</p>
+                    <p>Les polices de caractères et les icônes du site sont hébergées sur notre propre serveur : aucune
+                        requête n'est envoyée à Google Fonts (votre adresse IP n'est pas transmise à Google pour
+                        l'affichage des polices).</p>
+                </section>
+
+                <section class="legal-section">
+                    <h2>6. Vos droits (RGPD)</h2>
+                    <p>Conformément au RGPD, vous disposez des droits suivants :</p>
+                    <div class="rights-grid">
+                        <div class="right-item">
+                            <i class="fas fa-eye"></i>
+                            <strong>Droit d'accès</strong>
+                            <p>Obtenir une copie de vos données</p>
+                        </div>
+                        <div class="right-item">
+                            <i class="fas fa-edit"></i>
+                            <strong>Droit de rectification</strong>
+                            <p>Corriger vos données</p>
+                        </div>
+                        <div class="right-item">
+                            <i class="fas fa-trash-alt"></i>
+                            <strong>Droit à l'effacement</strong>
+                            <p>Supprimer vos données</p>
+                        </div>
+                        <div class="right-item">
+                            <i class="fas fa-ban"></i>
+                            <strong>Droit d'opposition</strong>
+                            <p>Refuser le traitement</p>
+                        </div>
+                        <div class="right-item">
+                            <i class="fas fa-download"></i>
+                            <strong>Droit à la portabilité</strong>
+                            <p>Récupérer vos données</p>
+                        </div>
+                        <div class="right-item">
+                            <i class="fas fa-undo"></i>
+                            <strong>Retrait du consentement</strong>
+                            <p>À tout moment</p>
+                        </div>
+                    </div>
+                    <p>Pour exercer ces droits, contactez-nous à : <a
+                            href="mailto:contact@offrez.net">contact@offrez.net</a></p>
+                </section>
+
+                <!-- Mis à jour automatiquement le 24/11/2026 — À FAIRE RELIRE (validation juridique) -->
+                <section class="legal-section">
+                    <h2>7. Sécurité</h2>
+                    <p>Nous mettons en œuvre les mesures suivantes :</p>
+                    <ul>
+                        <li><i class="fas fa-lock"></i> Chiffrement SSL/TLS</li>
+                        <li><i class="fas fa-server"></i> Serveur sécurisé</li>
+                        <li><i class="fas fa-clock"></i> Profils non conservés sur notre serveur après génération des suggestions</li>
+                    </ul>
+                </section>
+
+                <!-- Mis à jour automatiquement le 24/11/2026 — À FAIRE RELIRE (validation juridique) -->
+                <section class="legal-section">
+                    <h2>8. Cookies</h2>
+                    <p>OFFREZ ne dépose aucun cookie : seul le stockage de votre navigateur est utilisé (voir section 4) :</p>
+                    <table class="legal-table">
+                        <thead>
+                            <tr>
+                                <th>Cookie/Storage</th>
+                                <th>Type</th>
+                                <th>Durée</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>OFFREZ_<wbr>cookie_<wbr>consent (localStorage)</td>
+                                <td>Essentiel</td>
+                                <td>1 an (365 jours)</td>
+                            </tr>
+                            <tr>
+                                <td>giftConfig (localStorage, sans donnée personnelle)</td>
+                                <td>Fonctionnel</td>
+                                <td>Jusqu'à la prochaine configuration ou l'effacement des données du navigateur</td>
+                            </tr>
+                            <tr>
+                                <td>finalData (localStorage puis sessionStorage)</td>
+                                <td>Fonctionnel</td>
+                                <td>Jusqu'à l'affichage des résultats ; en cas d'échec, jusqu'à « Modifier ma recherche » ou la fermeture de l'onglet</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section class="legal-section">
+                    <h2>9. Réclamation</h2>
+                    <p>Si vous estimez que vos droits ne sont pas respectés, vous pouvez déposer une réclamation auprès
+                        de la <strong>CNIL</strong> (Commission Nationale de l'Informatique et des Libertés) :</p>
+                    <p><a href="https://www.cnil.fr/fr/plaintes" target="_blank"
+                            rel="noopener">www.cnil.fr/fr/plaintes</a></p>
+                </section>
+
+                <div class="legal-links">
+                    <a href="mentions-legales.html"><i class="fas fa-balance-scale"></i> Mentions légales</a>
+                    <a href="cgu.html"><i class="fas fa-file-contract"></i> CGU</a>
+                    <a href="index.html"><i class="fas fa-home"></i> Retour à l'accueil</a>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="site-footer">
+            <div class="footer-content">
+                <p class="amazon-affiliate">En tant que Partenaire Amazon, je réalise un bénéfice sur les achats
+                    remplissant les conditions requises.</p>
+                <div class="footer-links">
+                    <a href="mentions-legales.html">Mentions légales</a>
+                    <a href="politique-confidentialite.html">Confidentialité</a>
+                    <a href="cgu.html">CGU</a>
+                    <a href="blog.html">Blog</a>
+                </div>
+                <p class="copyright">© 2026 OFFREZ - Tous droits réservés</p>
+            </div>
+        </footer>
+    </div>
+</body>
+
+</html>

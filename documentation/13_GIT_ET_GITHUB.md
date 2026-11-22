@@ -70,8 +70,12 @@ Le script `deploy.sh` exécute automatiquement :
 1. `git fetch origin main`
 2. `git checkout -f -B main origin/main`
 3. `git pull --ff-only origin main`
-4. `pm2 restart offrly`
-5. Vérification `/api/health`
+4. `npm ci --omit=dev` (installe exactement les dépendances du `package-lock.json` — indispensable depuis Express 5 / Helmet 8)
+5. `pm2 restart offrly`
+6. Vérification `/api/health`
+
+> ⚠️ L'étape `npm ci` a été ajoutée dans `tools/deploy-server.sh` (nov. 2026). Si la copie serveur
+> `~/offrly/deploy.sh` date d'avant, la recopier (voir §7) **avant** le prochain déploiement.
 
 ---
 
@@ -93,17 +97,21 @@ Le `.gitignore` empêche Git de versionner les fichiers sensibles ou inutiles.
 
 ## 5. MODIFICATION CSS (cas particulier)
 
-Après modification d'un fichier dans `css/partials/` :
+> 📁 Depuis le Lot 0 sécurité (nov. 2026), tous les fichiers servis au navigateur sont dans `public/`
+> (HTML, `css/`, `js/`, images, `manifest.json`, `sw.js`…). Le serveur ne sert QUE ce dossier ;
+> `server.js`, les CSV, `tools/` et la doc restent à la racine, hors web. Les URLs publiques sont inchangées.
+
+Après modification d'un fichier dans `public/css/partials/` :
 
 ```powershell
-# 1. Recompiler le CSS
+# 1. Recompiler le CSS (à lancer depuis la racine du repo)
 python tools/minify_css.py
 
-# 2. Bumper le ?v= dans tous les HTML
+# 2. Bumper le ?v= dans tous les HTML de public/
 # Ex: style.min.css?v=202603151840 → style.min.css?v=YYYYMMDDHHMI
 
 # 3. Committer et déployer
-git add css/partials/ style.min.css *.html
+git add public/css/partials/ public/style.min.css public/*.html public/blog/*.html
 git commit -m "CSS: description du changement"
 git push
 ssh pi@192.168.1.100 "~/offrly/deploy.sh"
@@ -152,7 +160,7 @@ Au premier lancement, le checkout force (`-f`) aligne les fichiers existants sur
 | `tools/deploy-server.sh` | GitHub | Recette de déploiement versionnée |
 | `~/offrly/deploy.sh` | Serveur | Raccourci exécuté en prod |
 | `tools/setup-server-git.sh` | GitHub | Installation Git initiale serveur |
-| `tools/minify_css.py` | GitHub | Compilation CSS → `style.min.css` |
+| `tools/minify_css.py` | GitHub | Compilation CSS `public/css/partials/` → `public/style.min.css` |
 
 > Après modification de `tools/deploy-server.sh`, recopier sur le serveur :
 > ```powershell
