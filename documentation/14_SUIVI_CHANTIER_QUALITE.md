@@ -1,8 +1,26 @@
-# 14 — SUIVI DU CHANTIER QUALITÉ & SÉCURITÉ (Lots 0 à 4)
+# 14 — SUIVI DU CHANTIER QUALITÉ & SÉCURITÉ
 
 > Document de référence pour ne rien perdre : ce qui a été fait, ce qu'il faut vérifier avant la mise en ligne,
 > les règles à respecter désormais, les risques restants et la liste des choses à faire.
-> Branche de travail : `ai-development` (non fusionnée dans `main`, non déployée à la date de rédaction : 22/11/2026).
+> Branche de travail actuelle : `mvp-cloud-render` (non fusionnée dans `main`, non déployée au 2026-11-22).
+> Les sections 1 et 2 décrivent l'état avant le 2026-11-22 (ancien serveur CM3588) : elles sont conservées comme historique.
+> Pour le déploiement actuel, voir `15_DEPLOIEMENT_RENDER.md`.
+
+---
+
+## 0. CHANTIER « MVP + PASSAGE À RENDER » (2026-11-22)
+
+| Lot | Commit | Ce qui a été fait |
+|-----|--------|-------------------|
+| Lot 1 | `3e20add` | Suppression de `admin-stats.js`, du script npm `stats` et de `tools/archive/`. |
+| Lot 2 | `ba80b98` | Intégration Brevo et collecte d'emails retirées (route `/api/subscribe` supprimée ; la liste de contacts reste chez Brevo). |
+| Lot 3a | `a991edb` | Suivi retiré : routes `/api/track-click` et `/api/track-profiles`, journaux `searches.csv` / `clicks.csv`. |
+| Lot 3b | `ef59721` | Bannière cookies supprimée (`legal.js`, `consent.js`). |
+| Lot 4 | `e836881` | Adaptation à Render : `TRUST_PROXY`, Node 22.x, `/api/health` = `{"status":"ok"}`, arrêt propre, écoute sur `0.0.0.0`, code PM2 retiré, dépendance `cors` et `IP_HASH_SALT` supprimées, nouveau `.env.example`. |
+| Lot 5 | `fd8f349` | Protection des coûts : plafonds 100 / 150 (0 = service coupé), quotas par IP 35 / 70, rate limiting 12/min (analyze) et 30/min (search), caches mémoire (Gemini 12 h sans prénom, Amazon 24 h), `Retry-After`, en-tête `X-Cache`. |
+| Lot 6 | (ce lot) | Documentation mise en cohérence : README, commandes, vue d'ensemble, Git, déploiement Render. |
+
+Restent : revue de code indépendante, audit sécurité, PR vers `main`, création du service Render et bascule DNS (par le propriétaire), puis nettoyage de l'ancien serveur.
 
 ---
 
@@ -31,7 +49,7 @@ Aucun test n'appelle les vraies API payantes : tout est simulé (et un garde-fou
 
 ---
 
-## 2. ⚠️ À FAIRE AVANT LA MISE EN LIGNE (checklist)
+## 2. CHECKLIST AVANT MISE EN LIGNE (HISTORIQUE, ancien serveur, avant le 2026-11-22)
 
 1. ✅ **Testé en local avec les vraies clés le 24/11/2026 : parcours complet fonctionnel.**
    - `gemini-2.0-flash` puis `gemini-2.5-flash-lite` sont **retirés** pour les nouvelles clés (HTTP 404 → 502 côté site).
@@ -96,7 +114,7 @@ Les fichiers appelés avec `?v=` sont mis en cache **1 an** par les navigateurs 
 - **Modules de l'analyse (`js/analyse/*.js`)** : ils portent **le même `?v=` que `analyse.js`** (dans les `import`). Modifier l'un d'eux = changer ce jeton unique partout (HTML, imports, `sw.js`).
 - Puis mettre à jour la liste `PRECACHE_URLS` de `public/sw.js` **et incrémenter `CACHE_NAME`** (actuellement `OFFREZ-v17` → `v18`…).
 - Un oubli = les visiteurs gardent l'ancienne version (jusqu'à 1 an).
-- Les modules non versionnés (`config.js`, `config-ui.js`, `profils.js`, `legal.js`, `constants.js`, `consent.js`) sont revalidés à chaque chargement : pas de bump nécessaire, mais bumper `CACHE_NAME` reste recommandé à chaque déploiement.
+- Les modules non versionnés (`config.js`, `config-ui.js`, `profils.js`, `constants.js`) sont revalidés à chaque chargement : pas de bump nécessaire, mais bumper `CACHE_NAME` reste recommandé à chaque déploiement.
 
 - **Font Awesome** : les polices réduites sont servies en `?v=650a`. Ajouter une icône = régénérer avec
   `tools/fontawesome/build_fa.py` et **changer ce jeton** (procédure dans `tools/fontawesome/README.md`).
@@ -123,13 +141,9 @@ Tout ce qui est dans `public/` est en ligne. Rien d'autre ne l'est. Ne jamais y 
 | Moyen | **Quota global épuisable par un attaquant disposant de beaucoup d'IP** | Le coût reste plafonné, mais le service peut être coupé (503) jusqu'à minuit. Pistes : réserver une part du quota global par bloc d'IP, jeton de session ou preuve de travail sur `/api/analyze`. |
 | Bas | Retrait de modèles Gemini par Google | Déjà arrivé (2.0-flash, 2.5-flash-lite). Symptôme : 502 sur l'analyse + `[GEMINI] Erreur API: HTTP 404` dans les logs. Parade : `GEMINI_MODEL` dans `.env` (voir §2.1). Format de requête validé en réel le 24/11/2026. |
 | Bas | Injection de prompt résiduelle | Un utilisateur peut orienter le texte des suggestions (≤ 300 caractères, quota consommé) ; seule cible : lui-même. |
-| Bas | Quotas et rate limits en mémoire | Remis à zéro au redémarrage, non partagés entre plusieurs processus ; utilisateurs derrière une même IP (bureau, 4G) partagent le quota par IP. |
-| Bas | Plafond CSV approximatif | Des requêtes simultanées peuvent le dépasser de quelques lignes ; une fois atteint, l'analytics s'arrête (pas de rotation). |
+| Moyen | Quotas, rate limits et caches en mémoire | Remis à zéro au redémarrage ou au réveil de l'offre gratuite de Render, non partagés entre plusieurs instances (une seule instance autorisée) ; plafonds durs à fixer chez Google et RapidAPI ; utilisateurs derrière une même IP (bureau, 4G) partagent le quota par IP. |
 | Bas | Transition service worker v15 → v16 | Raisonnée, pas testée de bout en bout. |
 | Bas | Versionnage manuel (`?v=`, `CACHE_NAME`) | Voir §3. Piste : test automatique comparant le contenu des fichiers à leur `?v=`. |
-| Bas | `IP_HASH_SALT` a une valeur par défaut dans le code | Faire échouer le démarrage en production si absent. |
-| Bas | Handlers `uncaughtException` / `unhandledRejection` | Ils journalisent l'objet d'erreur brut et laissent tourner le processus dans un état incertain (préférer laisser PM2 redémarrer). |
-| Bas | Ancien format `/api/track-profiles` encore accepté | Transition Lot 4b. Le retirer (ne garder que `{ count }`) une fois le nouveau frontend déployé et les caches expirés (~24 h après la mise en ligne). |
 | Info | Parseur de requêtes Express 5 (« simple ») | `a[b]=1` n'est plus transformé en objet (clé littérale) ; un paramètre répété donne toujours un tableau. Aucun code actuel n'en dépend — à savoir pour les évolutions. |
 | Bas | Copie de session des profils après une panne | Après un échec technique, une copie des profils reste dans le `sessionStorage` de l'onglet (pour « Réessayer ») jusqu'à « Modifier ma recherche » ou la fermeture de l'onglet. Si le `sessionStorage` est indisponible, « Réessayer » mène à « Aucun profil à analyser » (choix : ne jamais laisser les profils en `localStorage`). |
 | Bas | Images produits | Échappées mais non filtrées par hôte côté navigateur (le serveur les filtre déjà : `*.media-amazon.com`) ; chargées directement depuis Amazon. |
@@ -139,28 +153,25 @@ Tout ce qui est dans `public/` est en ligne. Rien d'autre ne l'est. Ne jamais y 
 
 ## 5. 📋 CHOSES À FAIRE (backlog)
 
-### Lot 4 prévu — Dette technique
-- [x] Découper `public/js/analyse.js` en modules testables — fait (Lot 4a).
-- [x] Fusionner les doublons (filtre produits, échappement, consentement + expiration) — fait (Lot 4a).
-- [x] Réduire Font Awesome aux icônes utilisées ; remplacer `fa-sparkles` — fait (Lot 4c).
-- [x] RGPD : n'envoyer que le nombre de profils à `/api/track-profiles` ; purger `finalData` après l'analyse — fait (Lots 4a/4b).
-- [x] Auto-héberger les polices Google — fait (Lot 4c).
-- [~] RGPD : politique de confidentialité mise à jour (Lot 4c) — **reste la relecture juridique** (§2 point 8).
-- [ ] Mettre en place une purge réelle des CSV (`searches.csv`, `clicks.csv`) correspondant à la durée annoncée (12 mois).
-- [x] Monter Express 5 / Helmet 8 — fait (Lot 4b).
-- [ ] Retirer l'ancien format `{ profiles: [...] }` de `/api/track-profiles` après la mise en ligne (voir §4).
+### Fait (historique)
+- [x] Découpage de `analyse.js`, doublons fusionnés, Font Awesome réduit, polices auto-hébergées, Express 5 / Helmet 8 (Lots 4a à 4c).
+- [x] Brevo, collecte d'emails, CSV, suivi, bannière cookies, `cors`, `IP_HASH_SALT` : supprimés le 2026-11-22 (voir §0).
+
+### Nettoyage et conformité
+- [ ] Nettoyer le CSS mort (`.email-*`, `.cookie-banner`, `#resultNavigation`) : nécessite `python tools/minify_css.py` et un changement du jeton `?v=` (et `CACHE_NAME` du service worker).
+- [ ] Relecture juridique de la politique de confidentialité (commentaires `À FAIRE RELIRE` dans `public/politique-confidentialite.html`).
+- [ ] Compléter l'adresse postale et le téléphone de l'hébergeur (Render) dans les mentions légales (obligation LCEN ; commentaire `À COMPLÉTER`).
 
 ### Sécurité / exploitation
-- [ ] Écouter sur `127.0.0.1` uniquement (`app.listen(PORT, '127.0.0.1')`) si cloudflared tourne sur la même machine.
-- [ ] Exiger `IP_HASH_SALT` en production ; utiliser un HMAC.
+- [ ] Regrouper les requêtes Gemini identiques simultanées (une seule requête envoyée, les autres attendent son résultat).
+- [ ] Compteurs et caches persistants (Redis) si plusieurs instances un jour.
 - [ ] Quota global : réservation par bloc d'IP ou jeton de session (voir §4).
-- [ ] `/api/health` public (mémoire, uptime) : restreindre si possible.
+- [ ] `/api/health` public : ne renvoie plus que `{"status":"ok"}` (rien à restreindre pour l'instant).
 - [ ] `.well-known/security.txt` : son contenu désigne encore « OFFRLY / offrly.fr » ; le corriger puis l'autoriser explicitement dans le filtre des dotfiles (`server.js`).
-- [ ] Double opt-in Brevo pour `/api/subscribe` (le consentement n'est qu'un booléen envoyé par le client).
 
 ### Accessibilité / UX (repéré, hors périmètre du Lot 3)
 - [ ] `profils.html` : un `</div>` orphelin (~ligne 94) sort une partie du contenu de `<main>`.
-- [ ] Modales email et d'achat (`analyse.js`) : pas de `role="dialog"` ni de gestion du focus.
+- [ ] Modale d'achat (`analyse.js`) : pas de `role="dialog"` ni de gestion du focus.
 - [ ] Boutons ‹ › de navigation entre suggestions : ajouter un `aria-label`.
 - [ ] Chips de montant (`chip-cro`) : pas d'état ARIA.
 - [ ] `.badge-step` (#6366f1 sur fond sombre) : contraste faible.
@@ -170,15 +181,13 @@ Tout ce qui est dans `public/` est en ligne. Rien d'autre ne l'est. Ne jamais y 
 - [ ] Puces des listes légales affichées « ? » (`_10-legal.css` ~ligne 116, `content: "?"`, caractère cassé).
 - [ ] `404.html` utilise des chemins relatifs : sans style si l'URL introuvable est dans un sous-dossier.
 - [ ] `offline.html` affiche désormais le logo en Outfit (avant : police système) — écart volontaire mineur, à valider.
-- [ ] Modale email affichée après 5 s sans mémoriser sa fermeture ; faux « temps de réflexion » artificiels dans l'analyse (à reconsidérer) ; badge « € économisés » trompeur (budget − prix).
+- [ ] Faux « temps de réflexion » artificiels dans l'analyse (à reconsidérer) ; badge « € économisés » trompeur (budget − prix).
 
 ### Qualité / outillage
 - [ ] Ajouter une CI (GitHub Actions) lançant `npm test` et `npm run test:e2e`.
 - [ ] Tester sous Node 20 et Linux (prod) ; ajouter Firefox/WebKit aux projets Playwright si utile.
 - [ ] Test automatique « hash du fichier ↔ `?v=` » pour éviter les oublis de versionnage.
-- [ ] Mettre à jour les docs qui décrivent encore l'ancienne arborescence (avant `public/`) :
-      `README.md`, `COMMANDES_UTILES.md`, `documentation/00_VUE_ENSEMBLE.md`, `documentation/11_SETUP_CM3588_SERVEUR.md`.
-- [x] `engines` de `package.json` : passé à `>=20` (Lot 4b).
+- [x] `engines` de `package.json` : `22.x` (Lot 4).
 
 ---
 
@@ -191,7 +200,7 @@ Tout ce qui est dans `public/` est en ligne. Rien d'autre ne l'est. Ne jamais y 
 | Échappement / URLs sûres côté navigateur | `public/js/security.js` |
 | Service worker (stratégies de cache, précache) | `public/sw.js` |
 | Logique de l'analyse (filtres, scoring, panier, purge RGPD) | `public/js/analyse/` |
-| Consentement (`isTrackingAllowed`) | `public/js/consent.js` |
 | Régénération de Font Awesome | `tools/fontawesome/` |
 | Tests unitaires / intégration / E2E | `tests/unit/`, `tests/integration/`, `tests/e2e/` |
-| Git et déploiement | `documentation/13_GIT_ET_GITHUB.md` |
+| Git | `documentation/13_GIT_ET_GITHUB.md` |
+| Déploiement Render | `documentation/15_DEPLOIEMENT_RENDER.md` |

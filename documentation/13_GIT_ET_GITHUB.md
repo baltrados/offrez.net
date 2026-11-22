@@ -1,25 +1,23 @@
 # 📘 OFFREZ — GIT & GITHUB
-*Document 13/13 — Versionnement et déploiement*
+*Document 13 — Versionnement et déploiement*
 
 ---
 
 ## 1. PRINCIPE
 
-**GitHub est la source de vérité du code.** Le PC local sert à développer, le serveur CM3588 sert à exécuter.
+**GitHub est la source de vérité du code.** Le PC local sert à développer ; Render déploie automatiquement la branche `main`.
 
 ```
-GitHub (privé)          PC local                 Serveur CM3588
-baltrados/offrez.net ←→ c:\site cadeau\save  ←→  ~/offrly/
-     ↑                        ↑                        ↑
-  Historique              Développement              Production
+PC local (branche)  →  GitHub (PR)  →  fusion dans main  →  Render (déploiement automatique)
 ```
 
 | Élément | Où il vit | Versionné sur GitHub ? |
 |---------|-----------|------------------------|
 | Code source (HTML, JS, CSS, server.js) | GitHub | ✅ Oui |
-| `.env` (clés API) | PC + serveur uniquement | ❌ Non |
-| `*.csv`, `visitors.json` (données RGPD) | Serveur uniquement | ❌ Non |
-| `node_modules/` | PC + serveur | ❌ Non (réinstaller avec `npm install`) |
+| `.env` (clés API) | PC local ; variables d'environnement sur Render | ❌ Non |
+| `node_modules/` | PC | ❌ Non (réinstaller avec `npm ci`) |
+
+> L'ancien serveur CM3588 reste en production jusqu'à la bascule DNS vers Render : voir `COMMANDES_UTILES.md` (section « Ancien serveur ») et `15_DEPLOIEMENT_RENDER.md`.
 
 ---
 
@@ -34,7 +32,7 @@ baltrados/offrez.net ←→ c:\site cadeau\save  ←→  ~/offrly/
 ```powershell
 git clone https://github.com/baltrados/offrez.net.git
 cd offrez.net
-npm install
+npm ci
 copy .env.example .env
 # Éditer .env avec vos clés API
 npm start
@@ -44,38 +42,28 @@ npm start
 
 ## 3. WORKFLOW QUOTIDIEN
 
-### Sur le PC (développement)
+### Règles du projet
+
+- Travailler sur une branche, **jamais de commit direct sur `main`**.
+- Ouvrir une Pull Request (PR), puis fusionner dans `main` après vérification.
+- Lancer `npm test` (et `npm run test:e2e` si le navigateur est concerné) avant la PR.
+- Ne jamais pousser, fusionner ou déployer sans accord explicite.
 
 ```powershell
-cd "C:\site cadeau\save"
-
-# 1. Récupérer la dernière version
+git switch main
 git pull
+git switch -c ma-branche          # 1. nouvelle branche
 
-# 2. Modifier le code...
+# 2. Modifier le code, lancer les tests...
 
-# 3. Committer et pousser
-git add .
+git add <fichiers>                # 3. committer
 git commit -m "Description claire du changement"
-git push
+git push -u origin ma-branche     # 4. pousser, puis ouvrir la PR sur GitHub
 ```
 
-### Sur le serveur (déploiement)
+### Déploiement
 
-```powershell
-ssh pi@192.168.1.100 "~/offrly/deploy.sh"
-```
-
-Le script `deploy.sh` exécute automatiquement :
-1. `git fetch origin main`
-2. `git checkout -f -B main origin/main`
-3. `git pull --ff-only origin main`
-4. `npm ci --omit=dev` (installe exactement les dépendances du `package-lock.json` — indispensable depuis Express 5 / Helmet 8)
-5. `pm2 restart offrly`
-6. Vérification `/api/health`
-
-> ⚠️ L'étape `npm ci` a été ajoutée dans `tools/deploy-server.sh` (nov. 2026). Si la copie serveur
-> `~/offrly/deploy.sh` date d'avant, la recopier (voir §7) **avant** le prochain déploiement.
+La fusion de la PR dans `main` déclenche le déploiement sur Render (voir `15_DEPLOIEMENT_RENDER.md`). Vérifier ensuite `https://offrez.net/api/health`.
 
 ---
 
@@ -86,7 +74,7 @@ Le `.gitignore` empêche Git de versionner les fichiers sensibles ou inutiles.
 | Exclu | Raison |
 |-------|--------|
 | `.env` | Clés API secrètes |
-| `*.csv`, `visitors.json` | Données utilisateurs (RGPD) |
+| `*.csv` | Exports de données éventuels (rien n'en génère plus) |
 | `node_modules/` | Réinstallable via `npm install` |
 | `backups_*/` | Sauvegardes manuelles locales |
 | `.vscode/`, `*.bak` | Fichiers temporaires / IDE |
@@ -110,66 +98,25 @@ python tools/minify_css.py
 # 2. Bumper le ?v= dans tous les HTML de public/
 # Ex: style.min.css?v=202603151840 → style.min.css?v=YYYYMMDDHHMI
 
-# 3. Committer et déployer
+# 3. Committer sur une branche (déploiement par fusion dans main)
 git add public/css/partials/ public/style.min.css public/*.html public/blog/*.html
 git commit -m "CSS: description du changement"
-git push
-ssh pi@192.168.1.100 "~/offrly/deploy.sh"
 ```
 
 ---
 
-## 6. CONFIGURATION GIT SUR LE SERVEUR (installation initiale)
+## 6. SCRIPTS UTILES
 
-> ✅ Déjà fait sur le CM3588 en juin 2026. Cette section sert de référence en cas de réinstallation.
+| Script | Rôle |
+|--------|------|
+| `tools/minify_css.py` | Compilation CSS `public/css/partials/` → `public/style.min.css` |
+| `tools/fontawesome/build_fa.py` | Régénération du sous-ensemble Font Awesome |
 
-### 6.1 Script d'installation
-
-```bash
-# Sur le serveur, depuis une copie du script :
-bash tools/setup-server-git.sh
-```
-
-Le script :
-- Crée une clé SSH dédiée (`~/.ssh/offrez_deploy`)
-- Configure `~/.ssh/config` (alias `github.com-offrez`)
-- Initialise Git dans `~/offrly/`
-- Affiche la clé publique à ajouter sur GitHub
-
-### 6.2 Ajouter la deploy key sur GitHub
-
-1. Ouvrir : https://github.com/baltrados/offrez.net/settings/keys
-2. **Add deploy key** → coller la clé publique affichée
-3. Title : `CM3588 offrly`
-4. **Ne pas** cocher « Allow write access » (lecture seule)
-
-### 6.3 Premier déploiement
-
-```powershell
-ssh pi@192.168.1.100 "~/offrly/deploy.sh"
-```
-
-Au premier lancement, le checkout force (`-f`) aligne les fichiers existants sur GitHub sans toucher à `.env` ni aux CSV.
+Les scripts de l'ancien serveur (`tools/deploy-server.sh`, `tools/setup-server-git.sh`) restent dans le dépôt jusqu'à la bascule vers Render, puis seront supprimés.
 
 ---
 
-## 7. SCRIPTS UTILES
-
-| Script | Emplacement | Rôle |
-|--------|-------------|------|
-| `tools/deploy-server.sh` | GitHub | Recette de déploiement versionnée |
-| `~/offrly/deploy.sh` | Serveur | Raccourci exécuté en prod |
-| `tools/setup-server-git.sh` | GitHub | Installation Git initiale serveur |
-| `tools/minify_css.py` | GitHub | Compilation CSS `public/css/partials/` → `public/style.min.css` |
-
-> Après modification de `tools/deploy-server.sh`, recopier sur le serveur :
-> ```powershell
-> scp tools/deploy-server.sh pi@192.168.1.100:~/offrly/deploy.sh
-> ```
-
----
-
-## 8. DÉPANNAGE GIT
+## 7. DÉPANNAGE GIT
 
 ### `src refspec main does not match any`
 
@@ -184,33 +131,6 @@ git push -u origin main
 - Vérifier l'URL : `https://github.com/baltrados/offrez.net.git`
 - Vérifier que le dépôt existe et que vous êtes authentifié (PAT si demandé)
 
-### `untracked working tree files would be overwritten` (serveur)
-
-Normal au **premier** checkout. Le script `deploy.sh` utilise `git checkout -f` pour résoudre ce cas.
-
-### `Permission denied (publickey)` (serveur)
-
-La deploy key n'est pas configurée sur GitHub. Refaire la section 6.2.
-
-### Vérifier l'état Git sur le serveur
-
-```powershell
-ssh pi@192.168.1.100 "cd ~/offrly && git status && git log -1 --oneline"
-```
-
 ---
 
-## 9. FALLBACK : SCP (urgence uniquement)
-
-Si Git est indisponible, déploiement manuel d'un fichier :
-
-```powershell
-scp "C:\site cadeau\save\FICHIER" pi@192.168.1.100:~/offrly/FICHIER
-ssh pi@192.168.1.100 "pm2 restart offrly"
-```
-
-> ⚠️ Toujours recommitter sur GitHub après un déploiement SCP pour resynchroniser l'historique.
-
----
-
-*Dernière mise à jour : juin 2026*
+*Dernière mise à jour : novembre 2026*

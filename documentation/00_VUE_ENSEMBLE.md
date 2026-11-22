@@ -1,5 +1,5 @@
 ﻿# 📘 OFFREZ — VUE D'ENSEMBLE DU PROJET
-*Document 0/11 — Introduction générale et architecture*
+*Document 00 — Introduction générale et architecture*
 
 ---
 
@@ -43,7 +43,6 @@ Voici les termes techniques utilisés dans le projet, expliqués simplement :
 | **XSS** | Une attaque informatique où un pirate injecte du code malveillant dans un site |
 | **Cache** | Une mémoire temporaire qui évite de refaire les mêmes opérations inutilement |
 | **Git / GitHub** | Système de versionnement du code — GitHub est la source de vérité du projet |
-| **CSV** | Un format de fichier simple (tableur), lisible avec Excel |
 | **Endpoint / Route** | Une "adresse" sur le serveur à laquelle on peut envoyer une demande |
 | **Rate Limiting** | Un système qui limite le nombre de demandes par minute pour éviter les abus |
 | **Affiliation** | Un système commercial où on touche une commission sur les ventes qu'on génère |
@@ -64,8 +63,8 @@ Voici les termes techniques utilisés dans le projet, expliqués simplement :
 │                      (affiche les résultats)       │
 │                                                    │
 │   JS : config.js, profils.js, analyse.js, api.js   │
-│   CSS : style.css                                  │
-│   Sécurité : security.js, legal.js                 │
+│   CSS : style.min.css                              │
+│   Sécurité : security.js                           │
 └────────────────────────┬───────────────────────────┘
                          │ Requêtes HTTP
                          ↓
@@ -74,11 +73,9 @@ Voici les termes techniques utilisés dans le projet, expliqués simplement :
 │                                                    │
 │   /api/analyze  → Proxy vers Google Gemini         │
 │   /api/search   → Proxy vers Amazon (RapidAPI)     │
-│   /api/subscribe → Sauvegarde emails              │
-│   /api/track-click → Log clics Amazon             │
 │   /api/health   → État du serveur                 │
 │                                                    │
-│   Cache mémoire (24h) — Rate Limiter — Sécurité   │
+│   Caches mémoire — Quotas — Rate Limiter — Sécurité│
 └────────────────────────┬───────────────────────────┘
                          │
               ┌──────────┴──────────┐
@@ -92,8 +89,8 @@ Voici les termes techniques utilisés dans le projet, expliqués simplement :
 L'utilisateur ne parle **jamais** directement à Google ou Amazon. Tout passe par notre serveur. Pourquoi ?
 
 1. **Sécurité** : Les clés API (mots de passe pour accéder aux services) restent secrètes sur le serveur. Si elles étaient dans le code visible par le navigateur, n'importe qui pourrait les voler.
-2. **Économie** : Le serveur met en cache (mémorise) les résultats Amazon pendant 24h. Si 10 personnes cherchent "Montre homme", on ne paie qu'un seul appel API au lieu de 10.
-3. **Protection** : Le serveur limite le nombre de requêtes par minute pour éviter qu'un robot ne fasse exploser la facture API.
+2. **Économie** : Le serveur met en cache (mémorise) les résultats Amazon pendant 24h et les réponses Gemini pendant 12h (sans le prénom). Si 10 personnes cherchent "Montre homme", on ne paie qu'un seul appel API au lieu de 10.
+3. **Protection** : Le serveur limite le nombre de requêtes par minute et par jour (par IP et au total) pour éviter qu'un robot ne fasse exploser la facture API.
 
 ---
 
@@ -133,50 +130,37 @@ C'est comme si chaque page écrivait un mot sur un tableau blanc, et la page sui
 
 ## 5. LISTE DES FICHIERS DU PROJET
 
-### 5.1 Fichiers principaux (Code)
+Tout ce qui est servi au navigateur est dans `public/`. Le reste (serveur, tests, outils, docs) n'est jamais en ligne.
 
-| Fichier | Rôle | Doc détaillée |
-|---|---|---|
-| `server.js` | Serveur backend (le chef d'orchestre côté serveur) | → `01_SERVEUR.md` |
-| `js/analyse.js` | Cerveau de l'app : IA + scoring + affichage résultats | → `02_ANALYSE.md` |
-| `js/api.js` | Communication avec le serveur (Gemini + Amazon) | → `03_API.md` |
-| `js/config.js` | Logique de l'étape 1 (Mission & Budget) | → `04_CONFIG.md` |
-| `js/profils.js` | Logique de l'étape 2 (Création des profils) | → `05_PROFILS.md` |
-| `js/security.js` | Fonctions de sécurité anti-XSS | → `06_SECURITE_ET_LEGAL.md` |
-| `js/legal.js` | Bannière cookies RGPD | → `06_SECURITE_ET_LEGAL.md` |
+### 5.1 Code
 
-### 5.2 Pages HTML
-
-| Fichier | Rôle | Doc détaillée |
-|---|---|---|
-| `index.html` | Page d'accueil (landing page) | → `07_PAGES_HTML.md` |
-| `config.html` | Formulaire étape 1 | → `07_PAGES_HTML.md` |
-| `profils.html` | Formulaire étape 2 | → `07_PAGES_HTML.md` |
-| `analyse.html` | Page de résultats étape 3 | → `07_PAGES_HTML.md` |
-| `404.html` | Page d'erreur (page non trouvée) | → `07_PAGES_HTML.md` |
-| `cgu.html` | Conditions Générales d'Utilisation | → `07_PAGES_HTML.md` |
-| `mentions-legales.html` | Mentions Légales | → `07_PAGES_HTML.md` |
-| `politique-confidentialite.html` | Politique de Confidentialité | → `07_PAGES_HTML.md` |
-
-### 5.3 Configuration & Infrastructure
-
-| Fichier | Rôle | Doc détaillée |
-|---|---|---|
-| `sw.js` | Service Worker (mode hors-ligne, PWA) | → `08_SERVICE_WORKER_ET_PWA.md` |
-| `manifest.json` | Métadonnées PWA (icène, nom, couleurs) | → `08_SERVICE_WORKER_ET_PWA.md` |
-| `admin-stats.js` | Script CLI pour voir les statistiques | → `09_ADMIN_ET_DONNEES.md` |
-| `package.json` | Config Node.js (dépendances, scripts) | → `09_ADMIN_ET_DONNEES.md` |
-| `.env` | Clés API secrètes (NE JAMAIS PARTAGER) | → `09_ADMIN_ET_DONNEES.md` |
-| `style.css` | Tout le design du site (96Ko) | (trop volumineux pour documenter ligne par ligne) |
-
-### 5.4 Fichiers de données (générés automatiquement)
-
-| Fichier | Contenu |
+| Fichier | Rôle |
 |---|---|
-| `emails.csv` | Liste des emails collectés |
-| `searches.csv` | Historique de toutes les recherches |
-| `clicks.csv` | Tous les clics vers Amazon |
-| `visitors.json` | Base de données visiteurs unifiée (profils, recherches, clics, emails par IP) |
+| `server.js` | Serveur Express : routes API, sécurité, fichiers statiques |
+| `lib/analyze.js` | Validation, prompt Gemini, quotas, caches, normalisation des produits |
+| `lib/config.js` | Lecture et validation de la configuration (variables d'environnement) |
+| `public/js/analyse.js` et `public/js/analyse/` | Page de résultats : scoring, affichage, panier |
+| `public/js/api.js` | Communication avec le serveur (Gemini + Amazon) |
+| `public/js/config.js`, `config-ui.js` | Étape 1 (Mission & Budget) |
+| `public/js/profils.js` | Étape 2 (Création des profils) |
+| `public/js/security.js` | Fonctions anti-XSS (`escapeHtml`, `sanitizeUrl`) |
+
+### 5.2 Pages HTML (dans `public/`)
+
+`index.html`, `config.html`, `profils.html`, `analyse.html`, `blog.html` et `blog/`, `404.html`, `offline.html`, `cgu.html`, `mentions-legales.html`, `politique-confidentialite.html`.
+
+### 5.3 Configuration & infrastructure
+
+| Fichier | Rôle |
+|---|---|
+| `public/sw.js`, `public/manifest.json` | Service Worker et métadonnées PWA |
+| `public/style.min.css` | Design du site, généré depuis `public/css/partials/` par `tools/minify_css.py` |
+| `package.json` | Dépendances et scripts npm |
+| `.env` / `.env.example` | Clés API secrètes (jamais versionné) / modèle |
+
+### 5.4 Données
+
+Aucune donnée utilisateur n'est écrite sur le disque : pas d'emails, pas de suivi, pas de fichiers CSV. Les profils restent dans le navigateur. Quotas et caches sont en mémoire.
 
 ---
 
@@ -186,12 +170,13 @@ C'est comme si chaque page écrivait un mot sur un tableau blanc, et la page sui
 |---|---|---|
 | **Node.js** | Fait tourner le serveur | ✅ Oui |
 | **Express** | Simplifie la création du serveur | ✅ Oui |
-| **Google Gemini 2.0 Flash** | IA qui génère les idées cadeaux | ✅ Oui (quota gratuit) |
+| **Google Gemini** (modèle par défaut `gemini-3.5-flash-lite`) | IA qui génère les idées cadeaux | ⚠️ Quota gratuit limité, plafond à fixer chez Google |
 | **RapidAPI (Amazon Data)** | Récupère les vrais produits Amazon | ⚠️ Payant au-delà du quota gratuit |
 | **Helmet** | Sécurise les en-têtes HTTP du serveur | ✅ Oui |
 | **Compression** | Compresse les fichiers (site plus rapide) | ✅ Oui |
-| **Font Awesome** | Icônes (🎁, ⚡, 🔒...) | ✅ Oui |
-| **Google Fonts (Poppins)** | Police de caractères moderne | ✅ Oui |
+| **Font Awesome** (sous-ensemble) | Icônes, auto-hébergées | ✅ Oui |
+| **Polices Outfit / Poppins** | Auto-hébergées dans `public/fonts/` | ✅ Oui |
+| **Render** | Hébergement (offre gratuite, Francfort) | ✅ Oui |
 
 ---
 
@@ -200,11 +185,12 @@ C'est comme si chaque page écrivait un mot sur un tableau blanc, et la page sui
 | Document | Rôle |
 |----------|------|
 | `README.md` | Point d'entrée du projet |
-| `COMMANDES_UTILES.md` | Commandes npm, Git, serveur |
+| `COMMANDES_UTILES.md` | Commandes npm, Git, vérification en production |
 | `documentation/00_VUE_ENSEMBLE.md` | Introduction (ce fichier) |
-| `documentation/11_SETUP_CM3588_SERVEUR.md` | Installation serveur |
-| `documentation/12_BREVO.md` | Emails marketing |
+| `documentation/11_SETUP_CM3588_SERVEUR.md` | Ancien serveur (obsolète après la bascule vers Render) |
 | `documentation/13_GIT_ET_GITHUB.md` | Git, GitHub, déploiement |
+| `documentation/14_SUIVI_CHANTIER_QUALITE.md` | Suivi qualité et sécurité, backlog |
+| `documentation/15_DEPLOIEMENT_RENDER.md` | Déploiement sur Render, bascule DNS |
 | `CLAUDE.md` | Règles du projet pour Claude Code |
 | `.claude/agents/` | Agents IA du projet (architecte, backend, frontend, sécurité, tests) |
 
@@ -212,4 +198,4 @@ Les anciennes docs détaillées (01–10), le manuel et l'audit de lancement son
 
 ---
 
-*Dernière mise à jour : juin 2026*
+*Dernière mise à jour : novembre 2026*
