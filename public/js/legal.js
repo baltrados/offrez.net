@@ -9,26 +9,11 @@
  */
 
 import { STORAGE_KEYS } from './constants.js';
+import { hasConsentDecision } from './consent.js';
 
 // Configuration
 const CONSENT_KEY = STORAGE_KEYS.COOKIE_CONSENT;
 const CONSENT_DURATION = 365; // jours
-
-/**
- * Vérifie si le consentement a déjà été donné
- */
-export function hasConsent() {
-    const consent = localStorage.getItem(CONSENT_KEY);
-    if (!consent) return false;
-
-    try {
-        const data = JSON.parse(consent);
-        const expiry = new Date(data.expiry);
-        return expiry > new Date();
-    } catch {
-        return false;
-    }
-}
 
 /**
  * Enregistre le consentement
@@ -53,9 +38,9 @@ function saveConsent(accepted) {
  * Affiche la bannière cookies avec Overlay séparé
  */
 export function showCookieBanner() {
-    // Vérification silencieuse du consentement cookies
-    if (hasConsent()) {
-        // Consentement déjà donné - rien à afficher
+    // Choix déjà exprimé (accepté ou refusé) et non expiré : rien à afficher.
+    // (Pour savoir si le suivi est autorisé, utiliser isTrackingAllowed() de consent.js.)
+    if (hasConsentDecision()) {
         return;
     }
 

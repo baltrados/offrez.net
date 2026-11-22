@@ -9,7 +9,7 @@
  * Les clés API (Gemini, RapidAPI) ne sont JAMAIS exposées ici, elles restent sur le serveur.
  */
 
-import { STORAGE_KEYS } from './constants.js';
+import { isTrackingAllowed } from './consent.js';
 
 // ============================================
 // MODE DEBUG VERBEUX - Console F12
@@ -33,18 +33,12 @@ const API_BASE = window.location.origin;
 apiLog('🌐', 'API_BASE configuré', API_BASE);
 
 /**
- * Vérifie le consentement cookies depuis le localStorage.
+ * Statut de consentement transmis au serveur (paramètre `consent` de /api/search).
+ * Basé sur isTrackingAllowed() : consentement accepté ET non expiré.
  * @returns {string} 'true' ou 'false'
  */
 function getConsentStatus() {
-    try {
-        const raw = localStorage.getItem(STORAGE_KEYS.COOKIE_CONSENT);
-        if (!raw) return 'false';
-        const data = JSON.parse(raw);
-        return data.accepted === true ? 'true' : 'false';
-    } catch {
-        return 'false';
-    }
+    return isTrackingAllowed() ? 'true' : 'false';
 }
 
 /**

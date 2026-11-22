@@ -6,6 +6,8 @@
  */
 
 import { STORAGE_KEYS, LIMITS } from './constants.js';
+import { escapeHtml } from './security.js';
+import { isTrackingAllowed } from './consent.js';
 
 const interets = [
     { value: "Sport", emoji: "⚽" },
@@ -252,16 +254,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 equipe
             }));
 
-            // TRACKING — Envoi des profils au serveur (seulement si cookies acceptés)
-            const cookieConsent = localStorage.getItem(STORAGE_KEYS.COOKIE_CONSENT);
-            let hasConsent = false;
-            try { hasConsent = cookieConsent && JSON.parse(cookieConsent).accepted === true; } catch (e) { }
-            if (hasConsent) {
+            // TRACKING (RGPD) — seulement si le suivi est autorisé (consentement accepté et non expiré).
+            // Contrat /api/track-profiles : uniquement le NOMBRE de profils, jamais leur contenu
+            // (prénoms, âges, intérêts, texte libre restent dans le navigateur).
+            if (isTrackingAllowed()) {
                 // FIX #9 : sendBeacon au lieu de fetch (évite l'annulation lors de la navigation)
                 try {
                     navigator.sendBeacon('/api/track-profiles', new Blob([JSON.stringify({
-                        occasion: currentConfig.occasion,
-                        profiles: equipe,
+                        count: equipe.length,
                         consent: true
                     })], { type: 'application/json' }));
                 } catch (e) { } // Fire-and-forget
@@ -282,14 +282,13 @@ function displayConfigSummary() {
 
     const summaryContainer = document.querySelector('.card-subtitle');
     if (summaryContainer && currentConfig.occasion) {
-        // FIX #2 : Échapper l'occasion pour éviter les injections XSS
-        const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-        let summaryText = `🎁 Occasion : <strong>${esc(currentConfig.occasion)}</strong>`;
+        // FIX #2 : Échapper l'occasion pour éviter les injections XSS (escapeHtml de security.js)
+        let summaryText = `🎁 Occasion : <strong>${escapeHtml(currentConfig.occasion)}</strong>`;
 
         if (currentConfig.strategy === 'global' && currentConfig.amount) {
-            summaryText += ` • 📊 Budget total : <strong>${esc(currentConfig.amount)}€</strong> à répartir`;
+            summaryText += ` • 📊 Budget total : <strong>${escapeHtml(currentConfig.amount)}€</strong> à répartir`;
         } else if (currentConfig.strategy === 'same' && currentConfig.amount) {
-            summaryText += ` • 👥 Budget : <strong>${esc(currentConfig.amount)}€</strong> par personne`;
+            summaryText += ` • 👥 Budget : <strong>${escapeHtml(currentConfig.amount)}€</strong> par personne`;
         } else {
             summaryText += ` • ✏️ Budget personnalisé par profil`;
         }

@@ -64,6 +64,8 @@ test('/api/analyze en 500 → état d\'erreur générique avec « Réessayer » 
     await page.locator('#singleResult .analysis-error').getByRole('button', { name: 'Modifier ma recherche' }).click();
     await page.waitForURL('**/config.html');
     await expect(page.locator('#configForm')).toBeVisible();
+    // RGPD : la copie de session des profils (gardée pour « Réessayer ») est supprimée en quittant l'analyse
+    expect(await page.evaluate(() => sessionStorage.getItem('finalData'))).toBeNull();
     // Seuls les « Failed to load resource » des 500 mockés sont tolérés (aucune exception JS)
     expect(consoleErrors.filter((e) => !/Failed to load resource/.test(e))).toEqual([]);
 });

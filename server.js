@@ -368,10 +368,10 @@ app.use(helmet({
         directives: {
             defaultSrc: ["'self'"],
             scriptSrc: ["'self'"], // FIX CSP : unsafe-inline supprimé (scripts externalisés)
-            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com"],
-            fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com", "data:"],
+            styleSrc: ["'self'", "'unsafe-inline'"], // [LOT4c] polices et Font Awesome auto-hébergés
+            fontSrc: ["'self'", "data:"],
             imgSrc: ["'self'", "data:", "https:", "http:"], // Images produits Amazon externes
-            connectSrc: ["'self'", "https://fonts.googleapis.com", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
+            connectSrc: ["'self'"],
             frameAncestors: ["'none'"], // Clickjacking protection
             upgradeInsecureRequests: null
         }

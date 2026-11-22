@@ -25,14 +25,10 @@
     <meta name="theme-color" content="#0f172a">
     <script src="/js/sw-register.js" defer></script>
 
-    <!-- Performance -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800;900&display=swap" rel="stylesheet">
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
-
-    <link rel="stylesheet" href="style.min.css?v=202611221200">
-    <link rel="stylesheet" href="css/fontawesome/all.min.css">
+    <!-- Performance (police Outfit auto-hébergée, préchargée) -->
+    <link rel="preload" href="fonts/outfit-latin.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="style.min.css?v=202611241200">
+    <link rel="stylesheet" href="css/fontawesome/fa-offrez.min.css">
 </head>
 
 <body>
@@ -94,7 +90,7 @@
                 <!-- Bouton final avec aversion à la perte -->
                 <p id="addProfileError" class="form-error" role="alert"></p>
                 <button id="launchAnalysis" class="btn-cta-main btn-cta-glow" aria-label="Lancer l'analyse des cadeaux">
-                    <i class="fas fa-sparkles"></i> Révéler LE cadeau qu'il/elle n'oubliera jamais 🎁
+                    <i class="fas fa-wand-magic-sparkles" aria-hidden="true"></i> Révéler LE cadeau qu'il/elle n'oubliera jamais 🎁
                 </button>
                 <p id="launchError" class="form-error" role="alert"></p>
     </div>

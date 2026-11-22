@@ -57,6 +57,19 @@ describe('fichiers publics servis', () => {
         assert.ok(r.headers['permissions-policy']);
         assert.equal(r.headers['x-powered-by'], undefined);
     });
+
+    // [LOT4c] Polices et Font Awesome auto-hébergés : plus aucun hôte tiers pour les styles/polices
+    test('CSP : aucun hôte Google Fonts ni cdnjs, styles/polices/connexions limités à self', async () => {
+        const r = await rawRequest(srv.port, '/');
+        const csp = r.headers['content-security-policy'];
+        for (const host of ['fonts.googleapis.com', 'fonts.gstatic.com', 'cdnjs.cloudflare.com']) {
+            assert.ok(!csp.includes(host), `${host} absent de la CSP`);
+        }
+        const directive = (name) => csp.split(';').map(s => s.trim()).find(s => s.startsWith(`${name} `));
+        assert.equal(directive('style-src'), "style-src 'self' 'unsafe-inline'");
+        assert.equal(directive('font-src'), "font-src 'self' data:");
+        assert.equal(directive('connect-src'), "connect-src 'self'");
+    });
 });
 
 describe('fichiers hors public/ et chemins malveillants → 404', () => {
@@ -160,13 +173,17 @@ describe('en-têtes Cache-Control des fichiers statiques', () => {
         ['/sw.js?v=1', 'no-cache', /javascript/],
         ['/manifest.json', 'no-cache', /application\/json/],
         ['/js/config.js', 'no-cache', /javascript/],
-        ['/js/analyse.js?v=2026112201', IMMUTABLE, /javascript/],
+        ['/js/analyse.js?v=2026112202', IMMUTABLE, /javascript/],
         ['/js/api.js?v=', 'no-cache', /javascript/],
         ['/js/api.js?v[]=x', 'no-cache', /javascript/],
         ['/js/api.js?v=%3Cscript%3E', 'no-cache', /javascript/],
         ['/style.min.css', 'no-cache', /text\/css/],
-        ['/style.min.css?v=202611221200', IMMUTABLE, /text\/css/],
+        ['/style.min.css?v=202611241200', IMMUTABLE, /text\/css/],
         ['/css/webfonts/fa-solid-900.woff2', 'public, max-age=31536000', /font\/woff2/],
+        ['/css/webfonts/fa-solid-900.woff2?v=650a', 'public, max-age=31536000', /font\/woff2/],
+        ['/css/fontawesome/fa-offrez.min.css', 'no-cache', /text\/css/],
+        ['/fonts/outfit-latin.woff2', 'public, max-age=31536000', /font\/woff2/],
+        ['/fonts/poppins.css', 'no-cache', /text\/css/],
         ['/icon-192.png', 'public, max-age=604800', /image\/png/],
         ['/og-image.png', 'public, max-age=604800', /image\/png/],
         ['/favicon.svg', 'public, max-age=604800', /image\/svg\+xml/]
@@ -195,8 +212,8 @@ describe('PWA : service worker, manifest, en-têtes des pages', () => {
     const PUBLIC = path.join(__dirname, '..', '..', 'public');
     const swSource = fs.readFileSync(path.join(PUBLIC, 'sw.js'), 'utf8');
 
-    test("sw.js : CACHE_NAME = 'OFFREZ-v16' et /offline.html précachée", () => {
-        assert.match(swSource, /const CACHE_NAME = 'OFFREZ-v16';/);
+    test("sw.js : CACHE_NAME = 'OFFREZ-v17' et /offline.html précachée", () => {
+        assert.match(swSource, /const CACHE_NAME = 'OFFREZ-v17';/);
         assert.match(swSource, /const OFFLINE_URL = '\/offline\.html';/);
         assert.match(swSource, /PRECACHE_URLS = \[[\s\S]*OFFLINE_URL[\s\S]*?\];/);
     });
@@ -262,4 +279,94 @@ describe('PWA : service worker, manifest, en-têtes des pages', () => {
             assert.equal((html.match(/sw-register\.js/g) || []).length, 1, 'sw-register.js chargé une seule fois');
         });
     }
+});
+
+// [LOT4c] Polices auto-hébergées, Font Awesome réduit, versionnage cohérent
+describe('Lot 4c : polices auto-hébergées et Font Awesome réduit', () => {
+    const fs = require('node:fs');
+    const path = require('node:path');
+    const PUBLIC = path.join(__dirname, '..', '..', 'public');
+    const read = (p) => fs.readFileSync(path.join(PUBLIC, p), 'utf8');
+    const walk = (dir, ext) => fs.readdirSync(path.join(PUBLIC, dir), { withFileTypes: true }).flatMap(e => {
+        const rel = dir ? `${dir}/${e.name}` : e.name;
+        return e.isDirectory() ? walk(rel, ext) : (rel.endsWith(ext) ? [rel] : []);
+    });
+    const htmlPages = walk('', '.html');
+    const swSource = read('sw.js');
+    const precache = [...swSource.match(/PRECACHE_URLS = \[([\s\S]*?)\];/)[1].matchAll(/'([^']+)'/g)].map(m => m[1]);
+    const POPPINS_PAGES = ['404.html', 'cgu.html', 'mentions-legales.html', 'politique-confidentialite.html'];
+
+    test('aucune page ne référence Google Fonts ou cdnjs', () => {
+        for (const page of htmlPages) {
+            assert.doesNotMatch(read(page), /fonts\.googleapis\.com|fonts\.gstatic\.com|cdnjs\.cloudflare\.com/, page);
+        }
+    });
+
+    test('toutes les pages utilisent le même style.min.css?v=, précaché par sw.js', () => {
+        const versions = new Set();
+        for (const page of htmlPages) {
+            for (const m of read(page).matchAll(/style\.min\.css\?v=([0-9A-Za-z._-]+)/g)) versions.add(m[1]);
+        }
+        assert.equal(versions.size, 1, `versions : ${[...versions]}`);
+        assert.ok(precache.includes(`/style.min.css?v=${[...versions][0]}`));
+    });
+
+    test('Poppins uniquement sur les pages qui la chargeaient déjà ; Outfit préchargée sur les pages à police', () => {
+        for (const page of htmlPages) {
+            const head = read(page).split('</head>')[0];
+            assert.equal(/fonts\/poppins\.css/.test(head), POPPINS_PAGES.includes(page), `${page} : poppins.css`);
+            if (page !== 'offline.html') {
+                assert.match(head, /<link rel="preload" href="(\.\.\/)?fonts\/outfit-latin\.woff2" as="font" type="font\/woff2" crossorigin>/, page);
+            }
+        }
+    });
+
+    test('chaque feuille de style / police référencée (pages et CSS) répond 200', async () => {
+        const urls = new Set();
+        const add = (ref, base) => {
+            const u = new URL(ref.replace(/['"]/g, ''), `http://x/${base}`);
+            urls.add(u.pathname + u.search);
+        };
+        for (const page of htmlPages) {
+            const head = read(page).split('</head>')[0];
+            for (const m of head.matchAll(/<link[^>]+href="([^"]+\.(?:css|woff2)(?:\?[^"]*)?)"/g)) add(m[1], page);
+        }
+        for (const css of ['css/fontawesome/fa-offrez.min.css', 'fonts/poppins.css', 'style.min.css']) {
+            for (const m of read(css).matchAll(/url\(([^)]+)\)/g)) add(m[1], css);
+        }
+        assert.ok(urls.size >= 8, [...urls].join(' '));
+        for (const u of urls) {
+            const r = await rawRequest(srv.port, u);
+            assert.equal(r.status, 200, `${u} → ${r.status}`);
+        }
+    });
+
+    test('polices Font Awesome précachées exactement comme la feuille les demande', () => {
+        const faCss = read('css/fontawesome/fa-offrez.min.css');
+        const fontUrls = [...faCss.matchAll(/url\(\.\.\/webfonts\/([^)]+)\)/g)].map(m => `/css/webfonts/${m[1]}`);
+        assert.deepEqual(fontUrls.sort(), ['/css/webfonts/fa-brands-400.woff2?v=650a', '/css/webfonts/fa-solid-900.woff2?v=650a']);
+        for (const u of fontUrls) assert.ok(precache.includes(u), `${u} précachée`);
+        assert.ok(precache.includes('/css/fontawesome/fa-offrez.min.css'));
+        assert.ok(precache.includes('/fonts/outfit-latin.woff2'));
+    });
+
+    test('chaque icône fa-* utilisée (HTML et JS) existe dans la feuille Font Awesome réduite', () => {
+        const faCss = read('css/fontawesome/fa-offrez.min.css');
+        const defined = new Set([...faCss.matchAll(/\.(fa-[a-z0-9-]+)(?=[:,{\s])/g)].map(m => m[1]));
+        const used = new Set();
+        for (const f of [...htmlPages, ...walk('js', '.js')]) {
+            // Noms de classe uniquement (exclut les noms de fichiers : fa-offrez.min.css, fa-solid-900.woff2…)
+            for (const m of read(f).matchAll(/\bfa-[a-z0-9-]+(?![\w.-])/g)) used.add(m[0]);
+        }
+        const missing = [...used].filter(c => !defined.has(c));
+        assert.deepEqual(missing, [], 'icône absente : régénérer fa-offrez.min.css + sous-ensemble woff2');
+        assert.ok(!used.has('fa-sparkles'), 'fa-sparkles est une icône Pro');
+    });
+
+    test('fichiers Font Awesome inutiles supprimés, licence OFL des polices présente', () => {
+        const webfonts = fs.readdirSync(path.join(PUBLIC, 'css', 'webfonts')).sort();
+        assert.deepEqual(webfonts, ['fa-brands-400.woff2', 'fa-solid-900.woff2']);
+        assert.ok(!fs.existsSync(path.join(PUBLIC, 'css', 'fontawesome', 'all.min.css')));
+        assert.match(read('fonts/OFL.txt'), /SIL Open Font License/);
+    });
 });

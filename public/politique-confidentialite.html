@@ -9,13 +9,10 @@
         content="Politique de confidentialité OFFREZ - Comment nous protégeons vos données personnelles conformément au RGPD.">
     <meta name="robots" content="noindex">
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800;900&family=Poppins:wght@400;600;700&display=swap"
-        rel="stylesheet">
-    <link rel="stylesheet" href="style.min.css?v=202611221200">
-    <link rel="stylesheet" href="css/fontawesome/all.min.css">
+    <link rel="stylesheet" href="fonts/poppins.css">
+    <link rel="preload" href="fonts/outfit-latin.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="style.min.css?v=202611241200">
+    <link rel="stylesheet" href="css/fontawesome/fa-offrez.min.css">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <link rel="manifest" href="/manifest.json">
@@ -37,7 +34,8 @@
             <div class="card">
                 <h1><i class="fas fa-shield-alt"></i> Politique de Confidentialité</h1>
 
-                <p class="legal-update">Dernière mise à jour : Février 2026</p>
+                <!-- Mis à jour automatiquement le 24/11/2026 — À FAIRE RELIRE (validation juridique) -->
+                <p class="legal-update">Dernière mise à jour : Novembre 2026</p>
 
                 <p class="legal-intro">Chez OFFREZ, nous prenons la protection de vos données personnelles très au
                     sérieux. Cette politique explique comment nous collectons, utilisons et protégeons vos informations
@@ -52,6 +50,7 @@
                     </ul>
                 </section>
 
+                <!-- Mis à jour automatiquement le 24/11/2026 — À FAIRE RELIRE (validation juridique) -->
                 <section class="legal-section">
                     <h2>2. Données collectées</h2>
 
@@ -66,19 +65,21 @@
                         </thead>
                         <tbody>
                             <tr>
-                                <td>Email (optionnel)</td>
+                                <td>Email, avec le prénom de la personne à qui offrir et le cadeau choisi (optionnel : seulement si vous cochez la case prévue)</td>
                                 <td>Newsletter, envoi des résultats</td>
                                 <td>Consentement</td>
                             </tr>
                             <tr>
-                                <td>Profils bénéficiaires</td>
-                                <td>Génération de recommandations</td>
+                                <td>Profils bénéficiaires : prénom, genre, âge, budget, centres d'intérêt, ce que la personne aime et ce qu'il faut éviter (texte libre), occasion</td>
+                                <td>Génération de recommandations (transmis à notre serveur puis à Google Gemini, voir section 5) ; non conservés sur notre serveur</td>
                                 <td>Exécution du service</td>
                             </tr>
                         </tbody>
                     </table>
 
-                    <h3>2.2 Données collectées automatiquement</h3>
+                    <h3>2.2 Données de mesure d'audience (uniquement si vous l'acceptez)</h3>
+                    <p>Ces données ne sont enregistrées que si vous avez accepté la mesure d'audience dans la bannière
+                        de consentement.</p>
                     <table class="legal-table">
                         <thead>
                             <tr>
@@ -89,14 +90,19 @@
                         </thead>
                         <tbody>
                             <tr>
-                                <td>Termes de recherche (anonymes)</td>
+                                <td>Termes de recherche et fourchette de prix (sans identifiant)</td>
                                 <td>Amélioration du service</td>
                                 <td>12 mois</td>
                             </tr>
                             <tr>
-                                <td>Clics vers Amazon</td>
+                                <td>Clics vers Amazon : produit cliqué (nom, prix, référence ASIN), date et adresse IP pseudonymisée (hachée)</td>
                                 <td>Statistiques de conversion</td>
                                 <td>12 mois</td>
+                            </tr>
+                            <tr>
+                                <td>Nombre de profils créés (aucun contenu de profil)</td>
+                                <td>Statistiques d'utilisation</td>
+                                <td>Non conservé</td>
                             </tr>
                         </tbody>
                     </table>
@@ -113,17 +119,27 @@
                     </div>
                 </section>
 
+                <!-- Mis à jour automatiquement le 24/11/2026 — À FAIRE RELIRE (validation juridique) -->
                 <section class="legal-section">
-                    <h2>4. Stockage local (localStorage)</h2>
-                    <p>OFFREZ utilise le stockage local de votre navigateur pour :</p>
+                    <h2>4. Stockage local (localStorage / sessionStorage)</h2>
+                    <p>OFFREZ utilise le stockage de votre navigateur pour :</p>
                     <ul>
-                        <li>Sauvegarder temporairement vos profils pendant la session</li>
-                        <li>Mémoriser vos préférences (consentement cookies)</li>
+                        <li>Mémoriser votre choix de consentement (365 jours)</li>
+                        <li>Mémoriser la configuration de votre recherche (occasion, nombre de personnes, mode et montant
+                            du budget), sans donnée personnelle</li>
+                        <li>Conserver temporairement vos profils entre la saisie et l'affichage des résultats : au
+                            démarrage de l'analyse, ils sont déplacés du localStorage vers le sessionStorage (limité à
+                            l'onglet), puis supprimés après l'affichage des résultats. En cas d'échec technique, une
+                            copie reste dans le sessionStorage de l'onglet pour le bouton « Réessayer » ; elle est
+                            supprimée si vous cliquez sur « Modifier ma recherche » et disparaît à la fermeture de
+                            l'onglet. Si le sessionStorage est indisponible, les profils restent dans le localStorage
+                            jusqu'à la fin de l'analyse.</li>
                     </ul>
-                    <p><strong>Ces données restent sur votre appareil</strong> et ne sont jamais transmises à nos
-                        serveurs, sauf pour générer les recommandations.</p>
+                    <p><strong>Ces données restent sur votre appareil.</strong> Seuls les profils sont transmis à notre
+                        serveur, uniquement pour générer les recommandations, et ne sont pas conservés sur notre serveur.</p>
                 </section>
 
+                <!-- Mis à jour automatiquement le 24/11/2026 — À FAIRE RELIRE (validation juridique) -->
                 <section class="legal-section">
                     <h2>5. Partage des données</h2>
                     <p>Vos données peuvent être partagées avec :</p>
@@ -139,15 +155,28 @@
                             <tr>
                                 <td>Google (Gemini API)</td>
                                 <td>Génération automatisée des suggestions</td>
-                                <td>Profils anonymisés</td>
+                                <td>Données du profil saisies : prénom, genre, âge, budget, centres d'intérêt, goûts et
+                                    choses à éviter (texte libre), occasion</td>
                             </tr>
                             <tr>
-                                <td>Amazon (API Produits)</td>
+                                <td>RapidAPI (fournisseur de données produits Amazon)</td>
                                 <td>Recherche de produits</td>
-                                <td>Termes de recherche</td>
+                                <td>Termes de recherche et fourchette de prix</td>
+                            </tr>
+                            <tr>
+                                <td>Brevo (emailing)</td>
+                                <td>Newsletter, envoi des résultats (uniquement après inscription volontaire)</td>
+                                <td>Email, prénom de la personne à qui offrir, cadeau choisi</td>
                             </tr>
                         </tbody>
                     </table>
+                    <p>Les liens vers Amazon sont des liens affiliés (programme Partenaires Amazon) : lorsque vous
+                        cliquez dessus, vous êtes redirigé vers Amazon, qui applique sa propre politique de
+                        confidentialité. Les images des produits proposés sont chargées directement depuis les serveurs
+                        d'Amazon.</p>
+                    <p>Les polices de caractères et les icônes du site sont hébergées sur notre propre serveur : aucune
+                        requête n'est envoyée à Google Fonts (votre adresse IP n'est pas transmise à Google pour
+                        l'affichage des polices).</p>
                 </section>
 
                 <section class="legal-section">
@@ -189,19 +218,21 @@
                             href="mailto:contact@offrez.net">contact@offrez.net</a></p>
                 </section>
 
+                <!-- Mis à jour automatiquement le 24/11/2026 — À FAIRE RELIRE (validation juridique) -->
                 <section class="legal-section">
                     <h2>7. Sécurité</h2>
-                    <p>Nous mettons en uvre les mesures suivantes :</p>
+                    <p>Nous mettons en œuvre les mesures suivantes :</p>
                     <ul>
                         <li><i class="fas fa-lock"></i> Chiffrement SSL/TLS</li>
                         <li><i class="fas fa-server"></i> Serveur sécurisé</li>
-                        <li><i class="fas fa-clock"></i> Suppression automatique après traitement</li>
+                        <li><i class="fas fa-clock"></i> Profils non conservés sur notre serveur après génération des suggestions</li>
                     </ul>
                 </section>
 
+                <!-- Mis à jour automatiquement le 24/11/2026 — À FAIRE RELIRE (validation juridique) -->
                 <section class="legal-section">
                     <h2>8. Cookies</h2>
-                    <p>OFFREZ utilise uniquement des cookies essentiels :</p>
+                    <p>OFFREZ ne dépose aucun cookie : seul le stockage de votre navigateur est utilisé (voir section 4) :</p>
                     <table class="legal-table">
                         <thead>
                             <tr>
@@ -212,14 +243,19 @@
                         </thead>
                         <tbody>
                             <tr>
-                                <td>cookieConsent</td>
+                                <td>OFFREZ_<wbr>cookie_<wbr>consent (localStorage)</td>
                                 <td>Essentiel</td>
-                                <td>1 an</td>
+                                <td>1 an (365 jours)</td>
                             </tr>
                             <tr>
-                                <td>finalData (localStorage)</td>
+                                <td>giftConfig (localStorage, sans donnée personnelle)</td>
                                 <td>Fonctionnel</td>
-                                <td>Session</td>
+                                <td>Jusqu'à la prochaine configuration ou l'effacement des données du navigateur</td>
+                            </tr>
+                            <tr>
+                                <td>finalData (localStorage puis sessionStorage)</td>
+                                <td>Fonctionnel</td>
+                                <td>Jusqu'à l'affichage des résultats ; en cas d'échec, jusqu'à « Modifier ma recherche » ou la fermeture de l'onglet</td>
                             </tr>
                         </tbody>
                     </table>
