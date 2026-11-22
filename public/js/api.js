@@ -33,10 +33,11 @@ apiLog('🌐', 'API_BASE configuré', API_BASE);
 /**
  * Demande des suggestions de cadeaux au serveur (qui construit le prompt Gemini).
  * Contrat POST /api/analyze :
- *   requête : { contexte, profile: { nom, sexe, age, budget, tags, adore, eviter } }
+ *   requête : { contexte, profile: { sexe, age, budget, tags, adore, eviter } } (jamais le prénom)
  *   réponse : { suggestions: [ { term, reason, prix_estime } ] }
  * @param {Object} payload - Contexte + profil normalisé (aucun prompt côté client).
  * @returns {Object} - { suggestions } validé.
+ * @throws {Error} en cas d'échec HTTP, l'erreur porte `status` (code HTTP) pour décider d'une nouvelle tentative.
  */
 export async function callGemini(payload) {
     const startTime = performance.now();
@@ -73,7 +74,9 @@ export async function callGemini(payload) {
             const msg = details && details.error
                 ? details.error
                 : `Erreur API : ${response.status} ${response.statusText}`;
-            throw new Error(msg);
+            const httpError = new Error(msg);
+            httpError.status = response.status;
+            throw httpError;
         }
 
         let parsed;

@@ -6,7 +6,7 @@
  * Rôles principaux :
  * 1. Masquer les clés API (Gemini & RapidAPI) qui ne doivent pas être exposées au client.
  * 2. Gérer le Rate Limiting pour éviter les abus et l'explosion du budget.
- * 3. Cacher les résultats Amazon (24h) pour réduire drastiquement les coûts API.
+ * 3. Cacher en mémoire les résultats Amazon (24h) et les suggestions Gemini (12h) pour réduire les coûts API.
  * 4. Servir l'application statique (HTML/CSS/JS).
  */
 
@@ -16,7 +16,7 @@ const helmet = require('helmet');
 const path = require('path');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
-const { parseTrustProxy } = require('./lib/config');
+const { parseTrustProxy, RATE_LIMITS } = require('./lib/config');
 const fs = require('fs');
 const crypto = require('crypto');
 
@@ -37,7 +37,10 @@ const {
     createDailyQuota,
     createPerKeyDailyQuota,
     quotaClientKey,
-    parsePositiveIntEnv,
+    parseNonNegativeIntEnv,
+    secondsUntilMidnight,
+    createTtlCache,
+    buildAnalyzeCacheKey,
     fetchJsonWithTimeout
 } = require('./lib/analyze');
 
@@ -60,24 +63,31 @@ const GEMINI_MODEL = (() => {
     return raw;
 })();
 
+// Plafonds journaliers : valeurs par défaut prudentes (un oubli de configuration reste sans danger).
+// 0 = interrupteur « aucun appel autorisé » ; texte, négatif ou décimal → valeur par défaut + avertissement.
+function quotaLimitFromEnv(name, defaultValue) {
+    const value = parseNonNegativeIntEnv(process.env[name], defaultValue,
+        () => console.warn(`[QUOTA] ${name} invalide, valeur par défaut utilisée (${defaultValue})`));
+    if (value === 0) console.warn(`[QUOTA] ${name}=0 : aucun appel autorisé`);
+    return value;
+}
+
 // [LOT1] Quotas journaliers globaux (plafond de coût des API payantes), en mémoire
-const GEMINI_DAILY_LIMIT = parsePositiveIntEnv(process.env.GEMINI_DAILY_LIMIT, 1000,
-    () => console.warn('[QUOTA] GEMINI_DAILY_LIMIT invalide, valeur par défaut utilisée (1000)'));
-const RAPIDAPI_DAILY_LIMIT = parsePositiveIntEnv(process.env.RAPIDAPI_DAILY_LIMIT, 500,
-    () => console.warn('[QUOTA] RAPIDAPI_DAILY_LIMIT invalide, valeur par défaut utilisée (500)'));
+const GEMINI_DAILY_LIMIT = quotaLimitFromEnv('GEMINI_DAILY_LIMIT', 100);
+const RAPIDAPI_DAILY_LIMIT = quotaLimitFromEnv('RAPIDAPI_DAILY_LIMIT', 150);
 const geminiQuota = createDailyQuota(GEMINI_DAILY_LIMIT);
 const rapidApiQuota = createDailyQuota(RAPIDAPI_DAILY_LIMIT);
 const quotaWarnedDay = new Map(); // nom du quota -> date du dernier warning (1 log / jour)
 
 // [LOT1] Quotas journaliers par IP (hashée) : un seul client ne peut pas épuiser le quota global
-const GEMINI_DAILY_LIMIT_PER_IP = parsePositiveIntEnv(process.env.GEMINI_DAILY_LIMIT_PER_IP, 60,
-    () => console.warn('[QUOTA] GEMINI_DAILY_LIMIT_PER_IP invalide, valeur par défaut utilisée (60)'));
-const RAPIDAPI_DAILY_LIMIT_PER_IP = parsePositiveIntEnv(process.env.RAPIDAPI_DAILY_LIMIT_PER_IP, 200,
-    () => console.warn('[QUOTA] RAPIDAPI_DAILY_LIMIT_PER_IP invalide, valeur par défaut utilisée (200)'));
+const GEMINI_DAILY_LIMIT_PER_IP = quotaLimitFromEnv('GEMINI_DAILY_LIMIT_PER_IP', 35);
+const RAPIDAPI_DAILY_LIMIT_PER_IP = quotaLimitFromEnv('RAPIDAPI_DAILY_LIMIT_PER_IP', 70);
 const geminiIpQuota = createPerKeyDailyQuota(GEMINI_DAILY_LIMIT_PER_IP);
 const rapidApiIpQuota = createPerKeyDailyQuota(RAPIDAPI_DAILY_LIMIT_PER_IP);
 
+// Retry-After : secondes jusqu'au prochain minuit (heure locale du process ; TZ=Europe/Paris sur Render)
 function sendIpQuotaExceeded(res) {
+    res.set('Retry-After', String(secondsUntilMidnight()));
     return res.status(429).json({ error: 'Limite quotidienne de recherches atteinte. Réessayez demain.' });
 }
 
@@ -90,6 +100,7 @@ function warnQuotaExceeded(name, quota, limit) {
 }
 
 function sendQuotaExceeded(res) {
+    res.set('Retry-After', String(secondsUntilMidnight()));
     return res.status(503).json({ error: 'Service temporairement indisponible, réessayez plus tard.' });
 }
 
@@ -116,46 +127,21 @@ function log(message, ...args) {
 }
 
 // ============================================
-// SYSTÈME DE CACHE SERVEUR (Amazon API)
+// CACHES SERVEUR EN MÉMOIRE (Amazon + Gemini)
 // ============================================
-// Permet d'économiser des crédits API en stockant les résultats pour une même recherche.
-const searchCache = new Map();
-const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 heures (TTL long car les produits changent peu)
+// Économisent des crédits API : TTL + éviction LRU, taille bornée, perdus à chaque redémarrage.
+const searchCache = createTtlCache({ ttlMs: 24 * 60 * 60 * 1000, maxEntries: 1000 }); // produits : changent peu
+// Suggestions Gemini : la clé ne contient ni prénom ni IP (voir buildAnalyzeCacheKey)
+const analyzeCache = createTtlCache({ ttlMs: 12 * 60 * 60 * 1000, maxEntries: 500 });
 
 function getCacheKey(term, minPrice, maxPrice) {
     // Clé unique basée sur les paramètres de recherche
     return `${term.toLowerCase().trim()}|${minPrice}|${maxPrice}`;
 }
 
-function getFromCache(key) {
-    const cached = searchCache.get(key);
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-        log('[CACHE HIT]'); // pas de terme saisi dans les logs
-        return cached.data;
-    }
-    if (cached) searchCache.delete(key); // Nettoyage si expiré
-    return null;
-}
-
-function setCache(key, data) {
-    // Protection mémoire : limite à 500 entrées (FIFO simple)
-    if (searchCache.size > 500) {
-        const firstKey = searchCache.keys().next().value;
-        searchCache.delete(firstKey);
-    }
-    searchCache.set(key, { data, timestamp: Date.now() });
-}
-
 // FIX #1 : Purge périodique des entrées expirées (toutes les 30 minutes)
 setInterval(() => {
-    const now = Date.now();
-    let purged = 0;
-    for (const [key, value] of searchCache) {
-        if (now - value.timestamp >= CACHE_TTL) {
-            searchCache.delete(key);
-            purged++;
-        }
-    }
+    const purged = searchCache.purgeExpired() + analyzeCache.purgeExpired();
     if (purged > 0) log(`[CACHE PURGE] ${purged} entrées expirées supprimées`);
 }, 30 * 60 * 1000).unref(); // [LOT2] ne maintient pas le process en vie (tests) ; le serveur HTTP le fait en prod
 
@@ -186,7 +172,7 @@ app.use((req, res, next) => {
 // 1. Limite globale pour les recherches produits (Amazon)
 const apiLimiter = rateLimit({
     windowMs: 1 * 60 * 1000, // 1 minute
-    max: 40, // 40 requêtes/min (suffisant pour ~10 utilisateurs simultanés)
+    limit: RATE_LIMITS.searchPerMinute, // requêtes/min par IP
     message: { error: 'Oups ! Trop de recherches. Veuillez patienter une minute.' },
     standardHeaders: true,
     legacyHeaders: false,
@@ -195,8 +181,10 @@ const apiLimiter = rateLimit({
 // 2. Limite stricte pour l'IA (Coûteuse en ressources)
 const strictLimiter = rateLimit({
     windowMs: 1 * 60 * 1000,
-    max: 20, // 20 générations/min
+    limit: RATE_LIMITS.analyzePerMinute, // générations/min par IP
     message: { error: 'Limite d\'analyses atteinte, patientez une minute.' },
+    standardHeaders: true,
+    legacyHeaders: false,
 });
 
 // ----------------------
@@ -376,6 +364,16 @@ app.post('/api/analyze', strictLimiter, async (req, res) => {
             return res.status(400).json({ error: validation.error });
         }
 
+        // Cache (12 h) : un résultat déjà validé est renvoyé tout de suite, sans consommer aucun quota
+        const cacheKey = buildAnalyzeCacheKey(validation.value, { model: GEMINI_MODEL, year: new Date().getFullYear() });
+        const cached = analyzeCache.get(cacheKey);
+        if (cached) {
+            log('[CACHE HIT] analyze');
+            res.set('X-Cache', 'HIT');
+            return res.json(cached);
+        }
+        res.set('X-Cache', 'MISS');
+
         if (!process.env.GEMINI_API_KEY) {
             console.error('[GEMINI] Configuration manquante : GEMINI_API_KEY');
             return res.status(500).json({ error: 'Service d\'analyse temporairement indisponible.' });
@@ -460,7 +458,10 @@ app.post('/api/analyze', strictLimiter, async (req, res) => {
         }
 
         log('[GEMINI] ' + suggestions.length + ' suggestion(s) valide(s)');
-        res.json({ suggestions });
+        const result = { suggestions };
+        // Mise en cache uniquement d'une génération complète (finishReason STOP) déjà validée/assainie
+        if (data.candidates?.[0]?.finishReason === 'STOP') analyzeCache.set(cacheKey, result);
+        res.json(result);
     } catch (error) {
         if (error && error.name === 'AbortError') {
             console.error('[GEMINI] Timeout upstream');
@@ -491,10 +492,13 @@ app.get('/api/search', apiLimiter, async (req, res) => {
 
         // 1. VÉRIFICATION CACHE (Hit or Miss) — clé construite sur les valeurs normalisées
         const cacheKey = getCacheKey(term, minPrice ?? '', maxPrice ?? '');
-        const cached = getFromCache(cacheKey);
+        const cached = searchCache.get(cacheKey);
         if (cached) {
+            log('[CACHE HIT] search'); // pas de terme saisi dans les logs
+            res.set('X-Cache', 'HIT');
             return res.json(cached);
         }
+        res.set('X-Cache', 'MISS');
 
         // Quota consommé uniquement juste avant un appel upstream réel (pas sur cache hit), par IP puis global
         if (!rapidApiIpQuota.tryConsume(hashIp(quotaClientKey(req.ip || req.socket?.remoteAddress)))) {
@@ -546,7 +550,7 @@ app.get('/api/search', apiLimiter, async (req, res) => {
 
         // 4. SAUVEGARDE CACHE
         // Un résultat vide n'est pas mis en cache 24h (permet un nouvel essai)
-        if (adaptedData.search_results.length > 0) setCache(cacheKey, adaptedData);
+        if (adaptedData.search_results.length > 0) searchCache.set(cacheKey, adaptedData);
         log(`[CACHE SET] ${adaptedData.search_results.length} résultats`);
 
         res.json(adaptedData);
@@ -651,4 +655,4 @@ if (require.main === module) {
     });
 }
 
-module.exports = { app };
+module.exports = { app, analyzeCache, searchCache, RATE_LIMITS };

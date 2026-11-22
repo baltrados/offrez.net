@@ -11,6 +11,7 @@ const {
 
 configureEnv();
 const { app } = require('../../server.js');
+const { RATE_LIMITS } = require('../../lib/config');
 
 let srv;
 let mock;
@@ -102,12 +103,13 @@ describe("X-Forwarded-For : usurpation d'IP (trust proxy = 1)", () => {
         // Corps vide : rejeté en 400 par la validation, sans aucun appel Gemini (le limiteur compte quand même).
         const realIp = uniqueIp();
         const statuses = [];
-        for (let i = 1; i <= 21; i++) {
+        const limit = RATE_LIMITS.analyzePerMinute;
+        for (let i = 1; i <= limit + 1; i++) {
             const r = await postJson('/api/analyze', {}, `198.18.${i}.${i}, ${realIp}`);
             statuses.push(r.status);
         }
-        assert.deepEqual(statuses.slice(0, 20), Array(20).fill(400));
-        assert.equal(statuses[20], 429, '21e requête limitée malgré des IP forgées différentes');
+        assert.deepEqual(statuses.slice(0, limit), Array(limit).fill(400));
+        assert.equal(statuses[limit], 429, `requête n°${limit + 1} limitée malgré des IP forgées différentes`);
         assert.equal(mock.calls.length, 0, 'aucun appel externe');
     });
 });

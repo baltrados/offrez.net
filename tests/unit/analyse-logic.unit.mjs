@@ -30,10 +30,10 @@ globalThis.sessionStorage = new MemoryStorage();
 
 const JS = new URL('../../public/js/', import.meta.url);
 // Mêmes URL (avec ?v=) que celles importées par analyse.js : une seule instance par module.
-const products = await import(new URL('analyse/products.js?v=2026112205', JS).href);
-const cart = await import(new URL('analyse/cart.js?v=2026112205', JS).href);
-const session = await import(new URL('analyse/session-data.js?v=2026112205', JS).href);
-const settings = await import(new URL('analyse/settings.js?v=2026112205', JS).href);
+const products = await import(new URL('analyse/products.js?v=2026112206', JS).href);
+const cart = await import(new URL('analyse/cart.js?v=2026112206', JS).href);
+const session = await import(new URL('analyse/session-data.js?v=2026112206', JS).href);
+const settings = await import(new URL('analyse/settings.js?v=2026112206', JS).href);
 
 const {
     normalizeProfile, buildAnalyzePayload, computeSearchPriceRange, computeFallbackMinPrice,
@@ -82,14 +82,36 @@ describe('buildAnalyzePayload', () => {
         const payload = buildAnalyzePayload('Fête des Pères', personne);
         assert.deepEqual(payload, {
             contexte: 'Fête des Pères',
-            profile: { nom: 'Paul', sexe: 'Homme', age: null, budget: 49.5, tags: ['Sport'], adore: '', eviter: '' }
+            profile: { sexe: 'Homme', age: null, budget: 49.5, tags: ['Sport'], adore: '', eviter: '' }
         });
         assert.equal('prompt' in payload, false);
+    });
+    test("le prénom n'est jamais envoyé à /api/analyze", () => {
+        const personne = normalizeProfile({ nom: 'Zéphyrine', budget: 30 });
+        assert.equal(personne.nom, 'Zéphyrine', "le prénom reste disponible pour l'affichage local");
+        const payload = buildAnalyzePayload('Noël', personne);
+        assert.ok(!('nom' in payload.profile));
+        assert.ok(!JSON.stringify(payload).includes('Zéphyrine'));
     });
     test('adore / eviter repris des détails', () => {
         const personne = normalizeProfile({ budget: 20, details: { adore: 'thé', eviter: 'café' } });
         assert.equal(buildAnalyzePayload('Noël', personne).profile.adore, 'thé');
         assert.equal(buildAnalyzePayload('Noël', personne).profile.eviter, 'café');
+    });
+});
+
+describe('décision de nouvelle tentative IA', () => {
+    test('pas de relance après 400, 429 ou 503', () => {
+        for (const status of [400, 429, 503]) {
+            assert.equal(settings.shouldRetryGemini(Object.assign(new Error('x'), { status })), false, String(status));
+        }
+    });
+    test('relance pour une erreur réseau / timeout (sans statut) et les autres 5xx', () => {
+        assert.equal(settings.shouldRetryGemini(new Error('Failed to fetch')), true);
+        assert.equal(settings.shouldRetryGemini(undefined), true);
+        for (const status of [500, 502, 504]) {
+            assert.equal(settings.shouldRetryGemini(Object.assign(new Error('x'), { status })), true, String(status));
+        }
     });
 });
 

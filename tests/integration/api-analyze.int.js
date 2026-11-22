@@ -9,7 +9,7 @@ const {
 } = require('./helpers');
 
 configureEnv();
-const { app } = require('../../server.js');
+const { app, analyzeCache } = require('../../server.js');
 
 let srv;
 let mock;
@@ -24,7 +24,10 @@ after(async () => {
     mock.restore();
 });
 
-beforeEach(() => mock.reset());
+beforeEach(() => {
+    mock.reset();
+    analyzeCache.clear(); // isole les tests : le cache est partagé dans le process
+});
 
 const validBody = (overrides = {}) => ({
     contexte: 'Anniversaire',
@@ -115,18 +118,18 @@ describe('POST /api/analyze — succès', () => {
 
     test('texte libre utilisateur uniquement dans le bloc délimité, jamais dans systemInstruction', async () => {
         mock.handlers.gemini = () => geminiOk([{ term: 'coffret thé', reason: 'r', prix_estime: '30€' }]);
-        await analyze(validBody({ nom: 'Zorglub', adore: 'MARQUEUR_ADORE <script>', eviter: 'MARQUEUR_EVITER' }));
+        await analyze(validBody({ adore: 'MARQUEUR_ADORE <script>', eviter: 'MARQUEUR_EVITER' }));
         const { json } = mock.callsTo('gemini')[0];
         const system = json.systemInstruction.parts[0].text;
         const userText = json.contents[0].parts[0].text;
-        for (const marker of ['Zorglub', 'MARQUEUR_ADORE', 'MARQUEUR_EVITER']) {
+        for (const marker of ['MARQUEUR_ADORE', 'MARQUEUR_EVITER']) {
             assert.ok(!system.includes(marker), `${marker} absent de systemInstruction`);
         }
         const start = userText.indexOf('<<<PROFIL_DEBUT>>>');
         const end = userText.indexOf('<<<PROFIL_FIN>>>');
         assert.ok(start === 0 && end > start, 'bloc délimité présent');
         const block = userText.slice(start, end);
-        for (const marker of ['Zorglub', 'MARQUEUR_ADORE', 'MARQUEUR_EVITER']) {
+        for (const marker of ['MARQUEUR_ADORE', 'MARQUEUR_EVITER']) {
             assert.ok(block.includes(marker), `${marker} présent dans le bloc délimité`);
         }
         // Les chevrons du texte libre sont neutralisés (ne peuvent pas fermer le bloc)
@@ -327,6 +330,124 @@ describe('POST /api/analyze — erreurs upstream', () => {
         const r = await analyze(validBody());
         assert.equal(r.status, 502);
         assert.ok(!r.text.includes('ECONNRESET'));
+        assertNoLeak(assert, r.text);
+    });
+});
+
+describe('POST /api/analyze — prénom retiré du prompt', () => {
+    test('le prénom (ancien client) est accepté, ignoré et jamais envoyé à Gemini', async () => {
+        mock.handlers.gemini = () => geminiOk([{ term: 'coffret thé', reason: 'r', prix_estime: '30€' }]);
+        const r = await analyze(validBody({ nom: 'Zéphyrine' }));
+        assert.equal(r.status, 200);
+        const sent = mock.callsTo('gemini')[0].body;
+        assert.ok(!sent.includes('Zéphyrine'), 'le prénom ne doit pas être dans le corps envoyé à Gemini');
+        assert.ok(!r.text.includes('Zéphyrine'));
+    });
+
+    test('profil sans prénom → 200 (champ facultatif)', async () => {
+        mock.handlers.gemini = () => geminiOk([{ term: 'coffret thé', reason: 'r', prix_estime: '30€' }]);
+        const body = validBody();
+        delete body.profile.nom;
+        assert.equal((await analyze(body)).status, 200);
+    });
+});
+
+describe('POST /api/analyze — cache des suggestions', () => {
+    const okHandler = () => geminiOk([{ term: 'coffret thé', reason: 'Pour cette personne', prix_estime: '30€' }]);
+
+    test('deux requêtes identiques → un seul appel Gemini, la 2e est X-Cache: HIT', async () => {
+        mock.handlers.gemini = okHandler;
+        const r1 = await analyze(validBody());
+        const r2 = await analyze(validBody());
+        assert.equal(r1.status, 200);
+        assert.equal(r1.headers.get('x-cache'), 'MISS');
+        assert.equal(r2.status, 200);
+        assert.equal(r2.headers.get('x-cache'), 'HIT');
+        assert.deepEqual(r2.json, r1.json);
+        assert.equal(mock.callsTo('gemini').length, 1);
+    });
+
+    test('même demande avec un prénom différent → HIT (le prénom n\'est pas dans la clé)', async () => {
+        mock.handlers.gemini = okHandler;
+        await analyze(validBody({ nom: 'Marie' }));
+        const r = await analyze(validBody({ nom: 'Zéphyrine' }));
+        assert.equal(r.headers.get('x-cache'), 'HIT');
+        assert.equal(mock.callsTo('gemini').length, 1);
+    });
+
+    test('centres d\'intérêt dans un autre ordre, casse et espaces du texte libre → HIT', async () => {
+        mock.handlers.gemini = okHandler;
+        await analyze(validBody());
+        const r = await analyze(validBody({ tags: ['Cuisine', 'Lecture'], eviter: '  LES   bougies ' }));
+        assert.equal(r.headers.get('x-cache'), 'HIT');
+        assert.equal(mock.callsTo('gemini').length, 1);
+    });
+
+    test('une donnée différente (budget) → MISS, nouvel appel Gemini', async () => {
+        mock.handlers.gemini = okHandler;
+        await analyze(validBody());
+        const r = await analyze(validBody({ budget: 80 }));
+        assert.equal(r.headers.get('x-cache'), 'MISS');
+        assert.equal(mock.callsTo('gemini').length, 2);
+    });
+
+    test('HIT indépendant de l\'IP : un autre client reçoit le résultat en cache', async () => {
+        mock.handlers.gemini = okHandler;
+        await analyze(validBody(), { ip: uniqueIp() });
+        const r = await analyze(validBody(), { ip: uniqueIp() });
+        assert.equal(r.headers.get('x-cache'), 'HIT');
+    });
+
+    test('réponses non cachées : erreur HTTP, bloquée, finishReason != STOP, vide, sans suggestion, réseau, timeout', async () => {
+        const cases = {
+            'HTTP 500': () => jsonResponse(500, { error: { status: 'INTERNAL' } }),
+            'HTTP 429': () => jsonResponse(429, { error: { status: 'RESOURCE_EXHAUSTED' } }),
+            'bloquée': () => jsonResponse(200, { promptFeedback: { blockReason: 'SAFETY' } }),
+            'finishReason MAX_TOKENS sans texte': () => jsonResponse(200, { candidates: [{ content: { parts: [] }, finishReason: 'MAX_TOKENS' }] }),
+            'finishReason MAX_TOKENS avec suggestion exploitable': () => jsonResponse(200, {
+                candidates: [{
+                    content: { parts: [{ text: '{"suggestions":[{"term":"coffret thé","reason":"r","prix_estime":"30€"}]}' }] },
+                    finishReason: 'MAX_TOKENS'
+                }]
+            }),
+            'vide': () => jsonResponse(200, { candidates: [] }),
+            'sans suggestion valide': () => geminiOk([{ term: 'x' }]),
+            'réseau': () => Promise.reject(Object.assign(new TypeError('fetch failed'), { code: 'ECONNRESET' })),
+            'timeout': () => Promise.reject(new DOMException('aborted', 'AbortError'))
+        };
+        for (const [label, handler] of Object.entries(cases)) {
+            analyzeCache.clear();
+            mock.reset();
+            mock.handlers.gemini = handler;
+            const first = await analyze(validBody());
+            assert.notEqual(first.headers.get('x-cache'), 'HIT', label);
+            assert.equal(analyzeCache.size, 0, `${label} : rien en cache`);
+            // La requête suivante rappelle Gemini (et obtient cette fois un succès)
+            mock.handlers.gemini = okHandler;
+            const second = await analyze(validBody());
+            assert.equal(second.status, 200, label);
+            assert.equal(second.headers.get('x-cache'), 'MISS', label);
+            assert.equal(mock.callsTo('gemini').length, 2, `${label} : Gemini rappelé`);
+        }
+    });
+
+    test('un refus de quota n\'est pas mis en cache (clé API absente → 500 non caché)', async () => {
+        const saved = process.env.GEMINI_API_KEY;
+        process.env.GEMINI_API_KEY = '';
+        try {
+            const r = await analyze(validBody());
+            assert.equal(r.status, 500);
+            assert.equal(analyzeCache.size, 0);
+        } finally {
+            process.env.GEMINI_API_KEY = saved;
+        }
+    });
+
+    test('la réponse en cache est la réponse finale assainie (seul { suggestions })', async () => {
+        mock.handlers.gemini = okHandler;
+        await analyze(validBody());
+        const r = await analyze(validBody());
+        assert.deepEqual(Object.keys(r.json), ['suggestions']);
         assertNoLeak(assert, r.text);
     });
 });

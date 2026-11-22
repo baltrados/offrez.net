@@ -74,7 +74,7 @@ test('parcours utilisateur complet jusqu\'à la carte cadeau affiliée', async (
     expect(payload).toEqual({
         contexte: 'Fête des Pères',
         profile: {
-            nom: 'Paul',
+            // le prénom n'est jamais envoyé au serveur (reste dans le navigateur)
             sexe: 'Homme',
             age: null,
             budget: 49.5,

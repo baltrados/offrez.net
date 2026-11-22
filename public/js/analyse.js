@@ -13,7 +13,7 @@
  * (voir documentation/14_SUIVI_CHANTIER_QUALITE.md §3).
  */
 
-import { callGemini, searchAmazon } from './api.js?v=2026112205';
+import { callGemini, searchAmazon } from './api.js?v=2026112206';
 import {
     normalizeProfile,
     buildAnalyzePayload,
@@ -23,14 +23,15 @@ import {
     dedupeProducts,
     buildFallbackTerms,
     filterFallbackProducts
-} from './analyse/products.js?v=2026112205';
-import { takeAnalysisData, purgeAnalysisData } from './analyse/session-data.js?v=2026112205';
-import { updateProgress, hideStatusIndicator, showMissingDataState, showFatalErrorOverlay } from './analyse/ui.js?v=2026112205';
-import { renderResults } from './analyse/render.js?v=2026112205';
-import { initPurchaseTracking } from './analyse/purchase.js?v=2026112205';
+} from './analyse/products.js?v=2026112206';
+import { takeAnalysisData, purgeAnalysisData } from './analyse/session-data.js?v=2026112206';
+import { updateProgress, hideStatusIndicator, showMissingDataState, showFatalErrorOverlay } from './analyse/ui.js?v=2026112206';
+import { renderResults } from './analyse/render.js?v=2026112206';
+import { initPurchaseTracking } from './analyse/purchase.js?v=2026112206';
 import {
     GEMINI_MAX_ATTEMPTS,
     GEMINI_RETRY_DELAY_MS,
+    shouldRetryGemini,
     THINK_DELAY_MS,
     MAX_AMAZON_SEARCHES,
     FALLBACK_MAX_TERMS,
@@ -38,7 +39,7 @@ import {
     PROGRESS_START,
     PROGRESS_PROFILES_BASE,
     PROGRESS_PROFILES_SPAN
-} from './analyse/settings.js?v=2026112205';
+} from './analyse/settings.js?v=2026112206';
 
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -48,7 +49,7 @@ function personResult(personne, products) {
 }
 
 /**
- * Suggestions IA avec une nouvelle tentative (réponse vide ou erreur).
+ * Suggestions IA avec une nouvelle tentative (réponse vide ou erreur réseau / 5xx ; jamais après 400, 429, 503).
  * @returns {Promise<{suggestions: any[]}|null>} null si rien d'exploitable après toutes les tentatives.
  */
 async function fetchSuggestions(payload, personne, profileProgress) {
@@ -57,7 +58,8 @@ async function fetchSuggestions(payload, personne, profileProgress) {
         try {
             iaResult = await callGemini(payload);
             if (iaResult?.suggestions?.length > 0) break;
-        } catch {
+        } catch (error) {
+            if (!shouldRetryGemini(error)) break; // 400 / 429 / 503 : inutile (et coûteux) de réessayer
             if (attempt === 0) {
                 updateProgress(profileProgress + 18, `Nouvelle tentative pour ${personne.nom}...`);
                 await wait(GEMINI_RETRY_DELAY_MS);

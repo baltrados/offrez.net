@@ -69,6 +69,39 @@ test('/api/analyze en 500 → état d\'erreur générique avec « Réessayer » 
     expect(consoleErrors.filter((e) => !/Failed to load resource/.test(e))).toEqual([]);
 });
 
+test('/api/analyze en 429 → un seul appel (pas de relance), message d\'erreur affiché', async ({ page, consoleErrors }) => {
+    await page.addInitScript((data) => {
+        localStorage.setItem('finalData', data);
+    }, JSON.stringify(FINAL_DATA));
+
+    let analyzeCalls = 0;
+    let searchCalls = 0;
+    await page.route('**/api/analyze', (route) => {
+        analyzeCalls++;
+        return route.fulfill({
+            status: 429,
+            headers: { 'Retry-After': '3600' },
+            json: { error: 'Limite quotidienne de recherches atteinte. Réessayez demain.' },
+        });
+    });
+    await page.route('**/api/search?**', (route) => {
+        searchCalls++;
+        return route.fulfill({ json: { search_results: [] } });
+    });
+
+    await page.goto('/analyse.html');
+
+    const errorState = page.locator('#singleResult .analysis-error');
+    await expect(errorState).toBeVisible({ timeout: 15000 });
+    await expect(errorState).toHaveAttribute('role', 'alert');
+    await expect(page.locator('#statusIndicator')).toBeHidden();
+    // Laisse passer le délai de relance (1,5 s) : aucun second appel ne doit partir
+    await page.waitForTimeout(2500);
+    expect(analyzeCalls).toBe(1);
+    expect(searchCalls).toBe(0);
+    expect(consoleErrors.filter((e) => !/Failed to load resource/.test(e))).toEqual([]);
+});
+
 // Données de l'étape 2 absentes, corrompues ou vides : plus de spinner infini.
 const MISSING_DATA_CASES = [
     { name: 'sans finalData', value: null },

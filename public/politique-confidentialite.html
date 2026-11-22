@@ -65,8 +65,8 @@
                         </thead>
                         <tbody>
                             <tr>
-                                <td>Profils bénéficiaires : prénom, genre, âge, budget, centres d'intérêt, ce que la personne aime et ce qu'il faut éviter (texte libre), occasion</td>
-                                <td>Génération de recommandations (transmis à notre serveur puis à Google Gemini, voir section 5) ; non conservés sur notre serveur</td>
+                                <td>Profils bénéficiaires : prénom, genre, âge, budget, centres d'intérêt, ce que la personne aime et ce qu'il faut éviter (texte libre), occasion. Le prénom reste dans votre navigateur : il n'est jamais envoyé à notre serveur ni à Google.</td>
+                                <td>Génération de recommandations (genre, âge, budget, centres d'intérêt, goûts et occasion sont transmis à notre serveur puis à Google Gemini, voir section 5) ; les profils ne sont pas conservés sur notre serveur. Seules les suggestions générées peuvent être gardées temporairement en mémoire (voir section 4)</td>
                                 <td>Exécution du service</td>
                             </tr>
                         </tbody>
@@ -99,8 +99,13 @@
                             l'onglet. Si le sessionStorage est indisponible, les profils restent dans le localStorage
                             jusqu'à la fin de l'analyse.</li>
                     </ul>
-                    <p><strong>Ces données restent sur votre appareil.</strong> Seuls les profils sont transmis à notre
-                        serveur, uniquement pour générer les recommandations, et ne sont pas conservés sur notre serveur.</p>
+                    <p><strong>Ces données restent sur votre appareil.</strong> Seules les informations utiles à la génération
+                        (genre, âge, budget, centres d'intérêt, goûts, choses à éviter et occasion) sont transmises à notre
+                        serveur, uniquement pour générer les recommandations ; elles ne sont pas conservées sur notre
+                        serveur. Le prénom reste dans votre navigateur.</p>
+                    <p>Pour répondre plus vite à une demande identique et limiter les coûts, les suggestions générées
+                        peuvent être conservées temporairement dans la mémoire du serveur (12 heures au maximum), sans
+                        prénom ni adresse IP. Elles sont effacées à chaque redémarrage du serveur.</p>
                 </section>
 
                 <!-- Mis à jour automatiquement le 24/11/2026 — À FAIRE RELIRE (validation juridique) -->
@@ -119,8 +124,8 @@
                             <tr>
                                 <td>Google (Gemini API)</td>
                                 <td>Génération automatisée des suggestions</td>
-                                <td>Données du profil saisies : prénom, genre, âge, budget, centres d'intérêt, goûts et
-                                    choses à éviter (texte libre), occasion</td>
+                                <td>Données du profil saisies : genre, âge, budget, centres d'intérêt, goûts et
+                                    choses à éviter (texte libre), occasion. Le prénom n'est pas transmis : il reste dans votre navigateur.</td>
                             </tr>
                             <tr>
                                 <td>RapidAPI (fournisseur de données produits Amazon)</td>
@@ -185,7 +190,7 @@
                     <ul>
                         <li><i class="fas fa-lock"></i> Chiffrement SSL/TLS</li>
                         <li><i class="fas fa-server"></i> Serveur sécurisé</li>
-                        <li><i class="fas fa-clock"></i> Profils non conservés sur notre serveur après génération des suggestions</li>
+                        <li><i class="fas fa-clock"></i> Profils non conservés sur notre serveur ; suggestions générées gardées en mémoire 12 heures au maximum (sans prénom ni adresse IP), effacées à chaque redémarrage</li>
                     </ul>
                 </section>
 

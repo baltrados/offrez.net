@@ -13,6 +13,18 @@ export const AFFILIATE_TAG = 'offreznet-21';
 export const GEMINI_MAX_ATTEMPTS = 2;
 /** Pause avant la nouvelle tentative après une erreur (ms). */
 export const GEMINI_RETRY_DELAY_MS = 1500;
+/** Statuts HTTP pour lesquels une nouvelle tentative est inutile (requête invalide, quota ou plafond atteint). */
+export const GEMINI_NO_RETRY_STATUSES = [400, 429, 503];
+
+/**
+ * Faut-il relancer /api/analyze après cette erreur ? Non pour 400, 429 et 503 (le résultat serait identique
+ * et chaque nouvel appel peut consommer un quota) ; oui pour les erreurs réseau/timeout (pas de statut)
+ * et les autres 5xx.
+ * @param {{status?: number}|null|undefined} error
+ */
+export function shouldRetryGemini(error) {
+    return !GEMINI_NO_RETRY_STATUSES.includes(error?.status);
+}
 /** « Temps de réflexion » affiché avant l'appel IA (ms). */
 export const THINK_DELAY_MS = 800;
 
