@@ -70,8 +70,12 @@ Le script `deploy.sh` exécute automatiquement :
 1. `git fetch origin main`
 2. `git checkout -f -B main origin/main`
 3. `git pull --ff-only origin main`
-4. `pm2 restart offrly`
-5. Vérification `/api/health`
+4. `npm ci --omit=dev` (installe exactement les dépendances du `package-lock.json` — indispensable depuis Express 5 / Helmet 8)
+5. `pm2 restart offrly`
+6. Vérification `/api/health`
+
+> ⚠️ L'étape `npm ci` a été ajoutée dans `tools/deploy-server.sh` (nov. 2026). Si la copie serveur
+> `~/offrly/deploy.sh` date d'avant, la recopier (voir §7) **avant** le prochain déploiement.
 
 ---
 

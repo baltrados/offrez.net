@@ -782,21 +782,38 @@ app.post('/api/track-click', trackClickLimiter, (req, res) => {
 // ============================================
 // ENDPOINT TRACKING PROFILS : /api/track-profiles
 // ============================================
+// [LOT4b] Contrat : { count: entier 1..10, consent: true } — le navigateur n'envoie plus que le NOMBRE
+// de profils. Transition : l'ancien format { profiles: [...], consent } reste accepté (seule la longueur
+// est utilisée, plafonnée à MAX_TRACKED_PROFILES ; le contenu n'est jamais lu ni journalisé).
+const MAX_TRACKED_PROFILES = 10;
+function resolveTrackedProfileCount(body) {
+    if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
+    if (Object.prototype.hasOwnProperty.call(body, 'count')) {
+        const { count } = body;
+        return Number.isInteger(count) && count >= 1 && count <= MAX_TRACKED_PROFILES ? count : null;
+    }
+    if (Array.isArray(body.profiles) && body.profiles.length > 0) {
+        return Math.min(body.profiles.length, MAX_TRACKED_PROFILES);
+    }
+    return null;
+}
+
 app.post('/api/track-profiles', trackProfilesLimiter, (req, res) => {
     try {
-        const { profiles, consent } = req.body || {};
+        const body = req.body || {};
 
-        if (consent !== true) {
+        if (body.consent !== true) {
             return res.json({ success: false, reason: 'no_consent' });
         }
 
-        if (!profiles || !Array.isArray(profiles) || profiles.length === 0) {
-            return res.status(400).json({ error: 'Aucun profil fourni' });
+        const count = resolveTrackedProfileCount(body);
+        if (count === null) {
+            return res.status(400).json({ error: 'Requête invalide' });
         }
 
-        // Plus de stockage de profils (RGPD) — l'endpoint reste actif pour la compatibilité frontend
-        log(`[PROFILES] ${profiles.length} profil(s) reçu(s) (non stockés)`);
-        res.json({ success: true, count: profiles.length });
+        // Plus de stockage de profils (RGPD) : seul le nombre est journalisé (hors production)
+        log(`[PROFILES] ${count} profil(s) signalé(s) (non stockés)`);
+        res.json({ success: true, count });
     } catch (e) {
         console.error('[TRACK-PROFILES] Erreur serveur:', safeErrorInfo(e));
         res.status(500).json({ error: 'Erreur serveur' });
@@ -819,7 +836,9 @@ app.get('/api/health', (req, res) => {
 // ======================
 // ROUTE FALLBACK (404 & Redirections)
 // ======================
-app.get('*', async (req, res) => {
+// [LOT4b] Express 5 (path-to-regexp v8) : '*' n'est plus un joker valide ; '/{*splat}' couvre
+// toutes les URL, racine comprise (équivalent exact de l'ancien app.get('*')).
+app.get('/{*splat}', async (req, res) => {
     // 1. Redirection SEO pour les dossiers (ex: /blog ou /blog/ -> /blog.html)
     // [LOT0 C2/C3] Recherche limitée à PUBLIC_DIR, résistante au path traversal
     let decodedPath;

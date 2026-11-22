@@ -107,25 +107,100 @@ describe('POST /api/subscribe', () => {
 });
 
 describe('POST /api/track-profiles', () => {
-    test('sans consentement → success:false, rien n\'est traité', async () => {
-        const r = await postJson('/api/track-profiles', { profiles: [{ nom: 'A' }], consent: false }, uniqueIp());
+    // Capture tout ce qui est journalisé pendant fn() (le serveur tourne dans ce process)
+    async function captureLogs(fn) {
+        const methods = ['log', 'info', 'warn', 'error', 'debug'];
+        const saved = {};
+        const lines = [];
+        for (const m of methods) {
+            saved[m] = console[m];
+            console[m] = (...args) => { lines.push(args.map(a => (typeof a === 'string' ? a : JSON.stringify(a))).join(' ')); };
+        }
+        try {
+            await fn();
+        } finally {
+            for (const m of methods) console[m] = saved[m];
+        }
+        return lines.join('\n');
+    }
+
+    test("sans consentement → success:false, rien n'est traité", async () => {
+        const r = await postJson('/api/track-profiles', { count: 2, consent: false }, uniqueIp());
         assert.equal(r.status, 200);
+        assert.deepEqual(r.json, { success: false, reason: 'no_consent' });
+        const legacy = await postJson('/api/track-profiles', { profiles: [{ nom: 'A' }], consent: false }, uniqueIp());
+        assert.deepEqual(legacy.json, { success: false, reason: 'no_consent' });
+    });
+
+    test('consent chaîne "true" (non booléen) → success:false', async () => {
+        const r = await postJson('/api/track-profiles', { count: 1, consent: 'true' }, uniqueIp());
         assert.deepEqual(r.json, { success: false, reason: 'no_consent' });
     });
 
-    test('profils absents → 400', async () => {
-        const r = await postJson('/api/track-profiles', { profiles: [], consent: true }, uniqueIp());
+    test('nouveau contrat { count, consent:true } → { success:true, count }', async () => {
+        for (const count of [1, 3, 10]) {
+            const r = await postJson('/api/track-profiles', { count, consent: true }, uniqueIp());
+            assert.equal(r.status, 200, `count=${count}`);
+            assert.deepEqual(r.json, { success: true, count });
+        }
+    });
+
+    test('count invalide → 400 générique', async () => {
+        const invalid = [0, 11, -1, 1.5, '3', [3], null, true, {}, 1e309 /* → null en JSON */];
+        for (const count of invalid) {
+            const r = await postJson('/api/track-profiles', { count, consent: true }, uniqueIp());
+            assert.equal(r.status, 400, `count=${JSON.stringify(count)}`);
+            assert.deepEqual(r.json, { error: 'Requête invalide' });
+        }
+    });
+
+    test('count invalide non rattrapé par un ancien champ profiles', async () => {
+        const r = await postJson('/api/track-profiles', { count: 0, profiles: [{ nom: 'A' }], consent: true }, uniqueIp());
         assert.equal(r.status, 400);
+        assert.deepEqual(r.json, { error: 'Requête invalide' });
+    });
+
+    test('ni count ni profiles / corps non-objet → 400 générique', async () => {
+        for (const body of [{ consent: true }, { profiles: [], consent: true }, { profiles: 'abc', consent: true }]) {
+            const r = await postJson('/api/track-profiles', body, uniqueIp());
+            assert.equal(r.status, 400, JSON.stringify(body));
+            assert.deepEqual(r.json, { error: 'Requête invalide' });
+        }
+        const arr = await postJson('/api/track-profiles', [{ consent: true }], uniqueIp());
+        assert.deepEqual(arr.json, { success: false, reason: 'no_consent' });
+    });
+
+    test('transition : ancien format { profiles:[...] } accepté, compté et plafonné à 10', async () => {
+        const r = await postJson('/api/track-profiles', { profiles: [{ nom: 'A' }, { nom: 'B' }], consent: true }, uniqueIp());
+        assert.equal(r.status, 200);
+        assert.deepEqual(r.json, { success: true, count: 2 });
+        const big = await postJson('/api/track-profiles', { profiles: Array.from({ length: 25 }, () => ({})), consent: true }, uniqueIp());
+        assert.equal(big.status, 200);
+        assert.deepEqual(big.json, { success: true, count: 10 });
+    });
+
+    test("le contenu des profils n'est jamais journalisé ni renvoyé", async () => {
+        const SECRET = 'PROFIL-PRIVE-Zx9q';
+        let r;
+        const logs = await captureLogs(async () => {
+            r = await postJson('/api/track-profiles', {
+                profiles: [{ nom: SECRET, age: 42, interets: [SECRET] }], consent: true
+            }, uniqueIp());
+            await postJson('/api/track-profiles', { count: SECRET, consent: true }, uniqueIp());
+        });
+        assert.deepEqual(r.json, { success: true, count: 1 });
+        assert.ok(!r.text.includes(SECRET), 'contenu absent de la réponse');
+        assert.ok(!logs.includes(SECRET), 'contenu absent des logs');
     });
 
     test('rate limit : la 11e requête en 1 min → 429', async () => {
         const ip = uniqueIp();
         for (let i = 1; i <= 10; i++) {
-            const r = await postJson('/api/track-profiles', { profiles: [{ nom: 'A' }], consent: true }, ip);
+            const r = await postJson('/api/track-profiles', { count: 1, consent: true }, ip);
             assert.equal(r.status, 200, `requête ${i}`);
             assert.deepEqual(r.json, { success: true, count: 1 });
         }
-        const r11 = await postJson('/api/track-profiles', { profiles: [{ nom: 'A' }], consent: true }, ip);
+        const r11 = await postJson('/api/track-profiles', { count: 1, consent: true }, ip);
         assert.equal(r11.status, 429);
     });
 });

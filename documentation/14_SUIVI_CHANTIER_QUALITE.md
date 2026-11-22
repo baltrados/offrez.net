@@ -1,4 +1,4 @@
-# 14 — SUIVI DU CHANTIER QUALITÉ & SÉCURITÉ (Lots 0 à 3)
+# 14 — SUIVI DU CHANTIER QUALITÉ & SÉCURITÉ (Lots 0 à 4)
 
 > Document de référence pour ne rien perdre : ce qui a été fait, ce qu'il faut vérifier avant la mise en ligne,
 > les règles à respecter désormais, les risques restants et la liste des choses à faire.
@@ -15,10 +15,13 @@
 | Lot 2 — Socle de tests | `78d6b21` | `server.js` testable (`module.exports = { app }`) ; tests unitaires + intégration (`npm test`) ; tests E2E Playwright (`npm run test:e2e`, desktop + mobile, toutes les API mockées) ; `test_security.js` corrompu supprimé ; `node-fetch` retiré de `package.json`. |
 | Lot 3 — Accessibilité, bugs, PWA | (commit « Lot 3 ») | 3 bugs corrigés (débordement `profils.html` desktop, spinner infini sans données, pas d'écran d'erreur si l'IA échoue) ; boutons d'erreur sans `onclick` inline (bloqués par la CSP) ; cartes budget en groupe radio, `aria-pressed`, labels reliés, régions `aria-live`, barre de progression accessible, bannière cookies en vrai dialogue (focus piégé), `alert()` remplacés, `h1` ; **service worker v16** (réseau d'abord pour les pages, page `offline.html`) enregistré sur toutes les pages ; vraies icônes (192/512/maskable/apple) et image OG 1200×630 ; manifest corrigé ; en-têtes `Cache-Control` adaptés. |
 
+| Lot 4b — Backend / dépendances | (commit « Lot 4b ») | **Express 4 → 5.3** et **Helmet 7 → 8.3** (seul changement de code : route de repli `app.get('/{*splat}')`, en-têtes HTTP identiques) ; `engines` Node `>=20` ; `/api/track-profiles` accepte le nouveau format `{ count, consent }` (nombre de profils seulement, RGPD) et encore l'ancien `{ profiles: [...] }` pendant la transition (seule la longueur est lue) ; `tools/deploy-server.sh` lance désormais `npm ci --omit=dev`. |
+| Lot 4a — Refactor frontend | **en cours** | Découpage de `analyse.js`, fusion des doublons (filtre produits, échappement, consentement + expiration), RGPD côté navigateur (envoi du seul nombre de profils, purge de `finalData`). |
+
 ### Tests (à lancer avant chaque commit / déploiement)
 
 ```bash
-npm test             # unitaires + intégration (233 tests au 22/11/2026)
+npm test             # unitaires + intégration (239 tests au 24/11/2026)
 npm run test:e2e     # Playwright (52 tests), démarre son propre serveur sur le port 3100 avec des clés vides
 ```
 
@@ -42,8 +45,14 @@ Aucun test n'appelle les vraies API payantes : tout est simulé (et un garde-fou
    `GEMINI_DAILY_LIMIT` (1000), `RAPIDAPI_DAILY_LIMIT` (500), `GEMINI_DAILY_LIMIT_PER_IP` (60),
    `RAPIDAPI_DAILY_LIMIT_PER_IP` (200), `MAX_CSV_BYTES` (10 Mo), `GEMINI_MODEL` (`gemini-2.0-flash`).
    Adapter les quotas RapidAPI à l'abonnement réel.
-5. **Déployer front et back ensemble** (le contrat `/api/analyze` a changé) : fusionner `ai-development` dans `main`, puis `deploy.sh` (qui fait `git checkout` + `pm2 restart`). Les CSV existants restent à la racine, hors de `public/` — rien à déplacer.
-6. **Après déploiement**, vérifier :
+5. **Mettre à jour le script de déploiement SUR LE SERVEUR avant de déployer** (Lot 4b) :
+   `tools/deploy-server.sh` ajoute l'étape `npm ci --omit=dev`, indispensable depuis Express 5 / Helmet 8
+   (sinon l'ancien `node_modules` en Express 4 reste en place et la route de repli ne fonctionne plus).
+   La copie exécutée en production est `~/offrly/deploy.sh` : la recopier une fois
+   (`scp tools/deploy-server.sh pi@192.168.1.100:~/offrly/deploy.sh`, cf. `13_GIT_ET_GITHUB.md` §7).
+   Vérifier aussi que `npm` est disponible pour l'utilisateur qui lance le script.
+6. **Déployer front et back ensemble** (le contrat `/api/analyze` a changé) : fusionner `ai-development` dans `main`, puis `deploy.sh` (`git checkout` + `npm ci --omit=dev` + `pm2 restart`). Les CSV existants restent à la racine, hors de `public/` — rien à déplacer.
+7. **Après déploiement**, vérifier :
    - `https://offrez.net/server.js` et `https://offrez.net/%73erver.js` → 404 ;
    - une analyse complète fonctionne ;
    - `/api/health` répond.
@@ -91,6 +100,8 @@ Tout ce qui est dans `public/` est en ligne. Rien d'autre ne l'est. Ne jamais y 
 | Bas | Versionnage manuel (`?v=`, `CACHE_NAME`) | Voir §3. Piste : test automatique comparant le contenu des fichiers à leur `?v=`. |
 | Bas | `IP_HASH_SALT` a une valeur par défaut dans le code | Faire échouer le démarrage en production si absent. |
 | Bas | Handlers `uncaughtException` / `unhandledRejection` | Ils journalisent l'objet d'erreur brut et laissent tourner le processus dans un état incertain (préférer laisser PM2 redémarrer). |
+| Bas | Ancien format `/api/track-profiles` encore accepté | Transition Lot 4b. Le retirer (ne garder que `{ count }`) une fois le nouveau frontend déployé et les caches expirés (~24 h après la mise en ligne). |
+| Info | Parseur de requêtes Express 5 (« simple ») | `a[b]=1` n'est plus transformé en objet (clé littérale) ; un paramètre répété donne toujours un tableau. Aucun code actuel n'en dépend — à savoir pour les évolutions. |
 | Info | Tests non exécutés sous Node 20 réel, Linux, Firefox, WebKit | Seulement Node 24 / Windows / Chromium. |
 
 ---
@@ -102,7 +113,8 @@ Tout ce qui est dans `public/` est en ligne. Rien d'autre ne l'est. Ne jamais y 
 - [ ] Fusionner les doublons : filtre produits (×4), échappement HTML (×3), logique de consentement (×4) — utiliser un seul `isTrackingAllowed()` qui vérifie aussi l'**expiration** du consentement (actuellement ignorée).
 - [ ] Réduire Font Awesome aux icônes utilisées (~75 % du poids de la page d'accueil) ; `fa-sparkles` (`profils.html`) est une icône Pro → invisible, à remplacer.
 - [ ] RGPD : ne plus envoyer les profils complets à `/api/track-profiles` (le serveur ne les stocke pas) ; purger `finalData` du `localStorage` après l'analyse ; documenter les traitements dans la politique de confidentialité ; auto-héberger les polices Google.
-- [ ] Monter Express 5 / Helmet 8 (les tests servent de filet).
+- [x] Monter Express 5 / Helmet 8 — fait (Lot 4b).
+- [ ] Retirer l'ancien format `{ profiles: [...] }` de `/api/track-profiles` après la mise en ligne (voir §4).
 
 ### Sécurité / exploitation
 - [ ] Écouter sur `127.0.0.1` uniquement (`app.listen(PORT, '127.0.0.1')`) si cloudflared tourne sur la même machine.
@@ -128,7 +140,7 @@ Tout ce qui est dans `public/` est en ligne. Rien d'autre ne l'est. Ne jamais y 
 - [ ] Test automatique « hash du fichier ↔ `?v=` » pour éviter les oublis de versionnage.
 - [ ] Mettre à jour les docs qui décrivent encore l'ancienne arborescence (avant `public/`) :
       `README.md`, `COMMANDES_UTILES.md`, `documentation/00_VUE_ENSEMBLE.md`, `documentation/11_SETUP_CM3588_SERVEUR.md`.
-- [ ] `engines` de `package.json` : passer de `>=18` à `>=20`.
+- [x] `engines` de `package.json` : passé à `>=20` (Lot 4b).
 
 ---
 
