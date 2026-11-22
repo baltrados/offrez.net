@@ -13,7 +13,6 @@
 
 # Données utilisateurs (PII / RGPD)
 *.csv
-visitors.json
 
 # Dépendances
 node_modules/

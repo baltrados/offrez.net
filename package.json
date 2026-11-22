@@ -6,7 +6,6 @@
     "scripts": {
         "start": "node server.js",
         "dev": "node server.js",
-        "stats": "node admin-stats.js",
         "test": "npm run test:unit && npm run test:integration",
         "test:unit": "node --test tests/unit/analyze.unit.js tests/unit/security.unit.mjs tests/unit/analyse-logic.unit.mjs",
         "test:integration": "node --test tests/integration/api-analyze.int.js tests/integration/api-search.int.js tests/integration/static.int.js tests/integration/misc.int.js tests/integration/quota.int.js",
