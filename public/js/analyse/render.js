@@ -4,9 +4,9 @@
  * Toute donnée externe (IA, Amazon, profil) passe par escapeHtml ; toute URL par buildAffiliateUrl.
  */
 
-import { escapeHtml, buildAffiliateUrl } from '../security.js?v=2026112001';
-import { getSelectedProducts, computeCartTotal, generateCartURL } from './cart.js?v=2026112202';
-import { buildAnalysisFailedState } from './ui.js?v=2026112202';
+import { escapeHtml, buildAffiliateUrl } from '../security.js?v=2026112207';
+import { getSelectedProducts, computeCartTotal, generateCartURL } from './cart.js?v=2026112207';
+import { buildAnalysisFailedState, buildLimitReachedState } from './ui.js?v=2026112207';
 import {
     AFFILIATE_TAG,
     TITLE_MAX_CHARS,
@@ -14,7 +14,7 @@ import {
     REVEAL_STAGGER_MS,
     DISCOVERY_DELAY_MIN_MS,
     DISCOVERY_DELAY_JITTER_MS
-} from './settings.js?v=2026112202';
+} from './settings.js?v=2026112207';
 
 const PLACEHOLDER_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect fill='%231e293b' width='200' height='200'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%2394a3b8' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E";
 
@@ -171,12 +171,15 @@ export function updateCartButton(personResults) {
  * Affiche tous les résultats (une carte par personne), ou l'état vide / d'erreur.
  * @param {Array<{personne: any, products: any[], currentIndex: number, viewedIndices: Set<number>}>} personResults
  * @param {number} apiFailures - profils dont l'analyse IA a échoué (distingue panne / aucun produit)
+ * @param {boolean} [limitReached] - le serveur a répondu 429 / 503 (limite atteinte : pas de « Réessayer »)
  */
-export function renderResults(personResults, apiFailures) {
+export function renderResults(personResults, apiFailures, limitReached = false) {
     const container = document.getElementById('singleResult');
 
     if (personResults.length === 0) {
-        if (apiFailures > 0) {
+        if (limitReached) {
+            container.replaceChildren(buildLimitReachedState());
+        } else if (apiFailures > 0) {
             container.replaceChildren(buildAnalysisFailedState());
         } else {
             container.innerHTML = '<p class="no-results">Aucun résultat trouvé.</p>';
@@ -189,10 +192,6 @@ export function renderResults(personResults, apiFailures) {
 
     revealCards();
     bindSuggestionNavigation(personResults);
-
-    // Ancienne navigation globale (remplacée par la navigation dans les cartes)
-    const resultNavigation = document.getElementById('resultNavigation');
-    if (resultNavigation) resultNavigation.style.display = 'none';
 
     updateCartButton(personResults);
 }

@@ -1,252 +1,81 @@
-﻿# 🛠️ COMMANDES UTILES - OFFREZ
+﻿# Commandes utiles - OFFREZ
 
-## 📦 Commandes Terminal (npm / node)
+## npm / Node
 
-### Démarrage du serveur
 ```bash
-npm start
-# ou directement :
-node server.js
-```
-Le site sera accessible sur `http://localhost:3000`
-
-### Voir les statistiques
-```bash
-npm run stats
-# ou directement :
-node admin-stats.js
-```
-Affiche :
-- Visiteurs du jour
-- Emails récoltés
-- Taux de conversion
-- Totaux depuis le début
-
-### Arrêter le serveur
-```bash
-# Windows (PowerShell) :
-Get-Process -Name "node" | Stop-Process -Force
-
-# Windows (CMD) :
-taskkill /F /IM node.exe
-
-# Ou simplement : Ctrl+C dans le terminal
+npm ci                 # installer les dépendances (exactement le package-lock.json)
+npm start              # démarrer le serveur (http://localhost:3000)
+npm test               # unitaires puis intégration
+npm run test:unit      # unitaires seulement
+npm run test:integration   # intégration seulement
+npm run test:e2e       # Playwright (serveur de test sur le port 3100)
+npm run test:e2e:ui    # Playwright en mode interface
 ```
 
-### Installer les dépendances (si nouveau PC)
-```bash
-npm install
-```
+Arrêter le serveur : `Ctrl+C` dans le terminal (arrêt propre), ou sous PowerShell `Get-Process -Name node | Stop-Process -Force`.
 
-### Build CSS (après modification d'un partial)
+### Build CSS (après modification d'un fichier de `public/css/partials/`)
+
 ```bash
-# Compiler les 12 partiels en style.min.css
 python tools/minify_css.py
-
-# Bumper le cache-busting dans les HTML
-# Remplacer l'ancien ?v= par un nouveau timestamp
-# Ex: style.min.css?v=202603050130
+# puis changer le jeton ?v= de style.min.css dans tous les HTML de public/
+# et incrémenter CACHE_NAME dans public/sw.js
 ```
 
----
+## Variables d'environnement (.env)
 
-## 🔧 Commandes Console F12 (Navigateur)
+Modèle : `.env.example`. Variables : `GEMINI_API_KEY`, `RAPIDAPI_KEY`, `NODE_ENV`, `PORT`, `GEMINI_MODEL`, `GEMINI_DAILY_LIMIT`, `RAPIDAPI_DAILY_LIMIT`, `GEMINI_DAILY_LIMIT_PER_IP`, `RAPIDAPI_DAILY_LIMIT_PER_IP`, `TRUST_PROXY`, `TZ`. Redémarrer le serveur après toute modification.
 
-### Activer le mode DEBUG
-Ouvre la console (F12 > Console) et tape :
-```javascript
-// Dans analyse.js - recharge la page après
-localStorage.setItem('OFFREZ_debug', 'true');
-location.reload();
-```
+## Git
 
-### Voir les données stockées
-```javascript
-// Voir la configuration actuelle
-JSON.parse(localStorage.getItem('giftConfig'));
+Règles : travailler sur une branche, jamais de commit direct sur `main`, PR puis fusion.
 
-// Voir les profils sauvegardés
-JSON.parse(localStorage.getItem('finalData'));
-
-// Voir le consentement cookies
-localStorage.getItem('OFFREZ_cookie_consent');
-```
-
-### Effacer les données (reset complet)
-```javascript
-// Tout effacer (attention !)
-localStorage.clear();
-location.reload();
-```
-
-### Effacer uniquement les profils
-```javascript
-localStorage.removeItem('finalData');
-localStorage.removeItem('OFFREZConfig');
-location.reload();
-```
-
-### Tester une recherche Amazon manuellement
-```javascript
-fetch('/api/search?term=livre&min_price=10&max_price=50')
-  .then(r => r.json())
-  .then(data => console.log(data));
-```
-
-### Tester l'API Gemini manuellement
-```javascript
-fetch('/api/analyze', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ prompt: 'Dis bonjour' })
-}).then(r => r.json()).then(console.log);
-```
-
-### Voir les cookies
-```javascript
-document.cookie;
-```
-
----
-
-## 📊 Fichiers de Données (CSV)
-
-| Fichier | Contenu | Ouvrir avec |
-|---------|---------|-------------|
-| `emails.csv` | Liste des inscrits email | Excel |
-| `searches.csv` | Historique des recherches | Excel |
-| `clicks.csv` | Clics vers Amazon | Excel |
-
-### Exporter les données (PowerShell)
-```powershell
-# Copier les CSV vers le Bureau
-Copy-Item emails.csv, searches.csv, clicks.csv $env:USERPROFILE\Desktop\
-```
-
----
-
-## 🔐 Variables d'Environnement (.env)
-
-| Variable | Description |
-|----------|-------------|
-| `GEMINI_API_KEY` | Clé API Google Gemini |
-| `RAPIDAPI_KEY` | Clé API RapidAPI (Amazon) |
-| `PORT` | Port du serveur (défaut: 3000) |
-
-### Vérifier les clés (PowerShell)
-```powershell
-Get-Content .env
-```
-
----
-
-## 📦 Git & GitHub
-
-**Dépôt :** https://github.com/baltrados/offrez.net (privé, branche `main`)
-
-### Workflow quotidien
-```powershell
-cd "C:\site cadeau\save"
-git pull                              # Récupérer la dernière version
-# ... modifications ...
-git add .
-git commit -m "Description"
-git push                              # Envoyer sur GitHub
-ssh pi@192.168.1.100 "~/offrly/deploy.sh"   # Déployer en prod
-```
-
-### Vérifier l'état
-```powershell
+```bash
 git status
-git log -3 --oneline
+git log -5 --oneline
+git switch -c ma-branche      # nouvelle branche
+git add <fichiers>
+git commit -m "Description"
+git push -u origin ma-branche
 ```
 
-> Voir `documentation/13_GIT_ET_GITHUB.md` pour le guide complet.
+Voir `documentation/13_GIT_ET_GITHUB.md`.
 
----
+## Vérifier en production
 
-## 🖥️ Commandes Serveur (CM3588)
-
-### Déployer (méthode recommandée)
-```powershell
-ssh pi@192.168.1.100 "~/offrly/deploy.sh"
-```
-
-### Voir l'état du serveur
-```powershell
-ssh pi@192.168.1.100 "pm2 status"
-```
-
-### Voir les logs
-```powershell
-ssh pi@192.168.1.100 "pm2 logs offrly --lines 20"
-```
-
-### Redémarrer sans déployer
-```powershell
-ssh pi@192.168.1.100 "pm2 restart offrly"
-```
-
-### Déploiement manuel d'un fichier (urgence uniquement)
-```powershell
-scp "c:\site cadeau\save\FICHIER" pi@192.168.1.100:~/offrly/FICHIER
-ssh pi@192.168.1.100 "pm2 restart offrly"
-```
-
----
-
-## 🐛 Dépannage Rapide
-
-### Le serveur ne démarre pas
 ```bash
-# Vérifier si le port est déjà utilisé
-netstat -ano | findstr :3000
-
-# Tuer le processus qui bloque
-taskkill /F /PID <numero_du_PID>
+curl https://offrez.net/api/health          # attendu : {"status":"ok"}
+curl -si "https://offrez.net/api/search?term=livre&min_price=10&max_price=50" | grep -i ratelimit
 ```
 
-### L'API Amazon renvoie une erreur
-1. Vérifier la clé RapidAPI dans `.env`
-2. Vérifier le quota sur [rapidapi.com](https://rapidapi.com)
-3. Redémarrer le serveur après modification du `.env`
+L'en-tête `X-Cache` (`HIT` = réponse servie par le cache, aucun appel payant ; `MISS` = appel au fournisseur) est visible uniquement en local (hors production). Les réponses 429 et 503 portent un en-tête `Retry-After`. Sur l'offre gratuite de Render, le premier appel après une période d'inactivité peut prendre une minute (réveil du service).
 
-### Les pages ne se mettent pas à jour
-```bash
-# Vider le cache navigateur : Ctrl+Shift+R
-# Ou en console F12 :
-location.reload(true);
-```
+## Console du navigateur (F12)
 
-### Réinitialiser tout le localStorage utilisateur
 ```javascript
-localStorage.clear();
-sessionStorage.clear();
-location.href = '/';
+localStorage.setItem('OFFREZ_debug', 'true'); location.reload();   // mode debug
+JSON.parse(localStorage.getItem('giftConfig'));                      // configuration
+localStorage.clear(); sessionStorage.clear(); location.href = '/';   // tout réinitialiser
+fetch('/api/search?term=livre&min_price=10&max_price=50').then(r => r.json()).then(console.log);
 ```
 
----
+`/api/analyze` n'accepte pas de texte libre : il attend un profil structuré (voir `lib/analyze.js`), sinon il répond 400.
 
-## 📱 URLs Importantes
+## Dépannage
 
-| Page | URL |
-|------|-----|
-| Accueil | `http://localhost:3000/` |
-| Configuration | `http://localhost:3000/config.html` |
-| Profils | `http://localhost:3000/profils.html` |
-| Analyse | `http://localhost:3000/analyse.html` |
-| Mentions Légales | `http://localhost:3000/mentions-legales.html` |
+- Port déjà utilisé : `netstat -ano | findstr :3000`, puis `taskkill /F /PID <PID>`.
+- Erreur Amazon : vérifier `RAPIDAPI_KEY`, l'abonnement RapidAPI et son quota.
+- Pages non mises à jour : `Ctrl+Shift+R`.
 
----
+## Ancien serveur (jusqu'à la bascule vers Render)
 
-## 🚀 Checklist Avant Mise en Production
+Le CM3588 reste en production jusqu'à la bascule DNS. Ces commandes seront à supprimer ensuite.
 
+```powershell
+ssh pi@192.168.1.100 "~/offrly/deploy.sh"                 # déployer
+ssh pi@192.168.1.100 "pm2 status"                         # état
+ssh pi@192.168.1.100 "pm2 logs offrly --lines 20"         # logs
+ssh pi@192.168.1.100 "pm2 restart offrly"                 # redémarrer
+```
 
-3. ✅ Clés API valides dans `.env`
-4. ✅ HTTPS configuré (Let's Encrypt)
-5. ✅ Domaine pointé vers le serveur
-6. ✅ Mentions légales à jour
-
----
-
-*Dernière mise à jour : juin 2026*
+*Dernière mise à jour : novembre 2026*

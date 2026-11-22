@@ -14,7 +14,6 @@ const {
     sanitizeUrl,
     buildAffiliateUrl,
     truncateText,
-    isValidEmail,
     generateId
 } = await import('data:text/javascript;charset=utf-8,' + encodeURIComponent(source));
 
@@ -135,18 +134,6 @@ test('buildAffiliateUrl : URL non https ou hôte hors liste → #', () => {
         null
     ]) {
         assert.equal(buildAffiliateUrl(url, TAG), '#', `refus attendu pour ${String(url)}`);
-    }
-});
-
-// ---------- isValidEmail ----------
-test('isValidEmail : formats valides', () => {
-    assert.equal(isValidEmail('test@example.com'), true);
-    assert.equal(isValidEmail('  prenom.nom+tag@sous.domaine.fr  '), true);
-});
-
-test('isValidEmail : formats invalides', () => {
-    for (const v of ['not-an-email', 'a@b', '@b.fr', 'a b@c.fr', 'a@b .fr', '', null, undefined, 42, ['a@b.fr']]) {
-        assert.equal(isValidEmail(v), false, `invalide attendu pour ${String(v)}`);
     }
 });
 

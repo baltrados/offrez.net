@@ -1,7 +1,7 @@
 'use strict';
 // Helpers partagés des tests d'intégration (node:test, sans dépendance).
 // - configureEnv() : variables d'environnement de test, À APPELER AVANT require('../../server.js')
-// - installFetchMock() : intercepte les appels upstream (Gemini, RapidAPI, Brevo) via globalThis.fetch
+// - installFetchMock() : intercepte les appels upstream (Gemini, RapidAPI) via globalThis.fetch
 // - startServer() : écoute sur un port libre (127.0.0.1:0)
 // - rawRequest() : requête HTTP brute (chemin non normalisé, pas de suivi de redirection)
 
@@ -9,14 +9,12 @@ const http = require('node:http');
 
 const TEST_KEYS = Object.freeze({
     GEMINI_API_KEY: 'test-gemini-key-SECRET-g3m1n1',
-    RAPIDAPI_KEY: 'test-rapid-key-SECRET-r4p1d',
-    BREVO_API_KEY: 'test-brevo-key-SECRET-br3v0'
+    RAPIDAPI_KEY: 'test-rapid-key-SECRET-r4p1d'
 });
 
 const UPSTREAM_HOSTS = Object.freeze({
     gemini: 'generativelanguage.googleapis.com',
-    rapid: 'real-time-amazon-data.p.rapidapi.com',
-    brevo: 'api.brevo.com'
+    rapid: 'real-time-amazon-data.p.rapidapi.com'
 });
 
 /**
@@ -27,9 +25,9 @@ function configureEnv(extra = {}) {
     const env = {
         GEMINI_API_KEY: TEST_KEYS.GEMINI_API_KEY,
         RAPIDAPI_KEY: TEST_KEYS.RAPIDAPI_KEY,
-        BREVO_API_KEY: undefined,
         NODE_ENV: undefined,
         GEMINI_MODEL: undefined,
+        TRUST_PROXY: undefined,
         GEMINI_DAILY_LIMIT: undefined,
         GEMINI_DAILY_LIMIT_PER_IP: undefined,
         RAPIDAPI_DAILY_LIMIT: undefined,
@@ -44,8 +42,6 @@ function configureEnv(extra = {}) {
             process.env[k] = v;
         }
     }
-    // pm_id (PM2) déclenche app.listen() au require de server.js : jamais en test, même si hérité
-    delete process.env.pm_id;
 }
 
 function headersToObject(headers) {
@@ -70,7 +66,7 @@ function jsonResponse(status, body, extraHeaders = {}) {
 function installFetchMock() {
     const realFetch = globalThis.fetch;
     const calls = [];
-    const handlers = { gemini: null, rapid: null, brevo: null };
+    const handlers = { gemini: null, rapid: null };
 
     globalThis.fetch = async (input, init = {}) => {
         const url = typeof input === 'string' ? input : (input instanceof URL ? input.href : input.url);
@@ -110,7 +106,6 @@ function installFetchMock() {
             calls.length = 0;
             handlers.gemini = null;
             handlers.rapid = null;
-            handlers.brevo = null;
         },
         restore() { globalThis.fetch = realFetch; }
     };

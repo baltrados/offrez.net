@@ -1,17 +1,16 @@
 // @ts-check
-// Accessibilité (Lot 3a) : clavier, ARIA des sélecteurs, bannière cookies modale, live regions.
-const { test, expect, CONSENT_KEY, acceptedConsent, expectNoHorizontalOverflow } = require('./fixtures');
+// Accessibilité (Lot 3a) : clavier, ARIA des sélecteurs, live regions.
+const { test, expect, expectNoHorizontalOverflow } = require('./fixtures');
 
-/** Consentement déjà donné : la bannière cookies ne s'affiche pas. */
-async function withConsent(page, extra = {}) {
-    await page.addInitScript(([consentKey, consent, entries]) => {
-        localStorage.setItem(consentKey, consent);
+/** Pré-remplit le localStorage avant le chargement de la page. */
+async function withStorage(page, extra = {}) {
+    await page.addInitScript((entries) => {
         for (const [k, v] of Object.entries(entries)) localStorage.setItem(k, v);
-    }, [CONSENT_KEY, acceptedConsent(), extra]);
+    }, extra);
 }
 
 test('config : chaque page d\'étape a un h1 et l\'étape courante est marquée aria-current', async ({ page }) => {
-    await withConsent(page, { giftConfig: JSON.stringify({ occasion: 'Noël', nb: 1, strategy: 'custom', amount: null }) });
+    await withStorage(page, { giftConfig: JSON.stringify({ occasion: 'Noël', nb: 1, strategy: 'custom', amount: null }) });
     for (const path of ['/config.html', '/profils.html']) {
         await page.goto(path);
         await expect(page.locator('h1')).toHaveCount(1);
@@ -21,7 +20,7 @@ test('config : chaque page d\'étape a un h1 et l\'étape courante est marquée 
 });
 
 test('config : cartes budget utilisables au clavier (groupe radio natif)', async ({ page, consoleErrors }) => {
-    await withConsent(page);
+    await withStorage(page);
     await page.goto('/config.html');
 
     // Le groupe est nommé par sa légende
@@ -69,7 +68,7 @@ test('config : cartes budget utilisables au clavier (groupe radio natif)', async
 });
 
 test('config : configuration existante → la bonne radio budget est cochée', async ({ page }) => {
-    await withConsent(page, { giftConfig: JSON.stringify({ occasion: 'Mariage', nb: 2, strategy: 'global', amount: 100 }) });
+    await withStorage(page, { giftConfig: JSON.stringify({ occasion: 'Mariage', nb: 2, strategy: 'global', amount: 100 }) });
     await page.goto('/config.html');
     await expect(page.locator('input[name="budgetStrategyChoice"][value="global"]')).toBeChecked();
     await expect(page.locator('#budgetStrategy')).toHaveValue('global');
@@ -81,7 +80,7 @@ test('config : configuration existante → la bonne radio budget est cochée', a
 });
 
 test('config : aria-pressed suit la sélection des chips d\'occasion (souris et clavier)', async ({ page }) => {
-    await withConsent(page);
+    await withStorage(page);
     await page.goto('/config.html');
     await expect(page.locator('.occasion-chip[aria-pressed="true"]')).toHaveCount(1);
 
@@ -103,7 +102,7 @@ test('config : aria-pressed suit la sélection des chips d\'occasion (souris et 
 });
 
 test('config : budget trop élevé → message inline (role=alert), pas de alert()', async ({ page }) => {
-    await withConsent(page);
+    await withStorage(page);
     page.on('dialog', (d) => { throw new Error(`alert() inattendu : ${d.message()}`); });
     await page.goto('/config.html');
     await page.locator('.budget-card[data-strategy="same"]').click();
@@ -115,7 +114,7 @@ test('config : budget trop élevé → message inline (role=alert), pas de alert
 });
 
 test('profils : labels associés (id uniques), groupes nommés, chips clavier', async ({ page, consoleErrors }) => {
-    await withConsent(page, { giftConfig: JSON.stringify({ occasion: 'Noël', nb: 2, strategy: 'custom', amount: null }) });
+    await withStorage(page, { giftConfig: JSON.stringify({ occasion: 'Noël', nb: 2, strategy: 'custom', amount: null }) });
     page.on('dialog', (d) => { throw new Error(`alert() inattendu : ${d.message()}`); });
     await page.goto('/profils.html');
     const cards = page.locator('.profile-card');
@@ -160,59 +159,12 @@ test('profils : labels associés (id uniques), groupes nommés, chips clavier', 
     expect(consoleErrors).toEqual([]);
 });
 
-test('bannière cookies : dialog modal, focus initial, piège à focus, Échap sans effet', async ({ page, consoleErrors }) => {
-    await page.goto('/config.html');
-    const banner = page.getByRole('dialog', { name: /Votre expérience avant tout/ });
-    await expect(banner).toBeVisible();
-    await expect(banner).toHaveAttribute('aria-modal', 'true');
-    await expect(banner).toHaveAttribute('aria-describedby', 'cookieDesc');
-
-    const accept = page.locator('#cookieAccept');
-    const decline = page.locator('#cookieDecline');
-    const more = banner.getByRole('link', { name: 'En savoir plus' });
-    await expect(accept).toBeFocused();
-
-    const focusInBanner = () => page.evaluate(() => !!document.activeElement?.closest('#cookieBanner'));
-    // Tab : accept → decline → (bouclage) lien → accept
-    await page.keyboard.press('Tab');
-    await expect(decline).toBeFocused();
-    await page.keyboard.press('Tab');
-    await expect(more).toBeFocused();
-    await page.keyboard.press('Tab');
-    await expect(accept).toBeFocused();
-    // Maj+Tab depuis le premier élément → dernier
-    await page.keyboard.press('Shift+Tab');
-    await expect(more).toBeFocused();
-    await page.keyboard.press('Shift+Tab');
-    await expect(decline).toBeFocused();
-    for (let i = 0; i < 5; i++) {
-        await page.keyboard.press('Tab');
-        expect(await focusInBanner()).toBe(true);
-    }
-
-    // Échap : ne ferme pas et n'enregistre aucun choix
-    await page.keyboard.press('Escape');
-    await expect(banner).toBeVisible();
-    expect(await page.evaluate(() => localStorage.getItem('OFFREZ_cookie_consent'))).toBeNull();
-
-    // Lien lisible : couleur opaque (plus de var(--primary-light) à 15 %)
-    const linkColor = await more.evaluate((el) => getComputedStyle(el).color);
-    expect(linkColor).toBe('rgb(165, 180, 252)');
-
-    // Fermeture au clavier
-    await decline.focus();
-    await page.keyboard.press('Enter');
-    await expect(page.locator('#cookieBanner')).toHaveCount(0);
-    expect(await focusInBanner()).toBe(false);
-    expect(consoleErrors).toEqual([]);
-});
-
 test('analyse : barre de progression ARIA (aria-valuenow croissant) et statut live', async ({ page, consoleErrors }) => {
     const finalData = {
         contexte: 'Anniversaire',
         equipe: [{ nom: 'Julie', sexe: 'Femme', age: 28, budget: 50, tags: ['Voyage'], details: { adore: '', eviter: '' } }],
     };
-    await withConsent(page, { finalData: JSON.stringify(finalData) });
+    await withStorage(page, { finalData: JSON.stringify(finalData) });
 
     // Réponse IA retardée pour observer la progression
     let releaseAnalyze = () => { };

@@ -1,5 +1,5 @@
 // @ts-check
-// Parcours complet : accueil (cookies) → config → profils → analyse (API mockées) → carte cadeau.
+// Parcours complet : accueil → config → profils → analyse (API mockées) → carte cadeau.
 const { test, expect, AFFILIATE_TAG, expectNoHorizontalOverflow, analyzeResponse } = require('./fixtures');
 
 test('parcours utilisateur complet jusqu\'à la carte cadeau affiliée', async ({ page, consoleErrors }) => {
@@ -36,18 +36,11 @@ test('parcours utilisateur complet jusqu\'à la carte cadeau affiliée', async (
         });
     });
 
-    // 1. Accueil + bannière cookies
+    // 1. Accueil
     await page.goto('/');
-    const accept = page.locator('#cookieAccept');
-    await expect(accept).toBeVisible();
-    await accept.click();
-    await expect(page.locator('#cookieBanner')).toHaveCount(0);
-    const consent = await page.evaluate(() => JSON.parse(localStorage.getItem('OFFREZ_cookie_consent') || 'null'));
-    expect(consent?.accepted).toBe(true);
 
     // 2. Configuration (occasion, 1 personne, stratégie par défaut « custom »)
     await page.goto('/config.html');
-    await expect(page.locator('#cookieBanner')).toHaveCount(0);
     await page.locator('.occasion-chip[data-value="Fête des Pères"]').click();
     await expect(page.locator('#occasion')).toHaveValue('Fête des Pères');
     await page.locator('#nbPeople').fill('1');
@@ -81,7 +74,7 @@ test('parcours utilisateur complet jusqu\'à la carte cadeau affiliée', async (
     expect(payload).toEqual({
         contexte: 'Fête des Pères',
         profile: {
-            nom: 'Paul',
+            // le prénom n'est jamais envoyé au serveur (reste dans le navigateur)
             sexe: 'Homme',
             age: null,
             budget: 49.5,
@@ -94,7 +87,8 @@ test('parcours utilisateur complet jusqu\'à la carte cadeau affiliée', async (
     // Recherche : prix entiers (le serveur n'accepte que ^\d{1,5}$), max 2 recherches
     expect(searchRequests.length).toBeGreaterThanOrEqual(1);
     expect(searchRequests.length).toBeLessThanOrEqual(2);
-    expect(searchRequests[0]).toMatchObject({ term: 'montre sport homme', min_price: '9', max_price: '49', consent: 'true' });
+    expect(searchRequests[0]).toMatchObject({ term: 'montre sport homme', min_price: '9', max_price: '49' });
+    expect(searchRequests[0]).not.toHaveProperty('consent');
 
     // CTA affilié : https://www.amazon.fr/..., un seul tag, celui d'OFFREZ
     const cta = giftCard.locator('a.btn-amazon-cta');

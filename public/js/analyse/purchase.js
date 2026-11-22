@@ -1,37 +1,12 @@
 /**
- * ANALYSE/PURCHASE.JS - Clic « Voir sur Amazon » : modale de confirmation, redirection, suivi des clics
+ * ANALYSE/PURCHASE.JS - Clic « Voir sur Amazon » : modale de confirmation, redirection
  * ====================================================================================================
- * Le suivi (/api/track-click) n'est envoyé que si isTrackingAllowed() (consentement accepté et non expiré).
  */
 
-import { sanitizeUrl } from '../security.js?v=2026112001';
-import { isTrackingAllowed } from '../consent.js';
-import { PURCHASE_COUNTDOWN_SECONDS, SHARE_FEEDBACK_MS } from './settings.js?v=2026112202';
+import { sanitizeUrl } from '../security.js?v=2026112207';
+import { PURCHASE_COUNTDOWN_SECONDS, SHARE_FEEDBACK_MS } from './settings.js?v=2026112207';
 
 const SHARE_URL = 'https://offrez.net';
-
-/**
- * Corps de /api/track-click construit à partir des data-* du bouton (aucune donnée de profil).
- * @param {{product?: string, price?: string, asin?: string}} dataset
- */
-export function buildTrackClickPayload(dataset) {
-    return {
-        product: dataset.product || 'Produit Inconnu',
-        price: dataset.price || '0',
-        asin: dataset.asin || '',
-        consent: true
-    };
-}
-
-/** Envoi fire-and-forget (sendBeacon résiste aux changements de page/onglet). */
-function sendTrackClick(payload) {
-    const body = JSON.stringify(payload);
-    if (navigator.sendBeacon) {
-        navigator.sendBeacon('/api/track-click', new Blob([body], { type: 'application/json' }));
-    } else {
-        fetch('/api/track-click', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
-    }
-}
 
 /** Ferme la modale et ouvre le lien Amazon (re-validé) dans un nouvel onglet. */
 function redirectToAmazon(link) {
@@ -126,7 +101,5 @@ export function initPurchaseTracking() {
             const productLink = sanitizeUrl(btn.dataset.link || btn.href);
             showPurchaseModal(recipientName, productLink);
         }
-
-        if (isTrackingAllowed()) sendTrackClick(buildTrackClickPayload(btn.dataset));
     });
 }

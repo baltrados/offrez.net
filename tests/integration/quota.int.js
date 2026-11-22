@@ -37,6 +37,13 @@ beforeEach(() => {
     });
 });
 
+// Retry-After : secondes jusqu'au prochain minuit local, entier entre 1 et 86400
+function assertRetryAfter(r) {
+    const raw = r.headers.get('retry-after');
+    assert.match(raw ?? '', /^\d+$/, 'Retry-After présent et entier');
+    assert.ok(Number(raw) >= 1 && Number(raw) <= 86400, `Retry-After plausible (${raw})`);
+}
+
 const body = { contexte: 'Noël', profile: { budget: 30, tags: ['Sport'] } };
 
 async function analyze(ip, payload = body) {
@@ -45,14 +52,14 @@ async function analyze(ip, payload = body) {
         headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': ip },
         body: JSON.stringify(payload)
     });
-    return { status: res.status, text: await res.text() };
+    return { status: res.status, text: await res.text(), headers: res.headers };
 }
 
 async function search(ip, term) {
     const res = await fetch(`${srv.base}/api/search?term=${encodeURIComponent(term)}&max_price=50`, {
         headers: { 'X-Forwarded-For': ip }
     });
-    return { status: res.status, text: await res.text() };
+    return { status: res.status, text: await res.text(), headers: res.headers };
 }
 
 describe('quotas Gemini (par IP = 1, global = 2)', () => {
@@ -67,6 +74,7 @@ describe('quotas Gemini (par IP = 1, global = 2)', () => {
         const r2 = await analyze('203.0.113.1');
         assert.equal(r2.status, 429);
         assert.match(JSON.parse(r2.text).error, /Limite quotidienne/);
+        assertRetryAfter(r2);
         assertNoLeak(assert, r2.text);
         assert.equal(mock.callsTo('gemini').length, 1);
     });
@@ -79,16 +87,17 @@ describe('quotas Gemini (par IP = 1, global = 2)', () => {
         const r = await analyze('203.0.113.3');
         assert.equal(r.status, 503);
         assert.match(JSON.parse(r.text).error, /indisponible/);
+        assertRetryAfter(r);
         assert.equal(mock.calls.length, 0);
     });
 
-    test('IPv6 : deux adresses du même /64 partagent le quota', async () => {
+    test('IPv6 : deux adresses du même /56 partagent le quota', async () => {
         // Le quota global est épuisé : on vérifie ici l'ordre des contrôles (IP avant global)
-        // via le message 429 pour la 2e adresse du même /64.
+        // via le message 429 pour la 2e adresse du même /56.
         const r1 = await analyze('2001:db8:1:2::1');
         assert.equal(r1.status, 503, '1re adresse : quota IP libre mais global épuisé');
         const r2 = await analyze('2001:db8:1:2::ffff');
-        assert.equal(r2.status, 429, '2e adresse du même /64 : quota IP déjà consommé');
+        assert.equal(r2.status, 429, '2e adresse du même /56 : quota IP déjà consommé');
     });
 });
 
@@ -99,12 +108,15 @@ describe('quotas RapidAPI (par IP = 1, global = 2)', () => {
         assert.equal(mock.callsTo('rapid').length, 1);
         const r = await search('198.51.100.1', 'quota-terme-2');
         assert.equal(r.status, 429);
+        assertRetryAfter(r);
         assert.equal(mock.callsTo('rapid').length, 1);
     });
 
     test('IP B → 200 puis IP C → 503 (quota global)', async () => {
         assert.equal((await search('198.51.100.2', 'quota-terme-3')).status, 200);
-        assert.equal((await search('198.51.100.3', 'quota-terme-4')).status, 503);
+        const r503 = await search('198.51.100.3', 'quota-terme-4');
+        assert.equal(r503.status, 503);
+        assertRetryAfter(r503);
         assert.equal(mock.callsTo('rapid').length, 1);
     });
 

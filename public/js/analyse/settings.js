@@ -13,6 +13,26 @@ export const AFFILIATE_TAG = 'offreznet-21';
 export const GEMINI_MAX_ATTEMPTS = 2;
 /** Pause avant la nouvelle tentative après une erreur (ms). */
 export const GEMINI_RETRY_DELAY_MS = 1500;
+/** Statuts HTTP pour lesquels une nouvelle tentative est inutile (requête invalide, quota ou plafond atteint). */
+export const GEMINI_NO_RETRY_STATUSES = [400, 429, 503];
+
+/**
+ * Faut-il relancer /api/analyze après cette erreur ? Non pour 400, 429 et 503 (le résultat serait identique
+ * et chaque nouvel appel peut consommer un quota) ; oui pour les erreurs réseau/timeout (pas de statut)
+ * et les autres 5xx.
+ * @param {{status?: number}|null|undefined} error
+ */
+export function shouldRetryGemini(error) {
+    return !GEMINI_NO_RETRY_STATUSES.includes(error?.status);
+}
+/**
+ * L'erreur signale-t-elle une limite atteinte (429 quota par IP, 503 plafond global ou service coupé) ?
+ * Dans ce cas un nouvel appel est voué à l'échec : pas de « Réessayer », pas de données conservées.
+ * @param {{status?: number}|null|undefined} error
+ */
+export function isLimitReachedError(error) {
+    return error?.status === 429 || error?.status === 503;
+}
 /** « Temps de réflexion » affiché avant l'appel IA (ms). */
 export const THINK_DELAY_MS = 800;
 
@@ -62,9 +82,6 @@ export const REVEAL_STAGGER_MS = 150;
 /** Effet de chargement à la découverte d'une nouvelle suggestion : 800 à 1500 ms. */
 export const DISCOVERY_DELAY_MIN_MS = 800;
 export const DISCOVERY_DELAY_JITTER_MS = 700;
-/** Modale email : apparition après ce délai (ms) et durée de l'animation de fermeture (ms). */
-export const EMAIL_MODAL_DELAY_MS = 5000;
-export const EMAIL_MODAL_CLOSE_ANIMATION_MS = 500;
 /** Modale d'achat : compte à rebours avant redirection (secondes). */
 export const PURCHASE_COUNTDOWN_SECONDS = 3;
 /** Retour visuel « Lien copié ! » (ms). */

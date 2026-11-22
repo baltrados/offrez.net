@@ -1,4 +1,6 @@
-﻿# 🖥️ GUIDE COMPLET : INSTALLER OFFREZ SUR UN CM3588
+﻿> **Document obsolète après la bascule vers Render : voir 15_DEPLOIEMENT_RENDER.md. À supprimer une fois la bascule faite.**
+
+# 🖥️ GUIDE COMPLET : INSTALLER OFFREZ SUR UN CM3588
 *Document 11 — Préparation hardware, installation OS et mise en réseau*
 
 ---

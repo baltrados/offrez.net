@@ -18,7 +18,7 @@ import {
     MAX_PRODUCTS_PER_PERSON,
     TITLE_SIMILARITY_THRESHOLD,
     TITLE_MIN_WORD_LENGTH
-} from './settings.js?v=2026112202';
+} from './settings.js?v=2026112207';
 
 // ============================================
 // PROFIL & PAYLOAD
@@ -45,6 +45,7 @@ export function normalizeProfile(raw) {
 
 /**
  * Corps de POST /api/analyze : profil structuré uniquement (le prompt est construit côté serveur).
+ * Le prénom n'est volontairement PAS envoyé (confidentialité, partage du cache serveur) : il reste dans le navigateur.
  * @param {any} contexte - Occasion (data.contexte)
  * @param {ReturnType<typeof normalizeProfile>} personne - Profil normalisé
  */
@@ -52,7 +53,6 @@ export function buildAnalyzePayload(contexte, personne) {
     return {
         contexte,
         profile: {
-            nom: personne.nom,
             sexe: personne.sexe,
             age: personne.age,
             budget: personne.budget,

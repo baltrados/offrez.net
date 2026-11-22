@@ -54,7 +54,7 @@
                 <section class="legal-section">
                     <h2>2. Données collectées</h2>
 
-                    <h3>2.1 Données que vous nous fournissez</h3>
+                    <h3>Données que vous nous fournissez</h3>
                     <table class="legal-table">
                         <thead>
                             <tr>
@@ -65,44 +65,9 @@
                         </thead>
                         <tbody>
                             <tr>
-                                <td>Email, avec le prénom de la personne à qui offrir et le cadeau choisi (optionnel : seulement si vous cochez la case prévue)</td>
-                                <td>Newsletter, envoi des résultats</td>
-                                <td>Consentement</td>
-                            </tr>
-                            <tr>
-                                <td>Profils bénéficiaires : prénom, genre, âge, budget, centres d'intérêt, ce que la personne aime et ce qu'il faut éviter (texte libre), occasion</td>
-                                <td>Génération de recommandations (transmis à notre serveur puis à Google Gemini, voir section 5) ; non conservés sur notre serveur</td>
+                                <td>Profils bénéficiaires : prénom, genre, âge, budget, centres d'intérêt, ce que la personne aime et ce qu'il faut éviter (texte libre), occasion. Le prénom reste dans votre navigateur : il n'est jamais envoyé à notre serveur ni à Google.</td>
+                                <td>Génération de recommandations (genre, âge, budget, centres d'intérêt, goûts et occasion sont transmis à notre serveur puis à Google Gemini, voir section 5) ; les profils ne sont pas conservés sur notre serveur. Seules les suggestions générées peuvent être gardées temporairement en mémoire (voir section 4)</td>
                                 <td>Exécution du service</td>
-                            </tr>
-                        </tbody>
-                    </table>
-
-                    <h3>2.2 Données de mesure d'audience (uniquement si vous l'acceptez)</h3>
-                    <p>Ces données ne sont enregistrées que si vous avez accepté la mesure d'audience dans la bannière
-                        de consentement.</p>
-                    <table class="legal-table">
-                        <thead>
-                            <tr>
-                                <th>Donnée</th>
-                                <th>Finalité</th>
-                                <th>Durée de conservation</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>Termes de recherche et fourchette de prix (sans identifiant)</td>
-                                <td>Amélioration du service</td>
-                                <td>12 mois</td>
-                            </tr>
-                            <tr>
-                                <td>Clics vers Amazon : produit cliqué (nom, prix, référence ASIN), date et adresse IP pseudonymisée (hachée)</td>
-                                <td>Statistiques de conversion</td>
-                                <td>12 mois</td>
-                            </tr>
-                            <tr>
-                                <td>Nombre de profils créés (aucun contenu de profil)</td>
-                                <td>Statistiques d'utilisation</td>
-                                <td>Non conservé</td>
                             </tr>
                         </tbody>
                     </table>
@@ -124,7 +89,6 @@
                     <h2>4. Stockage local (localStorage / sessionStorage)</h2>
                     <p>OFFREZ utilise le stockage de votre navigateur pour :</p>
                     <ul>
-                        <li>Mémoriser votre choix de consentement (365 jours)</li>
                         <li>Mémoriser la configuration de votre recherche (occasion, nombre de personnes, mode et montant
                             du budget), sans donnée personnelle</li>
                         <li>Conserver temporairement vos profils entre la saisie et l'affichage des résultats : au
@@ -135,8 +99,13 @@
                             l'onglet. Si le sessionStorage est indisponible, les profils restent dans le localStorage
                             jusqu'à la fin de l'analyse.</li>
                     </ul>
-                    <p><strong>Ces données restent sur votre appareil.</strong> Seuls les profils sont transmis à notre
-                        serveur, uniquement pour générer les recommandations, et ne sont pas conservés sur notre serveur.</p>
+                    <p><strong>Ces données restent sur votre appareil.</strong> Seules les informations utiles à la génération
+                        (genre, âge, budget, centres d'intérêt, goûts, choses à éviter et occasion) sont transmises à notre
+                        serveur, uniquement pour générer les recommandations ; elles ne sont pas conservées sur notre
+                        serveur. Le prénom reste dans votre navigateur.</p>
+                    <p>Pour répondre plus vite à une demande identique et limiter les coûts, les suggestions générées
+                        peuvent être conservées temporairement dans la mémoire du serveur (12 heures au maximum), sans
+                        prénom ni adresse IP. Elles sont effacées à chaque redémarrage du serveur.</p>
                 </section>
 
                 <!-- Mis à jour automatiquement le 24/11/2026 — À FAIRE RELIRE (validation juridique) -->
@@ -155,18 +124,13 @@
                             <tr>
                                 <td>Google (Gemini API)</td>
                                 <td>Génération automatisée des suggestions</td>
-                                <td>Données du profil saisies : prénom, genre, âge, budget, centres d'intérêt, goûts et
-                                    choses à éviter (texte libre), occasion</td>
+                                <td>Données du profil saisies : genre, âge, budget, centres d'intérêt, goûts et
+                                    choses à éviter (texte libre), occasion. Le prénom n'est pas transmis : il reste dans votre navigateur.</td>
                             </tr>
                             <tr>
                                 <td>RapidAPI (fournisseur de données produits Amazon)</td>
                                 <td>Recherche de produits</td>
                                 <td>Termes de recherche et fourchette de prix</td>
-                            </tr>
-                            <tr>
-                                <td>Brevo (emailing)</td>
-                                <td>Newsletter, envoi des résultats (uniquement après inscription volontaire)</td>
-                                <td>Email, prénom de la personne à qui offrir, cadeau choisi</td>
                             </tr>
                         </tbody>
                     </table>
@@ -177,6 +141,12 @@
                     <p>Les polices de caractères et les icônes du site sont hébergées sur notre propre serveur : aucune
                         requête n'est envoyée à Google Fonts (votre adresse IP n'est pas transmise à Google pour
                         l'affichage des polices).</p>
+                    <p><strong>Hébergement :</strong> le site est hébergé par Render Services, Inc., San Francisco,
+                        Californie, États-Unis (render.com). Les serveurs utilisés sont situés dans l'Union européenne
+                        (Francfort, Allemagne).</p>
+                    <p>Render étant une société américaine, des données techniques (adresse IP, journaux de connexion)
+                        peuvent être traitées par ce prestataire. Ce transfert est encadré par des clauses contractuelles
+                        types de la Commission européenne.</p>
                 </section>
 
                 <section class="legal-section">
@@ -208,11 +178,6 @@
                             <strong>Droit à la portabilité</strong>
                             <p>Récupérer vos données</p>
                         </div>
-                        <div class="right-item">
-                            <i class="fas fa-undo"></i>
-                            <strong>Retrait du consentement</strong>
-                            <p>À tout moment</p>
-                        </div>
                     </div>
                     <p>Pour exercer ces droits, contactez-nous à : <a
                             href="mailto:contact@offrez.net">contact@offrez.net</a></p>
@@ -225,40 +190,23 @@
                     <ul>
                         <li><i class="fas fa-lock"></i> Chiffrement SSL/TLS</li>
                         <li><i class="fas fa-server"></i> Serveur sécurisé</li>
-                        <li><i class="fas fa-clock"></i> Profils non conservés sur notre serveur après génération des suggestions</li>
+                        <li><i class="fas fa-clock"></i> Profils non conservés sur notre serveur ; suggestions générées gardées en mémoire 12 heures au maximum (sans prénom ni adresse IP), effacées à chaque redémarrage</li>
                     </ul>
                 </section>
 
                 <!-- Mis à jour automatiquement le 24/11/2026 — À FAIRE RELIRE (validation juridique) -->
                 <section class="legal-section">
-                    <h2>8. Cookies</h2>
-                    <p>OFFREZ ne dépose aucun cookie : seul le stockage de votre navigateur est utilisé (voir section 4) :</p>
-                    <table class="legal-table">
-                        <thead>
-                            <tr>
-                                <th>Cookie/Storage</th>
-                                <th>Type</th>
-                                <th>Durée</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>OFFREZ_<wbr>cookie_<wbr>consent (localStorage)</td>
-                                <td>Essentiel</td>
-                                <td>1 an (365 jours)</td>
-                            </tr>
-                            <tr>
-                                <td>giftConfig (localStorage, sans donnée personnelle)</td>
-                                <td>Fonctionnel</td>
-                                <td>Jusqu'à la prochaine configuration ou l'effacement des données du navigateur</td>
-                            </tr>
-                            <tr>
-                                <td>finalData (localStorage puis sessionStorage)</td>
-                                <td>Fonctionnel</td>
-                                <td>Jusqu'à l'affichage des résultats ; en cas d'échec, jusqu'à « Modifier ma recherche » ou la fermeture de l'onglet</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <h2>8. Cookies et stockage local</h2>
+                    <p>OFFREZ ne dépose aucun cookie de mesure d'audience, de publicité ou de suivi.</p>
+                    <p>Le site utilise uniquement le stockage local de votre navigateur (localStorage) pour faire
+                        fonctionner le service : configuration de la recherche, profils et préférences. Ces données
+                        sont strictement nécessaires au service et ne requièrent donc pas votre consentement
+                        (exemption prévue par la CNIL pour les traceurs strictement nécessaires). Elles restent dans
+                        votre navigateur et vous pouvez les effacer à tout moment depuis les réglages de celui-ci
+                        (voir section 4).</p>
+                    <p>Lorsque vous cliquez sur un lien vers Amazon, vous quittez offrez.net : Amazon peut alors
+                        déposer ses propres cookies sur amazon.fr, selon sa propre politique de confidentialité
+                        (voir section 5, liens affiliés Amazon).</p>
                 </section>
 
                 <section class="legal-section">

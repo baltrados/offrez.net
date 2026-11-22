@@ -1,11 +1,8 @@
 'use strict';
 // Tests d'intégration de GET /api/search (RapidAPI mocké via globalThis.fetch).
-// Aucun test n'envoie consent=true : searches.csv ne doit jamais être créé par la suite de tests.
 
 const { test, describe, before, after, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
 const {
     TEST_KEYS, configureEnv, installFetchMock, jsonResponse, startServer, rawRequest, uniqueIp, assertNoLeak
 } = require('./helpers');
@@ -13,14 +10,10 @@ const {
 configureEnv();
 const { app } = require('../../server.js');
 
-const SEARCHES_CSV = path.resolve(__dirname, '..', '..', 'searches.csv');
-
 let srv;
 let mock;
-let csvExistedBefore;
 
 before(async () => {
-    csvExistedBefore = fs.existsSync(SEARCHES_CSV);
     mock = installFetchMock();
     srv = await startServer(app);
 });
@@ -268,11 +261,13 @@ describe('GET /api/search — erreurs upstream', () => {
 });
 
 describe('GET /api/search — hygiène', () => {
-    test('aucun searches.csv créé sans consentement', async () => {
+    test('le paramètre consent (ancien client) est ignoré sans erreur', async () => {
         mock.handlers.rapid = () => rapidOk();
-        await search('term=csv-check-unique&consent=false');
-        await new Promise(r => setTimeout(r, 50));
-        assert.equal(fs.existsSync(SEARCHES_CSV), csvExistedBefore);
+        for (const value of ['true', 'false', 'n-importe-quoi']) {
+            const r = await search(`term=consent-ignore-unique-${value}&consent=${value}`);
+            assert.equal(r.status, 200, `consent=${value}`);
+            assert.equal(r.json.search_results.length, 3);
+        }
     });
 
     test('la clé n\'apparaît jamais dans /api/health', async () => {

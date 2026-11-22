@@ -1,4 +1,4 @@
-// Tests unitaires de la logique pure de l'analyse (public/js/analyse/*.js) et du consentement (public/js/consent.js).
+// Tests unitaires de la logique pure de l'analyse (public/js/analyse/*.js).
 // Ces modules ESM navigateur importent d'autres modules (avec ?v=) : on ne peut pas les charger en data: URL
 // comme security.js. Un hook de chargement force le format ESM pour les fichiers de public/js/
 // (package sans "type": "module", Node 20 ne détecte pas la syntaxe ESM).
@@ -30,11 +30,10 @@ globalThis.sessionStorage = new MemoryStorage();
 
 const JS = new URL('../../public/js/', import.meta.url);
 // Mêmes URL (avec ?v=) que celles importées par analyse.js : une seule instance par module.
-const products = await import(new URL('analyse/products.js?v=2026112202', JS).href);
-const cart = await import(new URL('analyse/cart.js?v=2026112202', JS).href);
-const session = await import(new URL('analyse/session-data.js?v=2026112202', JS).href);
-const settings = await import(new URL('analyse/settings.js?v=2026112202', JS).href);
-const { isTrackingAllowed, hasConsentDecision } = await import(new URL('consent.js', JS).href);
+const products = await import(new URL('analyse/products.js?v=2026112207', JS).href);
+const cart = await import(new URL('analyse/cart.js?v=2026112207', JS).href);
+const session = await import(new URL('analyse/session-data.js?v=2026112207', JS).href);
+const settings = await import(new URL('analyse/settings.js?v=2026112207', JS).href);
 
 const {
     normalizeProfile, buildAnalyzePayload, computeSearchPriceRange, computeFallbackMinPrice,
@@ -83,14 +82,49 @@ describe('buildAnalyzePayload', () => {
         const payload = buildAnalyzePayload('Fête des Pères', personne);
         assert.deepEqual(payload, {
             contexte: 'Fête des Pères',
-            profile: { nom: 'Paul', sexe: 'Homme', age: null, budget: 49.5, tags: ['Sport'], adore: '', eviter: '' }
+            profile: { sexe: 'Homme', age: null, budget: 49.5, tags: ['Sport'], adore: '', eviter: '' }
         });
         assert.equal('prompt' in payload, false);
+    });
+    test("le prénom n'est jamais envoyé à /api/analyze", () => {
+        const personne = normalizeProfile({ nom: 'Zéphyrine', budget: 30 });
+        assert.equal(personne.nom, 'Zéphyrine', "le prénom reste disponible pour l'affichage local");
+        const payload = buildAnalyzePayload('Noël', personne);
+        assert.ok(!('nom' in payload.profile));
+        assert.ok(!JSON.stringify(payload).includes('Zéphyrine'));
     });
     test('adore / eviter repris des détails', () => {
         const personne = normalizeProfile({ budget: 20, details: { adore: 'thé', eviter: 'café' } });
         assert.equal(buildAnalyzePayload('Noël', personne).profile.adore, 'thé');
         assert.equal(buildAnalyzePayload('Noël', personne).profile.eviter, 'café');
+    });
+});
+
+describe('décision de nouvelle tentative IA', () => {
+    test('pas de relance après 400, 429 ou 503', () => {
+        for (const status of [400, 429, 503]) {
+            assert.equal(settings.shouldRetryGemini(Object.assign(new Error('x'), { status })), false, String(status));
+        }
+    });
+    test('relance pour une erreur réseau / timeout (sans statut) et les autres 5xx', () => {
+        assert.equal(settings.shouldRetryGemini(new Error('Failed to fetch')), true);
+        assert.equal(settings.shouldRetryGemini(undefined), true);
+        for (const status of [500, 502, 504]) {
+            assert.equal(settings.shouldRetryGemini(Object.assign(new Error('x'), { status })), true, String(status));
+        }
+    });
+});
+
+describe('limite atteinte (429 / 503)', () => {
+    test('isLimitReachedError : 429 et 503 uniquement', () => {
+        for (const status of [429, 503]) {
+            assert.equal(settings.isLimitReachedError(Object.assign(new Error('x'), { status })), true, String(status));
+        }
+        for (const status of [400, 500, 502, 504]) {
+            assert.equal(settings.isLimitReachedError(Object.assign(new Error('x'), { status })), false, String(status));
+        }
+        assert.equal(settings.isLimitReachedError(new Error('Failed to fetch')), false);
+        assert.equal(settings.isLimitReachedError(undefined), false);
     });
 });
 
@@ -365,66 +399,6 @@ describe('panier', () => {
 });
 
 // ============================================================================
-// Consentement : isTrackingAllowed / hasConsentDecision
-// ============================================================================
-describe('consentement', () => {
-    const KEY = 'OFFREZ_cookie_consent';
-    const NOW = Date.parse('2026-11-22T12:00:00Z');
-    const set = (v) => localStorage.setItem(KEY, typeof v === 'string' ? v : JSON.stringify(v));
-    const future = '2027-11-22T12:00:00.000Z';
-    const past = '2026-11-21T12:00:00.000Z';
-    beforeEach(() => localStorage.clear());
-
-    test('accepté et non expiré → suivi autorisé', () => {
-        set({ accepted: true, date: past, expiry: future });
-        assert.equal(isTrackingAllowed(NOW), true);
-        assert.equal(hasConsentDecision(NOW), true);
-    });
-    test('accepté mais expiré → refusé (et la bannière doit se réafficher)', () => {
-        set({ accepted: true, date: past, expiry: past });
-        assert.equal(isTrackingAllowed(NOW), false);
-        assert.equal(hasConsentDecision(NOW), false);
-    });
-    test('expiration exactement maintenant → expiré', () => {
-        set({ accepted: true, expiry: new Date(NOW).toISOString() });
-        assert.equal(isTrackingAllowed(NOW), false);
-    });
-    test('refusé (non expiré) → pas de suivi, mais décision enregistrée', () => {
-        set({ accepted: false, date: past, expiry: future });
-        assert.equal(isTrackingAllowed(NOW), false);
-        assert.equal(hasConsentDecision(NOW), true);
-    });
-    test('accepted non booléen strict ("true", 1) → refusé', () => {
-        set({ accepted: 'true', expiry: future });
-        assert.equal(isTrackingAllowed(NOW), false);
-        set({ accepted: 1, expiry: future });
-        assert.equal(isTrackingAllowed(NOW), false);
-    });
-    test('absent, corrompu, null, sans expiration ou date invalide → refusé', () => {
-        assert.equal(isTrackingAllowed(NOW), false);
-        for (const raw of ['{pas du json', 'null', '42', '"texte"', JSON.stringify({ accepted: true }), JSON.stringify({ accepted: true, expiry: 'demain' })]) {
-            set(raw);
-            assert.equal(isTrackingAllowed(NOW), false, raw);
-            assert.equal(hasConsentDecision(NOW), false, raw);
-        }
-    });
-    test('localStorage qui lève une exception → refusé', () => {
-        const original = globalThis.localStorage;
-        globalThis.localStorage = { getItem() { throw new Error('SecurityError'); } };
-        try {
-            assert.equal(isTrackingAllowed(), false);
-            assert.equal(hasConsentDecision(), false);
-        } finally {
-            globalThis.localStorage = original;
-        }
-    });
-    test('horloge par défaut = maintenant', () => {
-        set({ accepted: true, expiry: new Date(Date.now() + 60_000).toISOString() });
-        assert.equal(isTrackingAllowed(), true);
-    });
-});
-
-// ============================================================================
 // Cycle de vie de finalData (RGPD)
 // ============================================================================
 describe('session-data : finalData', () => {
@@ -597,23 +571,5 @@ describe('non-régression différentielle vs implémentation d\'origine', () => 
             }));
             assert.deepEqual(dedupeProducts(list), originalDedupe(list), `cas ${i}`);
         }
-    });
-});
-
-// ============================================================================
-// Payloads de suivi / inscription (aucune donnée de profil superflue)
-// ============================================================================
-const { buildTrackClickPayload } = await import(new URL('analyse/purchase.js?v=2026112202', JS).href);
-const { buildSubscribeContext } = await import(new URL('analyse/email-capture.js?v=2026112202', JS).href);
-
-describe('payloads analyse', () => {
-    test('buildTrackClickPayload : valeurs par défaut et champs limités', () => {
-        assert.deepEqual(buildTrackClickPayload({}), { product: 'Produit Inconnu', price: '0', asin: '', consent: true });
-        assert.deepEqual(buildTrackClickPayload({ product: 'P', price: '9 €', asin: 'B0', recipient: 'Julie' }), { product: 'P', price: '9 €', asin: 'B0', consent: true });
-    });
-    test('buildSubscribeContext : première personne et produit affiché', () => {
-        assert.deepEqual(buildSubscribeContext([]), { prenomCible: null, cadeauChoisi: null });
-        assert.deepEqual(buildSubscribeContext([{ personne: { nom: 'Julie' }, currentIndex: 1, products: [{ title: 'a' }, { title: 'b' }] }]),
-            { prenomCible: 'Julie', cadeauChoisi: 'b' });
     });
 });
