@@ -205,7 +205,8 @@ C'est comme si chaque page écrivait un mot sur un tableau blanc, et la page sui
 | `documentation/11_SETUP_CM3588_SERVEUR.md` | Installation serveur |
 | `documentation/12_BREVO.md` | Emails marketing |
 | `documentation/13_GIT_ET_GITHUB.md` | Git, GitHub, déploiement |
-| `.agents/workflows/` | Guides pour agents IA |
+| `CLAUDE.md` | Règles du projet pour Claude Code |
+| `.claude/agents/` | Agents IA du projet (architecte, backend, frontend, sécurité, tests) |
 
 Les anciennes docs détaillées (01–10), le manuel et l'audit de lancement sont dans `documentation/archive/`.
 
