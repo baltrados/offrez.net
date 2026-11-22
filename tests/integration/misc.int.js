@@ -74,12 +74,24 @@ describe('divers', () => {
         assert.ok(!/node:internal|\bat\s+\S+\s+\(/.test(text));
     });
 
-    test('/api/health → statut healthy sans données sensibles', async () => {
+    test('/api/health → { status: "ok" } uniquement', async () => {
         const res = await fetch(`${srv.base}/api/health`);
         const json = await res.json();
         assert.equal(res.status, 200);
-        assert.equal(json.status, 'healthy');
-        assert.deepEqual(Object.keys(json).sort(), ['cacheSize', 'memoryUsage', 'status', 'timestamp', 'uptime']);
+        assert.deepEqual(json, { status: 'ok' });
+    });
+});
+
+describe('CORS : aucun en-tête Access-Control-Allow-Origin', () => {
+    test('une requête cross-origin ne reçoit pas Access-Control-Allow-Origin', async () => {
+        const res = await fetch(`${srv.base}/api/health`, { headers: { Origin: 'https://evil.example' } });
+        assert.equal(res.status, 200);
+        assert.equal(res.headers.get('access-control-allow-origin'), null);
+        const pre = await fetch(`${srv.base}/api/analyze`, {
+            method: 'OPTIONS',
+            headers: { Origin: 'https://evil.example', 'Access-Control-Request-Method': 'POST' }
+        });
+        assert.equal(pre.headers.get('access-control-allow-origin'), null);
     });
 });
 

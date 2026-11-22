@@ -27,6 +27,7 @@ function configureEnv(extra = {}) {
         RAPIDAPI_KEY: TEST_KEYS.RAPIDAPI_KEY,
         NODE_ENV: undefined,
         GEMINI_MODEL: undefined,
+        TRUST_PROXY: undefined,
         GEMINI_DAILY_LIMIT: undefined,
         GEMINI_DAILY_LIMIT_PER_IP: undefined,
         RAPIDAPI_DAILY_LIMIT: undefined,
@@ -41,8 +42,6 @@ function configureEnv(extra = {}) {
             process.env[k] = v;
         }
     }
-    // pm_id (PM2) déclenche app.listen() au require de server.js : jamais en test, même si hérité
-    delete process.env.pm_id;
 }
 
 function headersToObject(headers) {

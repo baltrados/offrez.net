@@ -12,20 +12,19 @@
 
 require('dotenv').config();
 const express = require('express');
-const cors = require('cors');
 const helmet = require('helmet');
 const path = require('path');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
+const { parseTrustProxy } = require('./lib/config');
 const fs = require('fs');
 const crypto = require('crypto');
 
-// FIX RGPD : Hashage des IPs pour pseudo-anonymisation (CNIL-friendly)
-// [TASK BUG-012] Salt déplacé vers .env pour rotation sécurisée
-const IP_HASH_SALT = process.env.IP_HASH_SALT || 'OFFREZ_2026_SALT';
+// Sel aléatoire tiré à chaque démarrage : ne sert qu'aux clés de quota en mémoire (jamais persistées)
+const QUOTA_KEY_SALT = crypto.randomBytes(32);
 function hashIp(ip) {
     if (!ip) return 'unknown';
-    return crypto.createHash('sha256').update(ip + IP_HASH_SALT).digest('hex').slice(0, 16);
+    return crypto.createHash('sha256').update(QUOTA_KEY_SALT).update(String(ip)).digest('hex').slice(0, 16);
 }
 
 // [LOT1] fetch global natif (Node >= 18) via fetchWithTimeout : plus de dépendance node-fetch
@@ -163,7 +162,10 @@ setInterval(() => {
 // ======================
 // CONFIGURATION EXPRESS
 // ======================
-app.set('trust proxy', 1); // Indispensable derrière un reverse proxy (ex: Cloudflare/Heroku)
+// Nombre de proxys de confiance (TRUST_PROXY, entier >= 0, défaut 1 : Render). Jamais 'true' (IP falsifiable).
+const trustProxy = parseTrustProxy(process.env.TRUST_PROXY);
+if (trustProxy.warning) console.warn('[CONFIG] ' + trustProxy.warning);
+app.set('trust proxy', trustProxy.value);
 
 // NOUVEAU MIDDLEWARE SEO : Redirection WWW -> NON-WWW
 app.use((req, res, next) => {
@@ -270,12 +272,6 @@ app.use((req, res, next) => {
     next();
 });
 
-// FIX #6 : CORS restreint à l'origine de production uniquement
-app.use(cors({
-    origin: IS_PRODUCTION ? ['https://offrez.net', 'https://www.offrez.net'] : '*',
-    methods: ['GET', 'POST'],
-    allowedHeaders: ['Content-Type']
-}));
 app.use(express.json({ limit: '50kb' })); // Protection contre payloads géants
 
 function sendNotFound(res) {
@@ -568,13 +564,7 @@ app.get('/api/search', apiLimiter, async (req, res) => {
 // HEALTHCHECK (Monitoring)
 // ======================
 app.get('/api/health', (req, res) => {
-    res.json({
-        status: 'healthy',
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-        cacheSize: searchCache.size,
-        memoryUsage: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + 'MB'
-    });
+    res.json({ status: 'ok' });
 });
 
 // ======================
@@ -627,32 +617,37 @@ app.use((err, req, res, next) => {
 // ======================
 // DÉMARRAGE SERVEUR
 // ======================
-// [LOT2] Démarrage uniquement si lancé directement (`node server.js`) ;
+// Démarrage uniquement si lancé directement (`node server.js`) ;
 // require('./server.js') (tests d'intégration) obtient l'app sans écouter de port ni handlers process.
-// pm_id : défini par PM2 (prod), dont certaines versions/modes chargent le script via leur propre
-// conteneur (require.main !== module) ; garantit que le serveur démarre toujours sous PM2.
-if (require.main === module || process.env.pm_id !== undefined) {
-    const server = app.listen(PORT, () => {
-        console.log(`🎁 OFFREZ Server running on http://localhost:${PORT}`);
-        console.log(`📦 Cache Amazon (RapidAPI) activé (TTL: 24h)`);
+if (require.main === module) {
+    const server = app.listen(PORT, '0.0.0.0', () => {
+        console.log(`OFFREZ Server démarré (port ${PORT}, environnement ${process.env.NODE_ENV || 'non défini'})`);
     });
 
-    // Graceful Shutdown (pour déploiements propres)
-    process.on('SIGTERM', () => {
-        console.log('⚠️ SIGTERM reçu - Arrêt gracieux...');
+    // Arrêt propre (SIGTERM de Render, SIGINT) : une seule exécution, forcé au bout de 10 s
+    let shuttingDown = false;
+    function shutdown(signal) {
+        if (shuttingDown) return;
+        shuttingDown = true;
+        console.log(`[SHUTDOWN] ${signal} reçu, arrêt en cours`);
+        setTimeout(() => process.exit(0), 10000).unref();
         server.close(() => {
-            console.log('✅ Serveur arrêté proprement');
+            console.log('[SHUTDOWN] Serveur arrêté proprement');
             process.exit(0);
         });
-    });
+        server.closeIdleConnections();
+    }
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
 
+    // Erreur fatale : journalisation sûre (jamais l'objet brut) puis sortie ; Render redémarre le service
     process.on('uncaughtException', (err) => {
-        console.error('❌ Uncaught Exception:', err);
-        // En production, on continue (le serveur reste up)
+        console.error('[FATAL] uncaughtException:', safeErrorInfo(err));
+        process.exit(1);
     });
-
-    process.on('unhandledRejection', (reason, promise) => {
-        console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+    process.on('unhandledRejection', (reason) => {
+        console.error('[FATAL] unhandledRejection:', safeErrorInfo(reason));
+        process.exit(1);
     });
 }
 
