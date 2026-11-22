@@ -25,3 +25,16 @@ test('parseTrustProxy : valeurs invalides -> 1 avec avertissement', () => {
         assert.equal(typeof r.warning, 'string', v);
     }
 });
+
+const { sanitizeApiKey } = require('../../lib/config');
+
+test('sanitizeApiKey : trim, absent, et rejet des caractères de contrôle ou espaces internes', () => {
+    assert.deepEqual(sanitizeApiKey('  abc123\n'), { value: 'abc123', valid: true, present: true });
+    for (const v of [undefined, null, '', '  \n']) {
+        assert.deepEqual(sanitizeApiKey(v), { value: '', valid: false, present: false });
+    }
+    for (const v of ['AIza\nKEY', 'AIza KEY', 'AIza\tKEY', 'AIza\u0000KEY', 'AIza\u007fKEY']) {
+        const r = sanitizeApiKey(v);
+        assert.deepEqual(r, { value: '', valid: false, present: true }, JSON.stringify(v));
+    }
+});

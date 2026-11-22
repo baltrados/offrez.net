@@ -593,12 +593,15 @@ test('createPerKeyDailyQuota : limite par clé, clés indépendantes, reset au c
     assert.equal(q.size(), 1);
 });
 
-test('createPerKeyDailyQuota : mémoire bornée (fail-open au-delà de maxKeys)', () => {
-    const q = createPerKeyDailyQuota(1, { maxKeys: 2 });
-    q.tryConsume('a'); q.tryConsume('b');
-    assert.equal(q.tryConsume('c'), true);
-    assert.equal(q.tryConsume('c'), true, 'clé non suivie : acceptée (le quota global reste le plafond)');
-    assert.equal(q.size(), 2);
+test('createPerKeyDailyQuota : table pleine (maxKeys) → nouvelles clés refusées, clés connues inchangées', () => {
+    const q = createPerKeyDailyQuota(2, { maxKeys: 2 });
+    assert.equal(q.tryConsume('a'), true);
+    assert.equal(q.tryConsume('b'), true);
+    assert.equal(q.tryConsume('c'), false, 'nouvelle clé refusée table pleine');
+    assert.equal(q.tryConsume('c'), false);
+    assert.equal(q.tryConsume('a'), true, 'clé déjà suivie : compteur normal');
+    assert.equal(q.tryConsume('a'), false, 'limite atteinte');
+    assert.equal(q.size(), 2, 'mémoire bornée');
 });
 
 test('cleanText : normalisation NFKC (pleine chasse, accents décomposés)', () => {
@@ -613,17 +616,18 @@ test('normalizeProduct : hôte image strict (pas de evilmedia-amazon.com)', () =
         'https://m.media-amazon.com/images/I/x.jpg');
 });
 
-test('quotaClientKey : IPv4 complète, IPv6 regroupée en /64', () => {
+test('quotaClientKey : IPv4 complète, IPv6 regroupée en /56', () => {
     assert.equal(quotaClientKey('203.0.113.7'), '203.0.113.7');
     assert.equal(quotaClientKey('::ffff:203.0.113.7'), '203.0.113.7', 'IPv4-mappée');
-    const a = quotaClientKey('2001:db8:abcd:12:1111:2222:3333:4444');
-    const b = quotaClientKey('2001:0db8:ABCD:0012::9');
-    assert.equal(a, '2001:db8:abcd:12::/64');
-    assert.equal(a, b, 'même /64 malgré forme compressée, zéros et casse');
-    assert.notEqual(a, quotaClientKey('2001:db8:abcd:13::1'), '/64 voisin distinct');
-    assert.equal(quotaClientKey('::1'), '0:0:0:0::/64');
-    assert.equal(quotaClientKey('fe80::1%eth0'), 'fe80:0:0:0::/64', 'identifiant de zone ignoré');
-    assert.equal(quotaClientKey('64:ff9b::192.0.2.33'), '64:ff9b:0:0::/64', 'suffixe IPv4 embarqué');
+    const a = quotaClientKey('2001:db8:abcd:1234:1111:2222:3333:4444');
+    const b = quotaClientKey('2001:0db8:ABCD:12ff::9');
+    assert.equal(a, '2001:db8:abcd:1200::/56');
+    assert.equal(a, b, 'même /56 malgré forme compressée, zéros et casse');
+    assert.notEqual(a, quotaClientKey('2001:db8:abcd:1300::1'), '/56 voisin distinct');
+    assert.equal(quotaClientKey('2001:db8:abcd:1201::1'), a, 'autre /64 du même /56 : même clé');
+    assert.equal(quotaClientKey('::1'), '0:0:0:0::/56');
+    assert.equal(quotaClientKey('fe80::1%eth0'), 'fe80:0:0:0::/56', 'identifiant de zone ignoré');
+    assert.equal(quotaClientKey('64:ff9b::192.0.2.33'), '64:ff9b:0:0::/56', 'suffixe IPv4 embarqué');
     assert.equal(quotaClientKey(''), 'unknown');
     assert.equal(quotaClientKey(undefined), 'unknown');
 });

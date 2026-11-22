@@ -30,10 +30,10 @@ globalThis.sessionStorage = new MemoryStorage();
 
 const JS = new URL('../../public/js/', import.meta.url);
 // Mêmes URL (avec ?v=) que celles importées par analyse.js : une seule instance par module.
-const products = await import(new URL('analyse/products.js?v=2026112206', JS).href);
-const cart = await import(new URL('analyse/cart.js?v=2026112206', JS).href);
-const session = await import(new URL('analyse/session-data.js?v=2026112206', JS).href);
-const settings = await import(new URL('analyse/settings.js?v=2026112206', JS).href);
+const products = await import(new URL('analyse/products.js?v=2026112207', JS).href);
+const cart = await import(new URL('analyse/cart.js?v=2026112207', JS).href);
+const session = await import(new URL('analyse/session-data.js?v=2026112207', JS).href);
+const settings = await import(new URL('analyse/settings.js?v=2026112207', JS).href);
 
 const {
     normalizeProfile, buildAnalyzePayload, computeSearchPriceRange, computeFallbackMinPrice,
@@ -112,6 +112,19 @@ describe('décision de nouvelle tentative IA', () => {
         for (const status of [500, 502, 504]) {
             assert.equal(settings.shouldRetryGemini(Object.assign(new Error('x'), { status })), true, String(status));
         }
+    });
+});
+
+describe('limite atteinte (429 / 503)', () => {
+    test('isLimitReachedError : 429 et 503 uniquement', () => {
+        for (const status of [429, 503]) {
+            assert.equal(settings.isLimitReachedError(Object.assign(new Error('x'), { status })), true, String(status));
+        }
+        for (const status of [400, 500, 502, 504]) {
+            assert.equal(settings.isLimitReachedError(Object.assign(new Error('x'), { status })), false, String(status));
+        }
+        assert.equal(settings.isLimitReachedError(new Error('Failed to fetch')), false);
+        assert.equal(settings.isLimitReachedError(undefined), false);
     });
 });
 

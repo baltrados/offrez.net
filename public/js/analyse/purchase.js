@@ -3,8 +3,8 @@
  * ====================================================================================================
  */
 
-import { sanitizeUrl } from '../security.js?v=2026112001';
-import { PURCHASE_COUNTDOWN_SECONDS, SHARE_FEEDBACK_MS } from './settings.js?v=2026112206';
+import { sanitizeUrl } from '../security.js?v=2026112207';
+import { PURCHASE_COUNTDOWN_SECONDS, SHARE_FEEDBACK_MS } from './settings.js?v=2026112207';
 
 const SHARE_URL = 'https://offrez.net';
 

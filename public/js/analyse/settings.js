@@ -25,6 +25,14 @@ export const GEMINI_NO_RETRY_STATUSES = [400, 429, 503];
 export function shouldRetryGemini(error) {
     return !GEMINI_NO_RETRY_STATUSES.includes(error?.status);
 }
+/**
+ * L'erreur signale-t-elle une limite atteinte (429 quota par IP, 503 plafond global ou service coupé) ?
+ * Dans ce cas un nouvel appel est voué à l'échec : pas de « Réessayer », pas de données conservées.
+ * @param {{status?: number}|null|undefined} error
+ */
+export function isLimitReachedError(error) {
+    return error?.status === 429 || error?.status === 503;
+}
 /** « Temps de réflexion » affiché avant l'appel IA (ms). */
 export const THINK_DELAY_MS = 800;
 

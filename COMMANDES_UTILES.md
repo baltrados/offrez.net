@@ -45,10 +45,10 @@ Voir `documentation/13_GIT_ET_GITHUB.md`.
 
 ```bash
 curl https://offrez.net/api/health          # attendu : {"status":"ok"}
-curl -si "https://offrez.net/api/search?term=livre&min_price=10&max_price=50" | grep -i x-cache
+curl -si "https://offrez.net/api/search?term=livre&min_price=10&max_price=50" | grep -i ratelimit
 ```
 
-`X-Cache: HIT` signifie réponse servie par le cache (aucun appel payant) ; `MISS` signifie appel au fournisseur. Les réponses 429 et 503 portent un en-tête `Retry-After`. Sur l'offre gratuite de Render, le premier appel après une période d'inactivité peut prendre une minute (réveil du service).
+L'en-tête `X-Cache` (`HIT` = réponse servie par le cache, aucun appel payant ; `MISS` = appel au fournisseur) est visible uniquement en local (hors production). Les réponses 429 et 503 portent un en-tête `Retry-After`. Sur l'offre gratuite de Render, le premier appel après une période d'inactivité peut prendre une minute (réveil du service).
 
 ## Console du navigateur (F12)
 

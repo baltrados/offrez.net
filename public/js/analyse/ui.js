@@ -5,7 +5,7 @@
  * aucun gestionnaire inline (bloqué par la CSP script-src 'self' / script-src-attr 'none').
  */
 
-import { purgeAnalysisData } from './session-data.js?v=2026112206';
+import { purgeAnalysisData } from './session-data.js?v=2026112207';
 
 /**
  * Met à jour la barre de progression et le message de statut (région aria-live).
@@ -123,6 +123,19 @@ export function buildAnalysisFailedState() {
         title: TECHNICAL_ERROR_TITLE,
         message: "Nous n'avons pas pu générer vos recommandations pour le moment. Veuillez réessayer dans quelques instants.",
         actions: [RETRY_ACTION, EDIT_SEARCH_ACTION]
+    });
+}
+
+/**
+ * Limite atteinte (429 quota par IP, 503 plafond global / service coupé) : message fixe côté client
+ * (le texte serveur n'est jamais injecté), aucun « Réessayer » : un nouvel appel échouerait.
+ */
+export function buildLimitReachedState() {
+    return buildErrorState({
+        icon: '⏳',
+        title: 'Limite du jour atteinte',
+        message: "Le service a atteint sa limite pour aujourd'hui. Revenez demain.",
+        actions: [EDIT_SEARCH_ACTION]
     });
 }
 

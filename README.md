@@ -47,7 +47,7 @@ Render déploie automatiquement la branche `main`. Procédure complète (variabl
 
 ## Protections contre les abus et les coûts
 
-Les routes `/api/analyze` (12 requêtes/min par IP) et `/api/search` (30/min) sont limitées. Des plafonds journaliers globaux (Gemini 100, RapidAPI 150) et par IP (35 analyses, 70 recherches) bloquent les appels payants au-delà ; la valeur `0` coupe le service. Un cache mémoire évite les appels répétés (Gemini 12 h, sans le prénom ; Amazon 24 h) et l'en-tête `X-Cache` indique `HIT` ou `MISS`. Compteurs et caches sont en mémoire : ils repartent à zéro au redémarrage.
+Les routes `/api/analyze` (12 requêtes/min par IP) et `/api/search` (30/min) sont limitées. Des plafonds journaliers globaux (Gemini 100, RapidAPI 150) et par IP (35 analyses, 70 recherches) bloquent les appels payants au-delà ; la valeur `0` coupe le service. Un cache mémoire évite les appels répétés (Gemini 12 h, sans le prénom ; Amazon 24 h) et l'en-tête `X-Cache` (`HIT` ou `MISS`) est visible uniquement en local (hors production). Compteurs et caches sont en mémoire : ils repartent à zéro au redémarrage.
 
 ## Documentation
 

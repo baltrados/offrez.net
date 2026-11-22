@@ -13,7 +13,7 @@
  * (voir documentation/14_SUIVI_CHANTIER_QUALITE.md §3).
  */
 
-import { callGemini, searchAmazon } from './api.js?v=2026112206';
+import { callGemini, searchAmazon } from './api.js?v=2026112207';
 import {
     normalizeProfile,
     buildAnalyzePayload,
@@ -23,15 +23,16 @@ import {
     dedupeProducts,
     buildFallbackTerms,
     filterFallbackProducts
-} from './analyse/products.js?v=2026112206';
-import { takeAnalysisData, purgeAnalysisData } from './analyse/session-data.js?v=2026112206';
-import { updateProgress, hideStatusIndicator, showMissingDataState, showFatalErrorOverlay } from './analyse/ui.js?v=2026112206';
-import { renderResults } from './analyse/render.js?v=2026112206';
-import { initPurchaseTracking } from './analyse/purchase.js?v=2026112206';
+} from './analyse/products.js?v=2026112207';
+import { takeAnalysisData, purgeAnalysisData } from './analyse/session-data.js?v=2026112207';
+import { updateProgress, hideStatusIndicator, showMissingDataState, showFatalErrorOverlay } from './analyse/ui.js?v=2026112207';
+import { renderResults } from './analyse/render.js?v=2026112207';
+import { initPurchaseTracking } from './analyse/purchase.js?v=2026112207';
 import {
     GEMINI_MAX_ATTEMPTS,
     GEMINI_RETRY_DELAY_MS,
     shouldRetryGemini,
+    isLimitReachedError,
     THINK_DELAY_MS,
     MAX_AMAZON_SEARCHES,
     FALLBACK_MAX_TERMS,
@@ -39,7 +40,7 @@ import {
     PROGRESS_START,
     PROGRESS_PROFILES_BASE,
     PROGRESS_PROFILES_SPAN
-} from './analyse/settings.js?v=2026112206';
+} from './analyse/settings.js?v=2026112207';
 
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -50,15 +51,18 @@ function personResult(personne, products) {
 
 /**
  * Suggestions IA avec une nouvelle tentative (réponse vide ou erreur réseau / 5xx ; jamais après 400, 429, 503).
- * @returns {Promise<{suggestions: any[]}|null>} null si rien d'exploitable après toutes les tentatives.
+ * @returns {Promise<{iaResult: {suggestions: any[]}|null, limitReached: boolean}>}
+ *   iaResult null si rien d'exploitable ; limitReached vrai si le serveur a répondu 429 ou 503.
  */
 async function fetchSuggestions(payload, personne, profileProgress) {
     let iaResult = null;
+    let limitReached = false;
     for (let attempt = 0; attempt < GEMINI_MAX_ATTEMPTS; attempt++) {
         try {
             iaResult = await callGemini(payload);
             if (iaResult?.suggestions?.length > 0) break;
         } catch (error) {
+            if (isLimitReachedError(error)) limitReached = true;
             if (!shouldRetryGemini(error)) break; // 400 / 429 / 503 : inutile (et coûteux) de réessayer
             if (attempt === 0) {
                 updateProgress(profileProgress + 18, `Nouvelle tentative pour ${personne.nom}...`);
@@ -66,7 +70,7 @@ async function fetchSuggestions(payload, personne, profileProgress) {
             }
         }
     }
-    return iaResult?.suggestions?.length > 0 ? iaResult : null;
+    return { iaResult: iaResult?.suggestions?.length > 0 ? iaResult : null, limitReached };
 }
 
 /** Meilleur produit de chacune des premières suggestions IA (une recherche Amazon par suggestion). */
@@ -115,7 +119,7 @@ async function searchFallbackProduct(personne, contexte) {
 
 /**
  * Analyse complète d'un profil.
- * @returns {Promise<{status: 'ok', result: object}|{status: 'empty'}|{status: 'failed'}>}
+ * @returns {Promise<{status: 'ok', result: object}|{status: 'empty'}|{status: 'failed', limitReached?: boolean}>}
  */
 async function analyseProfile(personne, contexte, profileProgress) {
     try {
@@ -124,8 +128,8 @@ async function analyseProfile(personne, contexte, profileProgress) {
         await wait(THINK_DELAY_MS);
         updateProgress(profileProgress + 15, `Croisement avec les tendances actuelles...`);
 
-        const iaResult = await fetchSuggestions(buildAnalyzePayload(contexte, personne), personne, profileProgress);
-        if (!iaResult) return { status: 'failed' };
+        const { iaResult, limitReached } = await fetchSuggestions(buildAnalyzePayload(contexte, personne), personne, profileProgress);
+        if (!iaResult) return { status: 'failed', limitReached };
 
         updateProgress(profileProgress + 20, `Recherche produits pour ${personne.nom}...`);
         const products = await searchSuggestedProducts(iaResult.suggestions, personne);
@@ -155,6 +159,8 @@ async function lancerAnalyse() {
     const personResults = [];
     // Profils dont l'analyse IA a échoué : distingue « service en échec » de « aucun produit trouvé ».
     let apiFailures = 0;
+    // Limite serveur atteinte (429 / 503) : inutile d'appeler pour les profils suivants, et pas de « Réessayer ».
+    let limitReached = false;
 
     for (const raw of data.equipe) {
         const personne = normalizeProfile(raw);
@@ -169,16 +175,21 @@ async function lancerAnalyse() {
             processedProfiles++;
         } else if (outcome.status === 'failed') {
             apiFailures++;
+            if (outcome.limitReached) {
+                limitReached = true;
+                break;
+            }
         }
     }
 
     hideStatusIndicator();
     updateProgress(100, 'Analyse terminée !');
 
-    renderResults(personResults, apiFailures);
+    renderResults(personResults, apiFailures, limitReached);
     // RGPD : profils purgés une fois l'analyse terminée ; copie de session gardée seulement si
     // l'échec est technique (« Réessayer » recharge la page et relance l'analyse).
-    purgeAnalysisData({ keepForRetry: personResults.length === 0 && apiFailures > 0 });
+    // Limite atteinte : rien à relancer, la copie de session n'est pas conservée.
+    purgeAnalysisData({ keepForRetry: personResults.length === 0 && apiFailures > 0 && !limitReached });
 }
 
 initPurchaseTracking();

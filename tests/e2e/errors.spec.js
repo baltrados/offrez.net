@@ -69,38 +69,41 @@ test('/api/analyze en 500 → état d\'erreur générique avec « Réessayer » 
     expect(consoleErrors.filter((e) => !/Failed to load resource/.test(e))).toEqual([]);
 });
 
-test('/api/analyze en 429 → un seul appel (pas de relance), message d\'erreur affiché', async ({ page, consoleErrors }) => {
-    await page.addInitScript((data) => {
-        localStorage.setItem('finalData', data);
-    }, JSON.stringify(FINAL_DATA));
+// 429 (quota par IP) et 503 (plafond global / service coupé) : message de limite, pas de « Réessayer »
+for (const { status, error } of [
+    { status: 429, error: 'Limite quotidienne de recherches atteinte. Réessayez demain.' },
+    { status: 503, error: 'Service temporairement indisponible, réessayez plus tard.' },
+]) {
+    test(`/api/analyze en ${status} → message de limite, pas de « Réessayer », un seul appel`, async ({ page, consoleErrors }) => {
+        await page.addInitScript((data) => {
+            localStorage.setItem('finalData', data);
+        }, JSON.stringify(FINAL_DATA));
 
-    let analyzeCalls = 0;
-    let searchCalls = 0;
-    await page.route('**/api/analyze', (route) => {
-        analyzeCalls++;
-        return route.fulfill({
-            status: 429,
-            headers: { 'Retry-After': '3600' },
-            json: { error: 'Limite quotidienne de recherches atteinte. Réessayez demain.' },
+        let analyzeCalls = 0;
+        await page.route('**/api/analyze', (route) => {
+            analyzeCalls++;
+            return route.fulfill({ status, headers: { 'Retry-After': '3600' }, json: { error } });
         });
-    });
-    await page.route('**/api/search?**', (route) => {
-        searchCalls++;
-        return route.fulfill({ json: { search_results: [] } });
-    });
+        await page.route('**/api/search?**', (route) => route.fulfill({ json: { search_results: [] } }));
 
-    await page.goto('/analyse.html');
+        await page.goto('/analyse.html');
 
-    const errorState = page.locator('#singleResult .analysis-error');
-    await expect(errorState).toBeVisible({ timeout: 15000 });
-    await expect(errorState).toHaveAttribute('role', 'alert');
-    await expect(page.locator('#statusIndicator')).toBeHidden();
-    // Laisse passer le délai de relance (1,5 s) : aucun second appel ne doit partir
-    await page.waitForTimeout(2500);
-    expect(analyzeCalls).toBe(1);
-    expect(searchCalls).toBe(0);
-    expect(consoleErrors.filter((e) => !/Failed to load resource/.test(e))).toEqual([]);
-});
+        const errorState = page.locator('#singleResult .analysis-error');
+        await expect(errorState).toBeVisible({ timeout: 15000 });
+        await expect(errorState).toHaveAttribute('role', 'alert');
+        await expect(errorState).toContainText("Le service a atteint sa limite pour aujourd'hui. Revenez demain.");
+        await expect(errorState.getByRole('button', { name: 'Réessayer' })).toHaveCount(0);
+        await expect(page.getByRole('button', { name: 'Réessayer' })).toHaveCount(0);
+        await expect(errorState.getByRole('button', { name: 'Modifier ma recherche' })).toBeVisible();
+        await expect(page.locator('#statusIndicator')).toBeHidden();
+        // Pas de données conservées pour une relance immédiate
+        expect(await page.evaluate(() => sessionStorage.getItem('finalData'))).toBeNull();
+        // Laisse passer le délai de relance (1,5 s) : aucun second appel ne doit partir
+        await page.waitForTimeout(2500);
+        expect(analyzeCalls).toBe(1);
+        expect(consoleErrors.filter((e) => !/Failed to load resource/.test(e))).toEqual([]);
+    });
+}
 
 // Données de l'étape 2 absentes, corrompues ou vides : plus de spinner infini.
 const MISSING_DATA_CASES = [

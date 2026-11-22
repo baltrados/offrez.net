@@ -16,9 +16,21 @@ const helmet = require('helmet');
 const path = require('path');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
-const { parseTrustProxy, RATE_LIMITS } = require('./lib/config');
+const { parseTrustProxy, sanitizeApiKey, RATE_LIMITS } = require('./lib/config');
+const { safeErrorInfo } = require('./lib/safe-log');
 const fs = require('fs');
 const crypto = require('crypto');
+
+// Clés API : trim() au démarrage ; une clé qui contient encore un espace ou un caractère de contrôle
+// est ignorée (avertissement SANS la valeur) : fetch inclurait sinon la clé dans son message d'erreur.
+// La valeur nettoyée est réécrite dans process.env : tout le code lit la valeur nettoyée.
+for (const name of ['GEMINI_API_KEY', 'RAPIDAPI_KEY']) {
+    const key = sanitizeApiKey(process.env[name]);
+    if (key.present && !key.valid) {
+        console.warn(`[CONFIG] ${name} contient un espace ou un caractère de contrôle : clé ignorée (service concerné désactivé)`);
+    }
+    process.env[name] = key.value;
+}
 
 // Sel aléatoire tiré à chaque démarrage : ne sert qu'aux clés de quota en mémoire (jamais persistées)
 const QUOTA_KEY_SALT = crypto.randomBytes(32);
@@ -134,6 +146,11 @@ const searchCache = createTtlCache({ ttlMs: 24 * 60 * 60 * 1000, maxEntries: 100
 // Suggestions Gemini : la clé ne contient ni prénom ni IP (voir buildAnalyzeCacheKey)
 const analyzeCache = createTtlCache({ ttlMs: 12 * 60 * 60 * 1000, maxEntries: 500 });
 
+// X-Cache (HIT/MISS) : hors production uniquement (en production il révélerait si un profil identique a déjà été soumis)
+function setCacheHeader(res, value) {
+    if (!IS_PRODUCTION) res.set('X-Cache', value);
+}
+
 function getCacheKey(term, minPrice, maxPrice) {
     // Clé unique basée sur les paramètres de recherche
     return `${term.toLowerCase().trim()}|${minPrice}|${maxPrice}`;
@@ -153,17 +170,31 @@ const trustProxy = parseTrustProxy(process.env.TRUST_PROXY);
 if (trustProxy.warning) console.warn('[CONFIG] ' + trustProxy.warning);
 app.set('trust proxy', trustProxy.value);
 
-// NOUVEAU MIDDLEWARE SEO : Redirection WWW -> NON-WWW
+// Redirection SEO WWW -> NON-WWW. La destination est TOUJOURS le domaine fixe : jamais une valeur tirée
+// de la requête (avec trust proxy, req.hostname lirait X-Forwarded-Host, falsifiable). On ne compare que
+// l'en-tête Host réel, sans port, en minuscules.
+const CANONICAL_ORIGIN = 'https://offrez.net';
 app.use((req, res, next) => {
-    // Si on est en production et que l'hôte commence par 'www.'
-    if (IS_PRODUCTION && req.hostname && req.hostname.startsWith('www.')) {
-        const nonWwwHost = req.hostname.replace(/^www\./, '');
-        // Redirection Permanente (301) vitale pour le SEO
-        const newUrl = `https://${nonWwwHost}${req.originalUrl}`;
-        return res.redirect(301, newUrl);
+    if (IS_PRODUCTION) {
+        const host = String(req.get('host') || '').toLowerCase().replace(/:\d+$/, '');
+        if (host === 'www.offrez.net') {
+            return res.redirect(301, CANONICAL_ORIGIN + req.originalUrl); // 301 : vital pour le SEO
+        }
     }
     next();
 });
+
+// Requêtes déclenchées depuis un site tiers (ex. <img src="https://offrez.net/api/search?...">) : un navigateur
+// envoie Sec-Fetch-Site ; seules les valeurs 'same-origin' et 'none' (saisie directe) sont acceptées.
+// En-tête absent (anciens navigateurs, curl, tests) : accepté. Placé AVANT limiteurs, cache et appels externes.
+function rejectCrossSite(req, res, next) {
+    const site = req.get('sec-fetch-site');
+    if (site !== undefined && site !== 'same-origin' && site !== 'none') {
+        return res.status(403).json({ error: 'Requête non autorisée' });
+    }
+    next();
+}
+app.use(['/api/search', '/api/analyze'], rejectCrossSite);
 
 // ----------------------
 // Rate Limiting (Sécurité)
@@ -190,17 +221,6 @@ const strictLimiter = rateLimit({
 // ----------------------
 // Helpers erreurs (ne jamais exposer de détails internes / upstream au client)
 // ----------------------
-
-// Résumé d'erreur sûr pour les logs : nom, code, message court sans URL (pas d'objet brut)
-function safeErrorInfo(err) {
-    if (!err) return 'Erreur inconnue';
-    const parts = [err.name || 'Error'];
-    if (err.code) parts.push(String(err.code));
-    if (err.type) parts.push(String(err.type));
-    const msg = String(err.message || '').replace(/https?:\/\/\S+/gi, '[url]').slice(0, 200);
-    if (msg) parts.push(msg);
-    return parts.join(' | ');
-}
 
 // Code machine court et non sensible (enum Gemini ex: SAFETY, MAX_TOKENS)
 function safeReasonCode(value) {
@@ -369,10 +389,10 @@ app.post('/api/analyze', strictLimiter, async (req, res) => {
         const cached = analyzeCache.get(cacheKey);
         if (cached) {
             log('[CACHE HIT] analyze');
-            res.set('X-Cache', 'HIT');
+            setCacheHeader(res, 'HIT');
             return res.json(cached);
         }
-        res.set('X-Cache', 'MISS');
+        setCacheHeader(res, 'MISS');
 
         if (!process.env.GEMINI_API_KEY) {
             console.error('[GEMINI] Configuration manquante : GEMINI_API_KEY');
@@ -495,10 +515,10 @@ app.get('/api/search', apiLimiter, async (req, res) => {
         const cached = searchCache.get(cacheKey);
         if (cached) {
             log('[CACHE HIT] search'); // pas de terme saisi dans les logs
-            res.set('X-Cache', 'HIT');
+            setCacheHeader(res, 'HIT');
             return res.json(cached);
         }
-        res.set('X-Cache', 'MISS');
+        setCacheHeader(res, 'MISS');
 
         // Quota consommé uniquement juste avant un appel upstream réel (pas sur cache hit), par IP puis global
         if (!rapidApiIpQuota.tryConsume(hashIp(quotaClientKey(req.ip || req.socket?.remoteAddress)))) {

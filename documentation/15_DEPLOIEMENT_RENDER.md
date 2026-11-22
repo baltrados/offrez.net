@@ -52,6 +52,9 @@ Indispensable : les compteurs du site repartent à zéro à chaque redémarrage,
 ## 4. Préproduction (avant de toucher au DNS)
 
 - Vérifier que deux appareils sur deux réseaux différents (wifi et 4G) ne partagent pas le même quota : si l'un est bloqué à cause de l'autre, `TRUST_PROXY` est mal réglé.
+- **Vérifier `TRUST_PROXY` (l'IP vue par le serveur ne doit pas être falsifiable).** Envoyer `GET https://<service>.onrender.com/api/search?term=x` : la réponse est un 400 (terme trop court) qui ne coûte rien mais est comptée par le limiteur ; lire l'en-tête `RateLimit-Remaining` de la réponse.
+  1. Depuis deux réseaux différents (4G et box), les compteurs doivent être indépendants.
+  2. Depuis un même poste, relancer avec `curl -si -H "X-Forwarded-For: 1.2.3.N" "https://<service>.onrender.com/api/search?term=x" | grep -i ratelimit-remaining` en changeant `N` à chaque appel : le compteur doit continuer à baisser. S'il repart de zéro, l'IP est falsifiable : baisser `TRUST_PROXY` (la valeur doit correspondre au nombre exact de proxys devant l'application).
 - Regarder les logs Render : aucun avertissement `ERR_ERL_` (express-rate-limit), et au redéploiement une ligne `[SHUTDOWN]` (arrêt propre).
 
 ---
@@ -93,5 +96,7 @@ Dans Render > Environment, mettre `GEMINI_DAILY_LIMIT=0` et/ou `RAPIDAPI_DAILY_L
 ## 8. Limites connues du MVP
 
 - Compteurs de quotas et caches sont en mémoire : ils sont remis à zéro à chaque redémarrage ou réveil de l'offre gratuite. D'où l'importance des plafonds durs chez les fournisseurs (section 2).
+- Un attaquant peut faire redémarrer l'instance gratuite (réveil après sommeil) et ainsi remettre les compteurs à zéro : les plafonds durs chez Google et RapidAPI (section 2) sont donc obligatoires, pas facultatifs.
+- Option palliative : une sonde externe gratuite qui appelle `/api/health` toutes les 10 minutes évite le sommeil de l'instance (elle ne couvre pas les redéploiements, qui remettent aussi les compteurs à zéro).
 - Une seule instance est obligatoire : avec plusieurs instances, les compteurs ne seraient pas partagés (il faudrait un stockage commun, par exemple Redis).
 - `TZ=Europe/Paris` est nécessaire : sans lui, les quotas journaliers et le `Retry-After` suivent l'heure du serveur (UTC).

@@ -91,13 +91,13 @@ describe('quotas Gemini (par IP = 1, global = 2)', () => {
         assert.equal(mock.calls.length, 0);
     });
 
-    test('IPv6 : deux adresses du même /64 partagent le quota', async () => {
+    test('IPv6 : deux adresses du même /56 partagent le quota', async () => {
         // Le quota global est épuisé : on vérifie ici l'ordre des contrôles (IP avant global)
-        // via le message 429 pour la 2e adresse du même /64.
+        // via le message 429 pour la 2e adresse du même /56.
         const r1 = await analyze('2001:db8:1:2::1');
         assert.equal(r1.status, 503, '1re adresse : quota IP libre mais global épuisé');
         const r2 = await analyze('2001:db8:1:2::ffff');
-        assert.equal(r2.status, 429, '2e adresse du même /64 : quota IP déjà consommé');
+        assert.equal(r2.status, 429, '2e adresse du même /56 : quota IP déjà consommé');
     });
 });
 
