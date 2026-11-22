@@ -604,6 +604,31 @@ test('createPerKeyDailyQuota : table pleine (maxKeys) → nouvelles clés refus�
     assert.equal(q.size(), 2, 'mémoire bornée');
 });
 
+test('createPerKeyDailyQuota.canConsume : vérifie sans débiter (limite, table pleine, interrupteur 0)', () => {
+    const q = createPerKeyDailyQuota(2, { maxKeys: 1 });
+    assert.equal(q.canConsume('a'), true);
+    assert.equal(q.canConsume('a'), true, 'canConsume ne débite pas');
+    assert.equal(q.size(), 0, 'canConsume ne crée pas de clé');
+    assert.equal(q.tryConsume('a'), true);
+    assert.equal(q.canConsume('a'), true, '1/2 utilisé');
+    assert.equal(q.tryConsume('a'), true);
+    assert.equal(q.canConsume('a'), false, '2/2 utilisé');
+    assert.equal(q.canConsume('b'), false, 'table pleine : nouvelle clé refusée');
+    assert.equal(createPerKeyDailyQuota(0).canConsume('x'), false, 'limite 0 : toujours refusé');
+});
+
+test('createPerKeyDailyQuota.used : lit le décompte sans le modifier, reset au changement de date', () => {
+    let current = new Date(2026, 10, 20, 10, 0, 0);
+    const q = createPerKeyDailyQuota(2, { now: () => current });
+    assert.equal(q.used('a'), 0);
+    assert.equal(q.size(), 0, 'used ne crée pas de clé');
+    q.tryConsume('a');
+    assert.equal(q.used('a'), 1);
+    assert.equal(q.used('a'), 1, 'lecture sans effet');
+    current = new Date(2026, 10, 21, 0, 1, 0);
+    assert.equal(q.used('a'), 0, 'remis à zéro le lendemain');
+});
+
 test('cleanText : normalisation NFKC (pleine chasse, accents décomposés)', () => {
     assert.equal(cleanText('ｖｅｌｏ', 50), 'velo');
     assert.equal(cleanText('Thé', 50), 'Thé');

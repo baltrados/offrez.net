@@ -97,6 +97,12 @@ const RAPIDAPI_DAILY_LIMIT_PER_IP = quotaLimitFromEnv('RAPIDAPI_DAILY_LIMIT_PER_
 const geminiIpQuota = createPerKeyDailyQuota(GEMINI_DAILY_LIMIT_PER_IP);
 const rapidApiIpQuota = createPerKeyDailyQuota(RAPIDAPI_DAILY_LIMIT_PER_IP);
 
+// Clé de quota du client : req.ip (dérivée de X-Forwarded-For selon TRUST_PROXY, entrée ajoutée par le proxy
+// Render), regroupée en /56 pour l'IPv6, puis hachée avec un sel tiré au démarrage.
+function clientQuotaKey(req) {
+    return hashIp(quotaClientKey(req.ip || req.socket?.remoteAddress));
+}
+
 // Retry-After : secondes jusqu'au prochain minuit (heure locale du process ; TZ=Europe/Paris sur Render)
 function sendIpQuotaExceeded(res) {
     res.set('Retry-After', String(secondsUntilMidnight()));
@@ -399,14 +405,18 @@ app.post('/api/analyze', strictLimiter, async (req, res) => {
             return res.status(500).json({ error: 'Service d\'analyse temporairement indisponible.' });
         }
 
-        // Quota consommé uniquement juste avant un appel upstream réel (par IP, puis global)
-        if (!geminiIpQuota.tryConsume(hashIp(quotaClientKey(req.ip || req.socket?.remoteAddress)))) {
+        // Quota consommé uniquement juste avant un appel upstream réel : IP vérifiée d'abord (429),
+        // puis global (503) ; l'IP n'est débitée que si le global a accepté (un 503 ne lui coûte rien).
+        // Un appel lancé reste décompté même s'il échoue ensuite (Google peut le facturer).
+        const geminiIpKey = clientQuotaKey(req);
+        if (!geminiIpQuota.canConsume(geminiIpKey)) {
             return sendIpQuotaExceeded(res);
         }
         if (!geminiQuota.tryConsume()) {
             warnQuotaExceeded('GEMINI', geminiQuota, GEMINI_DAILY_LIMIT);
             return sendQuotaExceeded(res);
         }
+        geminiIpQuota.tryConsume(geminiIpKey);
 
         const { systemInstruction, userText } = buildGiftPrompt(validation.value);
         log('[GEMINI] Génération (' + validation.value.tags.length + ' centre(s) d\'intérêt, contexte: ' + validation.value.contexte + ')');
@@ -520,14 +530,17 @@ app.get('/api/search', apiLimiter, async (req, res) => {
         }
         setCacheHeader(res, 'MISS');
 
-        // Quota consommé uniquement juste avant un appel upstream réel (pas sur cache hit), par IP puis global
-        if (!rapidApiIpQuota.tryConsume(hashIp(quotaClientKey(req.ip || req.socket?.remoteAddress)))) {
+        // Quota consommé uniquement juste avant un appel upstream réel (pas sur cache hit) :
+        // IP vérifiée d'abord, global ensuite, IP débitée seulement si le global a accepté
+        const rapidIpKey = clientQuotaKey(req);
+        if (!rapidApiIpQuota.canConsume(rapidIpKey)) {
             return sendIpQuotaExceeded(res);
         }
         if (!rapidApiQuota.tryConsume()) {
             warnQuotaExceeded('RAPIDAPI', rapidApiQuota, RAPIDAPI_DAILY_LIMIT);
             return sendQuotaExceeded(res);
         }
+        rapidApiIpQuota.tryConsume(rapidIpKey);
 
         // 2. APPEL API EXTERNE (RapidAPI Real-Time Amazon Data)
         // Paramètres optimisés : France, Pertinence, Prime ignoré pour plus de choix
@@ -590,6 +603,39 @@ app.get('/api/search', apiLimiter, async (req, res) => {
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok' });
 });
+
+// ======================
+// DIAGNOSTIC IP (TEMPORAIRE) : actif seulement si DEBUG_IP=1, à retirer une fois TRUST_PROXY validé
+// ======================
+// Renvoie à l'appelant SES PROPRES informations réseau (ce que le serveur voit derrière le proxy Render)
+// et le décompte de quota de SA clé. Rien n'est écrit dans les logs. Route absente (404) sans DEBUG_IP=1.
+const DEBUG_IP_ENABLED = process.env.DEBUG_IP === '1';
+if (DEBUG_IP_ENABLED) {
+    console.warn('[CONFIG] DEBUG_IP=1 : route de diagnostic /api/debug-ip active (à désactiver après vérification)');
+    const headerValue = (req, name) => {
+        const v = req.get(name);
+        return typeof v === 'string' ? v.slice(0, 512) : null;
+    };
+    app.get('/api/debug-ip', apiLimiter, (req, res) => {
+        const xff = headerValue(req, 'x-forwarded-for');
+        const key = clientQuotaKey(req);
+        res.set('Cache-Control', 'no-store');
+        res.json({
+            trustProxy: trustProxy.value,
+            xForwardedFor: xff ? xff.split(',').map(s => s.trim()).slice(0, 20) : [],
+            reqIp: req.ip || null,
+            socketRemoteAddress: req.socket?.remoteAddress || null,
+            cfConnectingIp: headerValue(req, 'cf-connecting-ip'),
+            trueClientIp: headerValue(req, 'true-client-ip'),
+            xRealIp: headerValue(req, 'x-real-ip'),
+            quotaKey: key,
+            gemini: { usedToday: geminiIpQuota.used(key), limitPerIp: GEMINI_DAILY_LIMIT_PER_IP },
+            amazon: { usedToday: rapidApiIpQuota.used(key), limitPerIp: RAPIDAPI_DAILY_LIMIT_PER_IP },
+            // Uptime : s'il retombe près de 0 entre deux appels, l'instance a redémarré (compteurs remis à zéro)
+            uptimeSeconds: Math.round(process.uptime())
+        });
+    });
+}
 
 // ======================
 // ROUTE FALLBACK (404 & Redirections)
