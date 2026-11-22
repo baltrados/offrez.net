@@ -13,7 +13,7 @@
  * (voir documentation/14_SUIVI_CHANTIER_QUALITE.md §3).
  */
 
-import { callGemini, searchAmazon } from './api.js?v=2026112207';
+import { callGemini, searchAmazon } from './api.js?v=2026112301';
 import {
     normalizeProfile,
     buildAnalyzePayload,
@@ -23,11 +23,11 @@ import {
     dedupeProducts,
     buildFallbackTerms,
     filterFallbackProducts
-} from './analyse/products.js?v=2026112207';
-import { takeAnalysisData, purgeAnalysisData } from './analyse/session-data.js?v=2026112207';
-import { updateProgress, hideStatusIndicator, showMissingDataState, showFatalErrorOverlay } from './analyse/ui.js?v=2026112207';
-import { renderResults } from './analyse/render.js?v=2026112207';
-import { initPurchaseTracking } from './analyse/purchase.js?v=2026112207';
+} from './analyse/products.js?v=2026112301';
+import { takeAnalysisData, purgeAnalysisData } from './analyse/session-data.js?v=2026112301';
+import { updateProgress, hideStatusIndicator, showMissingDataState, showFatalErrorOverlay } from './analyse/ui.js?v=2026112301';
+import { renderResults } from './analyse/render.js?v=2026112301';
+import { initPurchaseTracking } from './analyse/purchase.js?v=2026112301';
 import {
     GEMINI_MAX_ATTEMPTS,
     GEMINI_RETRY_DELAY_MS,
@@ -40,7 +40,7 @@ import {
     PROGRESS_START,
     PROGRESS_PROFILES_BASE,
     PROGRESS_PROFILES_SPAN
-} from './analyse/settings.js?v=2026112207';
+} from './analyse/settings.js?v=2026112301';
 
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 

@@ -98,9 +98,38 @@ test('parcours utilisateur complet jusqu\'à la carte cadeau affiliée', async (
     expect(ctaUrl.searchParams.getAll('tag')).toEqual([AFFILIATE_TAG]);
     expect((href || '').match(/tag=/g)).toHaveLength(1);
     expect(ctaUrl.searchParams.get('psc')).toBe('1');
-    await expect(cta).toHaveAttribute('rel', /noopener/);
+    await expect(cta).toHaveAttribute('target', '_blank');
+    for (const token of ['nofollow', 'sponsored', 'noopener']) {
+        await expect(cta).toHaveAttribute('rel', new RegExp(`\\b${token}\\b`));
+    }
     await expect(giftCard.locator('.gift-title')).toContainText('Produit test');
     await expect(giftCard.locator('.gift-owner')).toContainText('Paul');
+
+    // Visibilité (mobile et desktop) : CTA visible, cible tactile ≥ 44 px, dans la largeur de l'écran
+    await cta.scrollIntoViewIfNeeded();
+    const box = await cta.boundingBox();
+    const viewport = page.viewportSize();
+    expect(box).not.toBeNull();
+    expect(box.height).toBeGreaterThanOrEqual(44);
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(viewport.width + 1);
+    for (const btn of await giftCard.locator('.btn-nav-suggestion').all()) {
+        await expect(btn).toHaveAttribute('aria-label', /Suggestion (précédente|suivante)/);
+        const b = await btn.boundingBox();
+        if (b) expect(Math.round(b.height)).toBeGreaterThanOrEqual(44);
+    }
+
+    // Clic : Amazon s'ouvre dans un nouvel onglet dans le geste (pas de window.open différé),
+    // la modale de remerciement s'affiche et se ferme avec Échap
+    await page.context().route('https://www.amazon.fr/**', route => route.fulfill({ body: '<html><title>Amazon</title></html>', contentType: 'text/html' }));
+    const [popup] = await Promise.all([page.waitForEvent('popup'), cta.click()]);
+    expect(popup.url()).toContain(`tag=${AFFILIATE_TAG}`);
+    await popup.close();
+    const modal = page.locator('#purchaseModal');
+    await expect(modal).toBeVisible();
+    await expect(page.locator('#closePurchaseModal')).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(modal).toBeHidden();
 
     await expectNoHorizontalOverflow(page);
     expect(consoleErrors).toEqual([]);

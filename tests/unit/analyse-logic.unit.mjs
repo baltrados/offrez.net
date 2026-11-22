@@ -30,10 +30,10 @@ globalThis.sessionStorage = new MemoryStorage();
 
 const JS = new URL('../../public/js/', import.meta.url);
 // Mêmes URL (avec ?v=) que celles importées par analyse.js : une seule instance par module.
-const products = await import(new URL('analyse/products.js?v=2026112207', JS).href);
-const cart = await import(new URL('analyse/cart.js?v=2026112207', JS).href);
-const session = await import(new URL('analyse/session-data.js?v=2026112207', JS).href);
-const settings = await import(new URL('analyse/settings.js?v=2026112207', JS).href);
+const products = await import(new URL('analyse/products.js?v=2026112301', JS).href);
+const cart = await import(new URL('analyse/cart.js?v=2026112301', JS).href);
+const session = await import(new URL('analyse/session-data.js?v=2026112301', JS).href);
+const settings = await import(new URL('analyse/settings.js?v=2026112301', JS).href);
 
 const {
     normalizeProfile, buildAnalyzePayload, computeSearchPriceRange, computeFallbackMinPrice,

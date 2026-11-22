@@ -18,6 +18,7 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const { parseTrustProxy, sanitizeApiKey, RATE_LIMITS } = require('./lib/config');
 const { safeErrorInfo } = require('./lib/safe-log');
+const { parseAnalyticsOrigin } = require('./lib/analytics-config');
 const fs = require('fs');
 const crypto = require('crypto');
 
@@ -255,16 +256,21 @@ app.use(compression({
     }
 }));
 
+// Mesure d'audience sans cookies (optionnelle) : origine ajoutée à script-src et connect-src si ANALYTICS_ORIGIN est valide
+const analyticsOrigin = parseAnalyticsOrigin(process.env.ANALYTICS_ORIGIN);
+if (analyticsOrigin.warning) console.warn('[CONFIG] ' + analyticsOrigin.warning);
+const analyticsSources = analyticsOrigin.value ? [analyticsOrigin.value] : [];
+
 // Sécurité Headers (Helmet) + CSP + Headers 2026
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'"], // FIX CSP : unsafe-inline supprimé (scripts externalisés)
+            scriptSrc: ["'self'", ...analyticsSources], // FIX CSP : unsafe-inline supprimé (scripts externalisés)
             styleSrc: ["'self'", "'unsafe-inline'"], // [LOT4c] polices et Font Awesome auto-hébergés
             fontSrc: ["'self'", "data:"],
             imgSrc: ["'self'", "data:", "https:", "http:"], // Images produits Amazon externes
-            connectSrc: ["'self'"],
+            connectSrc: ["'self'", ...analyticsSources],
             frameAncestors: ["'none'"], // Clickjacking protection
             upgradeInsecureRequests: null
         }

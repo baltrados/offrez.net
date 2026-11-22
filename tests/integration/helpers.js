@@ -33,6 +33,7 @@ function configureEnv(extra = {}) {
         RAPIDAPI_DAILY_LIMIT: undefined,
         RAPIDAPI_DAILY_LIMIT_PER_IP: undefined,
         DEBUG_IP: undefined,
+        ANALYTICS_ORIGIN: undefined,
         ...extra
     };
     for (const [k, v] of Object.entries(env)) {

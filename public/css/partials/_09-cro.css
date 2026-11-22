@@ -185,17 +185,11 @@
     margin-bottom: 0.5rem;
 }
 
-.purchase-confirmation-modal .modal-countdown {
+.purchase-confirmation-modal .modal-notice {
     font-size: 0.9rem;
     color: var(--primary);
     font-weight: 600;
     margin: 1rem 0;
-}
-
-.purchase-confirmation-modal .modal-countdown span {
-    display: inline-block;
-    min-width: 20px;
-    animation: countdownBlink 1s ease-in-out infinite;
 }
 
 .purchase-confirmation-modal .modal-actions {
