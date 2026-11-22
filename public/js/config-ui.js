@@ -13,10 +13,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // ============================================
     // GESTION DES CHIPS D'OCCASION
     // ============================================
-    document.querySelectorAll('.occasion-chip').forEach(chip => {
+    // Boutons bascule : aria-pressed reflète la classe .selected
+    const occasionChips = document.querySelectorAll('.occasion-chip');
+    occasionChips.forEach(chip => {
         chip.addEventListener('click', () => {
-            document.querySelectorAll('.occasion-chip').forEach(c => c.classList.remove('selected'));
-            chip.classList.add('selected');
+            occasionChips.forEach(c => {
+                const isSelected = c === chip;
+                c.classList.toggle('selected', isSelected);
+                c.setAttribute('aria-pressed', String(isSelected));
+            });
             document.getElementById('occasion').value = chip.dataset.value;
         });
     });
@@ -24,6 +29,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // ============================================
     // GESTION DES CARTES BUDGET
     // ============================================
+    // Chaque carte est un <label> contenant un <input type="radio"> visuellement masqué :
+    // clic, Tab + flèches et Espace sont gérés nativement par le navigateur.
     const budgetCards = document.querySelectorAll('.budget-card');
     const budgetStrategyInput = document.getElementById('budgetStrategy');
     const budgetAmountContainer = document.getElementById('budgetAmountContainer');
@@ -65,11 +72,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Sélection des cartes
+    // Sélection des cartes (événement change du radio : souris, clavier, lecteur d'écran)
     budgetCards.forEach(card => {
-        card.addEventListener('click', () => {
-            budgetCards.forEach(c => c.classList.remove('selected'));
-            card.classList.add('selected');
+        const radio = card.querySelector('input[type="radio"]');
+        if (!radio) return;
+        radio.addEventListener('change', () => {
+            if (!radio.checked) return;
+            budgetCards.forEach(c => c.classList.toggle('selected', c === card));
             budgetStrategyInput.value = card.dataset.strategy;
             updateBudgetUI();
         });

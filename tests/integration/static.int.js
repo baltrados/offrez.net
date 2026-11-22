@@ -147,3 +147,119 @@ describe('redirections', () => {
         assert.equal(mock.calls.length, 0);
     });
 });
+
+// [LOT3b] Politique Cache-Control des fichiers statiques (cohérente avec public/sw.js)
+describe('en-têtes Cache-Control des fichiers statiques', () => {
+    const IMMUTABLE = 'public, max-age=31536000, immutable';
+    for (const [p, expected, type] of [
+        ['/', 'no-cache', /text\/html/],
+        ['/index.html', 'no-cache', /text\/html/],
+        ['/blog/cadeau-noel-pas-cher.html', 'no-cache', /text\/html/],
+        ['/offline.html', 'no-cache', /text\/html/],
+        ['/sw.js', 'no-cache', /javascript/],
+        ['/sw.js?v=1', 'no-cache', /javascript/],
+        ['/manifest.json', 'no-cache', /application\/json/],
+        ['/js/config.js', 'no-cache', /javascript/],
+        ['/js/analyse.js?v=2026112201', IMMUTABLE, /javascript/],
+        ['/js/api.js?v=', 'no-cache', /javascript/],
+        ['/js/api.js?v[]=x', 'no-cache', /javascript/],
+        ['/js/api.js?v=%3Cscript%3E', 'no-cache', /javascript/],
+        ['/style.min.css', 'no-cache', /text\/css/],
+        ['/style.min.css?v=202611221200', IMMUTABLE, /text\/css/],
+        ['/css/webfonts/fa-solid-900.woff2', 'public, max-age=31536000', /font\/woff2/],
+        ['/icon-192.png', 'public, max-age=604800', /image\/png/],
+        ['/og-image.png', 'public, max-age=604800', /image\/png/],
+        ['/favicon.svg', 'public, max-age=604800', /image\/svg\+xml/]
+    ]) {
+        test(`GET ${p} → Cache-Control: ${expected}`, async () => {
+            const r = await rawRequest(srv.port, p);
+            assert.equal(r.status, 200);
+            assert.match(r.headers['content-type'], type);
+            assert.equal(r.headers['cache-control'], expected);
+            assert.ok(r.headers.etag, 'ETag conservé');
+            assert.ok(r.headers['last-modified'], 'Last-Modified conservé');
+        });
+    }
+
+    test('revalidation ETag : 304 sur un fichier no-cache inchangé', async () => {
+        const first = await rawRequest(srv.port, '/js/config.js');
+        const second = await rawRequest(srv.port, '/js/config.js', { headers: { 'If-None-Match': first.headers.etag } });
+        assert.equal(second.status, 304);
+    });
+});
+
+// [LOT3b] PWA : précache du service worker, manifest et <head> cohérent sur toutes les pages
+describe('PWA : service worker, manifest, en-têtes des pages', () => {
+    const fs = require('node:fs');
+    const path = require('node:path');
+    const PUBLIC = path.join(__dirname, '..', '..', 'public');
+    const swSource = fs.readFileSync(path.join(PUBLIC, 'sw.js'), 'utf8');
+
+    test("sw.js : CACHE_NAME = 'OFFREZ-v16' et /offline.html précachée", () => {
+        assert.match(swSource, /const CACHE_NAME = 'OFFREZ-v16';/);
+        assert.match(swSource, /const OFFLINE_URL = '\/offline\.html';/);
+        assert.match(swSource, /PRECACHE_URLS = \[[\s\S]*OFFLINE_URL[\s\S]*?\];/);
+    });
+
+    test('chaque URL précachée par sw.js répond 200 (cache.addAll échoue sinon)', async () => {
+        const list = swSource.match(/PRECACHE_URLS = \[([\s\S]*?)\];/)[1];
+        const urls = [...list.matchAll(/'([^']+)'/g)].map(m => m[1]).concat('/offline.html');
+        assert.ok(urls.length >= 15, `liste de précache trop courte (${urls.length})`);
+        for (const u of urls) {
+            const r = await rawRequest(srv.port, u);
+            assert.equal(r.status, 200, `${u} → ${r.status}`);
+        }
+    });
+
+    test('manifest.json : JSON valide sans BOM, id/scope, 3 icônes PNG distinctes any/maskable', async () => {
+        const r = await rawRequest(srv.port, '/manifest.json');
+        assert.notEqual(r.text.charCodeAt(0), 0xFEFF, 'pas de BOM');
+        const m = JSON.parse(r.text);
+        assert.equal(m.id, '/');
+        assert.equal(m.scope, '/');
+        assert.equal(m.start_url, '/');
+        assert.match(m.theme_color, /^#[0-9a-f]{6}$/i);
+        const png = m.icons.filter(i => i.type === 'image/png');
+        assert.deepEqual(png.map(i => [i.src, i.sizes, i.purpose]), [
+            ['/icon-192.png', '192x192', 'any'],
+            ['/icon-512.png', '512x512', 'any'],
+            ['/icon-maskable-512.png', '512x512', 'maskable']
+        ]);
+        assert.ok(m.icons.every(i => !/any maskable/.test(i.purpose || '')), 'pas de purpose "any maskable"');
+        for (const i of png) {
+            const img = await rawRequest(srv.port, i.src);
+            assert.equal(img.status, 200, i.src);
+            assert.match(img.headers['content-type'], /image\/png/);
+        }
+    });
+
+    test('icônes PNG : dimensions réelles conformes et fichiers légers', () => {
+        for (const [file, size] of [['icon-192.png', 192], ['icon-512.png', 512], ['icon-maskable-512.png', 512], ['apple-touch-icon.png', 180]]) {
+            const buf = fs.readFileSync(path.join(PUBLIC, file));
+            assert.equal(buf.toString('ascii', 12, 16), 'IHDR', file);
+            assert.equal(buf.readUInt32BE(16), size, `${file} largeur`);
+            assert.equal(buf.readUInt32BE(20), size, `${file} hauteur`);
+            assert.ok(buf.length < 30 * 1024, `${file} : ${buf.length} octets`);
+        }
+        const og = fs.readFileSync(path.join(PUBLIC, 'og-image.png'));
+        assert.deepEqual([og.readUInt32BE(16), og.readUInt32BE(20)], [1200, 630]);
+        assert.ok(og.length < 150 * 1024, `og-image.png : ${og.length} octets`);
+    });
+
+    const manifest = JSON.parse(fs.readFileSync(path.join(PUBLIC, 'manifest.json'), 'utf8'));
+    const pages = ['404.html', 'analyse.html', 'blog.html', 'cgu.html', 'config.html', 'index.html', 'mentions-legales.html',
+        'offline.html', 'politique-confidentialite.html', 'profils.html',
+        ...fs.readdirSync(path.join(PUBLIC, 'blog')).filter(f => f.endsWith('.html')).map(f => `blog/${f}`)];
+    for (const page of pages) {
+        test(`${page} : manifest, theme-color, icônes et sw-register dans <head>`, () => {
+            const html = fs.readFileSync(path.join(PUBLIC, page), 'utf8');
+            const head = html.slice(0, html.indexOf('</head>'));
+            assert.match(head, /<link rel="manifest" href="\/manifest\.json">/);
+            assert.ok(head.includes(`<meta name="theme-color" content="${manifest.theme_color}">`), 'theme-color = manifest');
+            assert.match(head, /<link rel="apple-touch-icon" href="\/apple-touch-icon\.png">/);
+            assert.match(head, /<link rel="icon" type="image\/svg\+xml" href="\/favicon\.svg">/);
+            assert.match(head, /<script src="\/js\/sw-register\.js" defer><\/script>/);
+            assert.equal((html.match(/sw-register\.js/g) || []).length, 1, 'sw-register.js chargé une seule fois');
+        });
+    }
+});

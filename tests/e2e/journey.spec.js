@@ -66,7 +66,7 @@ test('parcours utilisateur complet jusqu\'à la carte cadeau affiliée', async (
     // Le checkbox est enveloppé dans un label (chip visuel) : on clique le label
     await card.locator('label.tag-chip', { has: page.locator('input.p-tag[value="Sport"]') }).click();
     await expect(card.locator('input.p-tag[value="Sport"]')).toBeChecked();
-    // Pas de contrôle de débordement ici : bug connu sur desktop (cf. pages.spec.js, test fixme profils.html)
+    await expectNoHorizontalOverflow(page);
     await page.locator('#launchAnalysis').click();
 
     // 4. Analyse : carte cadeau rendue

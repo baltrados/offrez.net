@@ -27,13 +27,9 @@ test('/profils.html sans configuration → redirection vers config.html', async 
     expect(consoleErrors).toEqual([]);
 });
 
-test('/profils.html avec configuration : pas de débordement horizontal', async ({ page, consoleErrors }, testInfo) => {
-    // BUG CONNU (non corrigé, hors périmètre Lot 2) : sur desktop (1280 px), les checkboxes masquées
-    // des centres d'intérêt (input.p-tag, position:absolute, ~1012 px de large, générées par
-    // public/js/profils.js dans label.tag-chip) débordent : scrollWidth ≈ 1985 px pour 1280 px visibles
-    // → barre de défilement horizontale. Non reproduit en viewport mobile (Pixel 5).
-    // Piste : `position: relative` sur .tag-chip (ou largeur/inset bornés sur l'input masqué).
-    test.fixme(testInfo.project.name === 'desktop-chromium', 'Débordement horizontal des input.p-tag sur desktop');
+test('/profils.html avec configuration : pas de débordement horizontal', async ({ page, consoleErrors }) => {
+    // Régression : les checkboxes masquées des centres d'intérêt (input.p-tag) débordaient sur desktop
+    // (scrollWidth ≈ 1985 px pour 1280 px) avant le correctif `.tag-chip { position: relative }` + visually-hidden.
     await page.addInitScript(() => {
         localStorage.setItem('giftConfig', JSON.stringify({ occasion: 'Noël', nb: 2, strategy: 'custom', amount: null }));
     });

@@ -92,9 +92,94 @@ function updateProgress(percent, message) {
     const progressText = document.getElementById('progressText');
     const statusMessage = document.getElementById('statusMessage');
 
-    if (progressBar) progressBar.style.width = `${Math.min(100, Math.max(0, percent))}%`;
+    const progressTrack = document.getElementById('progressTrack');
+    const clamped = Math.min(100, Math.max(0, percent));
+
+    if (progressBar) progressBar.style.width = `${clamped}%`;
+    if (progressTrack) progressTrack.setAttribute('aria-valuenow', String(Math.round(clamped)));
     if (progressText) progressText.textContent = `${Math.round(percent)}% - ${message}`;
     if (statusMessage) statusMessage.textContent = message;
+}
+
+// ============================================
+// ÉTATS D'ERREUR (accessibles, compatibles CSP)
+// ============================================
+// Construits avec createElement/textContent + addEventListener : aucun HTML injecté,
+// aucun gestionnaire inline (bloqué par la CSP script-src 'self' / script-src-attr 'none').
+
+/** Action « Réessayer » : relance l'analyse avec les mêmes profils. */
+const RETRY_ACTION = { label: 'Réessayer', icon: 'fas fa-sync-alt', className: 'btn btn-primary', onClick: () => window.location.reload() };
+/** Action « Modifier ma recherche » : retour à l'étape 1. */
+const EDIT_SEARCH_ACTION = { label: 'Modifier ma recherche', className: 'btn btn-secondary', onClick: () => { window.location.href = 'config.html'; } };
+
+/**
+ * Construit un bloc d'erreur (role="alert") avec un message générique et des actions.
+ * @param {{icon?: string, title: string, message: string, actions?: Array<{label: string, className: string, icon?: string, href?: string, onClick?: Function}>}} options
+ * @returns {HTMLElement}
+ */
+function buildErrorState({ icon = '😵', title, message, actions = [] }) {
+    const box = document.createElement('div');
+    box.className = 'analysis-error';
+    box.setAttribute('role', 'alert');
+
+    const iconEl = document.createElement('div');
+    iconEl.className = 'analysis-error-icon';
+    iconEl.setAttribute('aria-hidden', 'true');
+    iconEl.textContent = icon;
+
+    const titleEl = document.createElement('p');
+    titleEl.className = 'analysis-error-title';
+    titleEl.textContent = title;
+
+    const textEl = document.createElement('p');
+    textEl.className = 'analysis-error-text';
+    textEl.textContent = message;
+
+    const actionsEl = document.createElement('div');
+    actionsEl.className = 'analysis-error-actions';
+    actions.forEach(action => {
+        let el;
+        if (action.href) {
+            el = document.createElement('a');
+            el.href = action.href;
+        } else {
+            el = document.createElement('button');
+            el.type = 'button';
+            el.addEventListener('click', action.onClick);
+        }
+        el.className = action.className;
+        if (action.icon) {
+            const i = document.createElement('i');
+            i.className = action.icon;
+            i.setAttribute('aria-hidden', 'true');
+            el.append(i, ' ');
+        }
+        el.append(action.label);
+        actionsEl.appendChild(el);
+    });
+
+    box.append(iconEl, titleEl, textEl, actionsEl);
+    return box;
+}
+
+/**
+ * Données de l'étape 2 absentes, corrompues ou vides : on remplace le spinner
+ * (qui tournait indéfiniment) par un message clair et un lien vers config.html.
+ */
+function showMissingDataState() {
+    const status = document.getElementById('statusIndicator');
+    const errorState = buildErrorState({
+        icon: '🎁',
+        title: 'Aucun profil à analyser',
+        message: "Nous n'avons pas trouvé de recherche en cours. Définissez l'occasion et les profils pour obtenir vos recommandations.",
+        actions: [{ label: 'Commencer ma recherche', icon: 'fas fa-arrow-right', className: 'btn btn-primary', href: 'config.html' }]
+    });
+    if (status) {
+        status.style.display = 'none';
+        status.after(errorState);
+    } else {
+        document.querySelector('main')?.appendChild(errorState);
+    }
 }
 
 
@@ -111,7 +196,7 @@ async function lancerAnalyse() {
 
     if (!raw) {
         log("ERROR", "Aucune donnée trouvée dans le localStorage !", "error");
-        // Erreur silencieuse - gérée par log() ci-dessus
+        showMissingDataState();
         return;
     }
 
@@ -121,13 +206,13 @@ async function lancerAnalyse() {
         debugObj('Données parsées (data)', data);
     } catch (e) {
         log("ERROR", "Données finales corrompues dans le localStorage.", "error");
-        // Erreur silencieuse
+        showMissingDataState();
         return;
     }
 
     if (!data?.equipe || !Array.isArray(data.equipe) || data.equipe.length === 0) {
         log("ERROR", "Aucune équipe valide à analyser.", "error");
-        // Erreur silencieuse
+        showMissingDataState();
         return;
     }
 
@@ -143,6 +228,9 @@ async function lancerAnalyse() {
 
     // Stockage des résultats par personne pour affichage final
     const personResults = [];
+    // Profils dont l'analyse IA a échoué (API indisponible/erreur) : sert à distinguer
+    // « service en échec » de « aucun produit trouvé » lorsque personResults est vide.
+    let apiFailures = 0;
 
     // 2. Boucle principale : Traitement de chaque profil
     for (const personneBrute of data.equipe) {
@@ -216,6 +304,7 @@ async function lancerAnalyse() {
             }
             if (!iaResult || !iaResult.suggestions || iaResult.suggestions.length === 0) {
                 log("ERREUR", `Gemini n'a rien renvoyé après 2 tentatives pour ${personne.nom}`, "error");
+                apiFailures++;
                 if (DEBUG_MODE) console.groupEnd();
                 continue;
             }
@@ -442,6 +531,7 @@ async function lancerAnalyse() {
             }
         } catch (e) {
             log("ERREUR_CRITIQUE", e.message || String(e), "error");
+            apiFailures++;
         }
 
         if (DEBUG_MODE) console.groupEnd();
@@ -463,7 +553,16 @@ async function lancerAnalyse() {
      */
     function displayAllResults() {
         if (personResults.length === 0) {
-            singleResultContainer.innerHTML = '<p class="no-results">Aucun résultat trouvé.</p>';
+            if (apiFailures > 0) {
+                // Échec de l'analyse pour tous les profils : état d'erreur générique (aucun détail technique)
+                singleResultContainer.replaceChildren(buildErrorState({
+                    title: 'Oups ! Un petit souci technique',
+                    message: "Nous n'avons pas pu générer vos recommandations pour le moment. Veuillez réessayer dans quelques instants.",
+                    actions: [RETRY_ACTION, EDIT_SEARCH_ACTION]
+                }));
+            } else {
+                singleResultContainer.innerHTML = '<p class="no-results">Aucun résultat trouvé.</p>';
+            }
             return;
         }
 
@@ -729,6 +828,9 @@ async function lancerAnalyse() {
             e.preventDefault();
             const btn = emailForm.querySelector('button');
             const originalHtml = btn.innerHTML;
+            const emailError = document.getElementById('emailError');
+            const showEmailError = (message) => { if (emailError) emailError.textContent = message; };
+            showEmailError('');
 
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
             btn.disabled = true;
@@ -760,13 +862,12 @@ async function lancerAnalyse() {
                     // Confetti ou effet visuel pourrait être ajouté ici
                 } else {
                     const err = await res.json();
-                    alert("Erreur: " + (err.error || "Impossible d'enregistrer l'email"));
+                    showEmailError(String(err.error || "Impossible d'enregistrer l'email."));
                     btn.innerHTML = originalHtml;
                     btn.disabled = false;
                 }
             } catch (error) {
-                // Erreur silencieuse
-                alert("Erreur de connexion serveur");
+                showEmailError("Connexion au serveur impossible. Veuillez réessayer.");
                 btn.innerHTML = originalHtml;
                 btn.disabled = false;
             }
@@ -916,30 +1017,17 @@ function redirectToAmazon(link) {
 
 // Lancement automatique au chargement du module avec sécurité globale
 lancerAnalyse().catch(err => {
-    const container = document.querySelector('.analysis-container') || document.body;
+    log("ERREUR_CRITIQUE", err?.message || String(err), "error");
 
-    // FIX #3 : Échapper err.message pour éviter les injections XSS
-    const safeMsg = String(err.message || 'Erreur inconnue').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-    const errorHtml = `
-        <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15, 23, 42, 0.95); z-index:999999; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:2rem;">
-            <div style="font-size:3rem; margin-bottom:1rem;">😵</div>
-            <h2 style="color:white; margin-bottom:1rem;">Oups ! Un petit souci technique</h2>
-            <p style="color:#94a3b8; max-width:500px; margin-bottom:2rem;">
-                Désolé, l'analyse a rencontré un imprévu. Cela arrive parfois avec les connexions API.
-                <br><br>
-                <code style="background:#334155; padding:4px 8px; border-radius:4px; font-size:0.8em;">${safeMsg}</code>
-            </p>
-            <button onclick="window.location.reload()" class="btn btn-primary" style="padding:1rem 2rem; font-size:1.2rem;">
-                <i class="fas fa-sync-alt"></i> Réessayer
-            </button>
-            <button onclick="window.location.href='config.html'" class="btn btn-secondary" style="margin-top:1rem;">
-                Modifier ma recherche
-            </button>
-        </div>
-    `;
-
-    const div = document.createElement('div');
-    div.innerHTML = errorHtml;
-    document.body.appendChild(div);
+    // Écran d'erreur plein écran : message générique (aucun détail technique affiché),
+    // boutons construits en DOM + addEventListener (les onclick inline sont bloqués par la CSP).
+    const overlay = document.createElement('div');
+    overlay.className = 'analysis-error-overlay';
+    overlay.appendChild(buildErrorState({
+        title: 'Oups ! Un petit souci technique',
+        message: "Désolé, l'analyse a rencontré un imprévu. Cela arrive parfois avec les connexions aux services partenaires.",
+        actions: [RETRY_ACTION, EDIT_SEARCH_ACTION]
+    }));
+    document.body.appendChild(overlay);
+    overlay.querySelector('button')?.focus();
 });

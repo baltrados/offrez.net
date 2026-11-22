@@ -15,8 +15,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const nbPeopleInput = document.getElementById('nbPeople');
     const budgetAmountInput = document.getElementById('budgetAmount');
     const occasionInput = document.getElementById('occasion');
+    const configError = document.getElementById('configError');
 
-
+    /** Affiche (ou efface avec '') le message d'erreur inline (role="alert"), sans alert() bloquant. */
+    const showConfigError = (message) => {
+        if (configError) configError.textContent = message;
+    };
 
     /**
      * Charge la configuration existante si l'utilisateur revient sur la page.
@@ -43,7 +47,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 occasionInput.value = parsed.occasion;
                 // Synchroniser le chip visuel
                 document.querySelectorAll('.occasion-chip').forEach(chip => {
-                    chip.classList.toggle('selected', chip.dataset.value === parsed.occasion);
+                    const isSelected = chip.dataset.value === parsed.occasion;
+                    chip.classList.toggle('selected', isSelected);
+                    chip.setAttribute('aria-pressed', String(isSelected));
                 });
             }
 
@@ -56,7 +62,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 strategyInput.value = parsed.strategy;
                 // Synchroniser la carte visuelle
                 document.querySelectorAll('.budget-card').forEach(card => {
-                    card.classList.toggle('selected', card.dataset.strategy === parsed.strategy);
+                    const isSelected = card.dataset.strategy === parsed.strategy;
+                    card.classList.toggle('selected', isSelected);
+                    const radio = card.querySelector('input[type="radio"]');
+                    if (radio) radio.checked = isSelected;
                 });
             }
 
@@ -102,7 +111,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (occasionInput && !localStorage.getItem(STORAGE_KEYS.GIFT_CONFIG)) {
         occasionInput.value = defaultOccasion;
         document.querySelectorAll('.occasion-chip').forEach(chip => {
-            chip.classList.toggle('selected', chip.dataset.value === defaultOccasion);
+            const isSelected = chip.dataset.value === defaultOccasion;
+            chip.classList.toggle('selected', isSelected);
+            chip.setAttribute('aria-pressed', String(isSelected));
         });
     }
 
@@ -110,6 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (form) {
         form.addEventListener('submit', (event) => {
             event.preventDefault();
+            showConfigError('');
 
             const nbRaw = nbPeopleInput ? nbPeopleInput.value : "1";
             const budgetRaw = budgetAmountInput ? budgetAmountInput.value : "0";
@@ -124,7 +136,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // [TASK-005] Plafonnement du budget
             if (safeAmount !== null && safeAmount > LIMITS.MAX_BUDGET) {
-                alert(`Budget maximum : ${LIMITS.MAX_BUDGET}€. Veuillez réduire le montant.`);
+                showConfigError(`Budget maximum : ${LIMITS.MAX_BUDGET}€. Veuillez réduire le montant.`);
+                if (budgetAmountInput) budgetAmountInput.focus();
                 return;
             }
 
@@ -140,7 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.setItem(STORAGE_KEYS.GIFT_CONFIG, JSON.stringify(config));
                 window.location.href = 'profils.html';
             } catch (e) {
-                alert("Erreur: Impossible de sauvegarder (Stockage navigateur plein ?)");
+                showConfigError("Impossible d'enregistrer votre recherche : le stockage du navigateur est peut-être plein ou désactivé.");
             }
         });
     }

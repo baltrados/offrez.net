@@ -26,6 +26,16 @@ const interets = [
 ];
 
 let currentConfig = null;
+// Compteur pour des id uniques par carte clonée (association <label for> ↔ champ)
+let profileUid = 0;
+
+/**
+ * Affiche (ou efface avec '') un message d'erreur inline (role="alert") à la place d'un alert() bloquant.
+ */
+function showInlineError(id, message) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = message;
+}
 
 /**
  * Crée une nouvelle carte de profil dans le DOM.
@@ -37,6 +47,15 @@ function createProfileCard(index, defaultBudget = "", budgetReadonly = false) {
 
     const card = clone.querySelector('.profile-card');
     card.querySelector('.profile-title').textContent = `Bénéficiaire #${index + 1}`;
+
+    // Association label ↔ champ : id unique par carte (le template est cloné plusieurs fois)
+    const uid = ++profileUid;
+    card.querySelectorAll('label[data-for]').forEach(label => {
+        const field = card.querySelector(`.${label.dataset.for}`);
+        if (!field) return;
+        field.id = `${label.dataset.for}-${uid}`;
+        label.htmlFor = field.id;
+    });
 
     // Budget pré-rempli selon la stratégie
     const budgetInput = card.querySelector('.p-budget');
@@ -59,7 +78,7 @@ function createProfileCard(index, defaultBudget = "", budgetReadonly = false) {
         tagLabel.innerHTML = `
             <input type="checkbox" class="p-tag" value="${it.value}">
             <span class="tag-chip-label">
-                <span class="tag-emoji">${it.emoji}</span>
+                <span class="tag-emoji" aria-hidden="true">${it.emoji}</span>
                 <span>${it.value}</span>
             </span>
         `;
@@ -71,8 +90,11 @@ function createProfileCard(index, defaultBudget = "", budgetReadonly = false) {
     const genderInput = card.querySelector('.p-sexe');
     genderChips.forEach(chip => {
         chip.addEventListener('click', () => {
-            genderChips.forEach(c => c.classList.remove('selected'));
-            chip.classList.add('selected');
+            genderChips.forEach(c => {
+                const isSelected = c === chip;
+                c.classList.toggle('selected', isSelected);
+                c.setAttribute('aria-pressed', String(isSelected));
+            });
             genderInput.value = chip.dataset.value;
         });
     });
@@ -84,6 +106,7 @@ function createProfileCard(index, defaultBudget = "", budgetReadonly = false) {
         if (document.querySelectorAll('.profile-card').length > 1) {
             card.remove();
             renumberProfiles();
+            showInlineError('addProfileError', '');
         }
     };
 
@@ -160,14 +183,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentCount = document.querySelectorAll('.profile-card').length;
         // [TASK-005] Utiliser la constante centralisée
         if (currentCount >= LIMITS.MAX_PROFILES) {
-            alert(`Maximum ${LIMITS.MAX_PROFILES} profils pour garantir la qualité des recommandations.`);
+            showInlineError('addProfileError', `Maximum ${LIMITS.MAX_PROFILES} profils pour garantir la qualité des recommandations.`);
             return;
         }
+        showInlineError('addProfileError', '');
         createProfileCard(currentCount, budgetPerPerson ? String(budgetPerPerson) : "", budgetReadonly);
     };
 
     // Validation et Lancement de l'analyse
     launchAnalysisBtn.onclick = () => {
+        showInlineError('launchError', '');
         const cards = document.querySelectorAll('.profile-card');
         const errors = [];
 
@@ -211,12 +236,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }).filter(personne => personne.budget > 0);
 
         if (errors.length > 0) {
-            alert("Erreurs détectées :\n" + errors.join("\n"));
+            showInlineError('launchError', "Erreurs détectées :\n" + errors.join("\n"));
             return;
         }
 
         if (equipe.length === 0) {
-            alert("Veuillez ajouter au moins un profil avec un budget valide.");
+            showInlineError('launchError', "Veuillez ajouter au moins un profil avec un budget valide.");
             return;
         }
 
@@ -244,7 +269,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             window.location.href = 'analyse.html';
         } catch (e) {
-            alert("Erreur de sauvegarde (LocalStorage plein ?)");
+            showInlineError('launchError', "Impossible d'enregistrer les profils : le stockage du navigateur est peut-être plein ou désactivé.");
         }
     };
 });

@@ -19,7 +19,11 @@
     <meta name="robots" content="noindex">
 
     <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <script src="/js/sw-register.js" defer></script>
 
     <!-- Performance -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -27,7 +31,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800;900&display=swap" rel="stylesheet">
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
 
-    <link rel="stylesheet" href="style.min.css?v=202603151840">
+    <link rel="stylesheet" href="style.min.css?v=202611221200">
     <link rel="stylesheet" href="css/fontawesome/all.min.css">
 </head>
 
@@ -50,7 +54,7 @@
                     <div class="step-label">Mission & budget</div>
                 </div>
                 <div class="step-connector step-connector--done"></div>
-                <div class="step step--active">
+                <div class="step step--active" aria-current="step">
                     <div class="step-index">2</div>
                     <div class="step-label">Profils détaillés</div>
                 </div>
@@ -64,7 +68,7 @@
             <section class="card">
                 <div class="card-header">
                     <div>
-                        <div class="card-title">Détails des bénéficiaires</div>
+                        <h1 class="card-title">Détails des bénéficiaires</h1>
                         <div class="card-subtitle">Plus le profil est précis, plus OFFREZ trouve des cadeaux pertinents.
                         </div>
                     </div>
@@ -88,9 +92,11 @@
                     <i class="fas fa-plus-circle"></i> Ajouter un bénéficiaire
                 </button>
                 <!-- Bouton final avec aversion à la perte -->
+                <p id="addProfileError" class="form-error" role="alert"></p>
                 <button id="launchAnalysis" class="btn-cta-main btn-cta-glow" aria-label="Lancer l'analyse des cadeaux">
                     <i class="fas fa-sparkles"></i> Révéler LE cadeau qu'il/elle n'oubliera jamais 🎁
                 </button>
+                <p id="launchError" class="form-error" role="alert"></p>
     </div>
     <p class="cta-microcopy">Étape finale • Résultats en 30 secondes</p>
     <p class="loss-aversion-hint">
@@ -116,48 +122,49 @@
             <h3 class="profile-title">Bénéficiaire</h3>
 
             <div class="form-grid">
+                <!-- data-for : classe du champ associé ; profils.js génère un id unique par carte et pose for= -->
                 <div class="form-group">
-                    <label>Prénom</label>
+                    <label data-for="p-name">Prénom</label>
                     <input type="text" class="p-name" placeholder="Ex: Julie" required>
                 </div>
                 <div class="form-group">
-                    <label>Budget (€)</label>
+                    <label data-for="p-budget">Budget (€)</label>
                     <input type="number" class="p-budget" placeholder="Ex: 50" min="5" required>
                 </div>
-                <div class="form-group">
-                    <label>Genre</label>
+                <fieldset class="form-group">
+                    <legend>Genre</legend>
                     <input type="hidden" class="p-sexe" value="Femme">
                     <div class="gender-chips">
-                        <button type="button" class="gender-chip selected" data-value="Femme">
-                            <span class="chip-emoji">👩</span>
+                        <button type="button" class="gender-chip selected" data-value="Femme" aria-pressed="true">
+                            <span class="chip-emoji" aria-hidden="true">👩</span>
                             <span>Femme</span>
                         </button>
-                        <button type="button" class="gender-chip" data-value="Homme">
-                            <span class="chip-emoji">👨</span>
+                        <button type="button" class="gender-chip" data-value="Homme" aria-pressed="false">
+                            <span class="chip-emoji" aria-hidden="true">👨</span>
                             <span>Homme</span>
                         </button>
                     </div>
-                </div>
+                </fieldset>
                 <div class="form-group">
-                    <label>&Acirc;ge</label>
+                    <label data-for="p-age">&Acirc;ge</label>
                     <input type="number" class="p-age" placeholder="Ex: 28" min="1" max="120">
                 </div>
 
-                <div class="form-group full-width">
-                    <label>Centres d'intérêt</label>
+                <fieldset class="form-group full-width">
+                    <legend>Centres d'intérêt</legend>
                     <!-- Les tags (chips) seront générés ici par le JS -->
                     <div class="tags-container"></div>
-                </div>
+                </fieldset>
 
                 <div class="form-group full-width">
-                    <label>Ce qu'il/elle adore <span class="label-hint">(passions, marques,
+                    <label data-for="p-details">Ce qu'il/elle adore <span class="label-hint">(passions, marques,
                             hobbies...)</span></label>
                     <textarea class="p-details" rows="2"
                         placeholder="Ex: Fan de Star Wars, adore le café italien, collectionne les vinyles..."></textarea>
                 </div>
 
                 <div class="form-group full-width">
-                    <label>À éviter absolument</label>
+                    <label data-for="p-hates">À éviter absolument</label>
                     <input type="text" class="p-hates"
                         placeholder="Ex: Pas de cuir, allergique aux noix, déteste le rose...">
                 </div>

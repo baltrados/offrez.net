@@ -44,15 +44,18 @@
         content="Trouvez des cadeaux parfaits pour vos proches, en respectant votre budget.">
     <meta name="twitter:image" content="https://offrez.net/og-image.png">
 
-    <!-- Favicon (Petite icône dans l'onglet) -->
-    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <!-- Favicon, icônes d'application, manifest PWA et service worker -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <script src="/js/sw-register.js" defer></script>
 
 
     <!-- 
         PWA (Progressive Web App)
         Permet d'installer le site comme une application sur mobile.
     -->
-    <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -86,7 +89,7 @@
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
 
     <!-- Styles CSS -->
-    <link rel="stylesheet" href="style.min.css?v=202603151840">
+    <link rel="stylesheet" href="style.min.css?v=202611221200">
     <link rel="stylesheet" href="css/fontawesome/all.min.css">
 
     <!-- Responsive overrides for landing page -->
@@ -242,9 +245,6 @@
 
         </main>
     </div>
-
-    <!-- Service Worker (externalisé pour CSP) -->
-    <script src="js/sw-register.js"></script>
 
     <!-- Footer -->
     <footer class="site-footer">

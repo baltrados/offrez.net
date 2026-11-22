@@ -7,7 +7,7 @@ const FINAL_DATA = {
     equipe: [{ nom: 'Julie', sexe: 'Femme', age: 28, budget: 50, tags: ['Voyage'], details: { adore: '', eviter: '' } }],
 };
 
-test('/api/analyze en 500 → message générique, sans détail technique', async ({ page }) => {
+test('/api/analyze en 500 → état d\'erreur générique avec « Réessayer » et « Modifier ma recherche »', async ({ page, consoleErrors }) => {
     await page.addInitScript(([consentKey, consent, data]) => {
         localStorage.setItem(consentKey, consent);
         localStorage.setItem('finalData', data);
@@ -29,11 +29,12 @@ test('/api/analyze en 500 → message générique, sans détail technique', asyn
 
     await page.goto('/analyse.html');
 
-    // Comportement actuel : 2 tentatives (retry), puis le profil est ignoré et un message
-    // générique « Aucun résultat trouvé. » remplace le spinner (pas d'écran d'erreur dédié).
-    const noResults = page.locator('#singleResult .no-results');
-    await expect(noResults).toBeVisible({ timeout: 15000 });
-    await expect(noResults).toHaveText('Aucun résultat trouvé.');
+    // 2 tentatives (retry) puis état d'erreur dédié (role="alert") à la place du spinner
+    const errorState = page.locator('#singleResult .analysis-error');
+    await expect(errorState).toBeVisible({ timeout: 15000 });
+    await expect(errorState).toHaveAttribute('role', 'alert');
+    await expect(errorState).toContainText('Un petit souci technique');
+    await expect(page.locator('#singleResult .no-results')).toHaveCount(0);
     await expect(page.locator('#statusIndicator')).toBeHidden();
     expect(analyzeCalls).toBe(2);
     expect(searchCalls).toBe(0);
@@ -43,22 +44,57 @@ test('/api/analyze en 500 → message générique, sans détail technique', asyn
         expect(visibleText).not.toMatch(forbidden);
     }
     await expect(page.locator('.gift-card')).toHaveCount(0);
+
+    // Boutons construits sans onclick inline (CSP) et fonctionnels
+    const retry = errorState.getByRole('button', { name: 'Réessayer' });
+    const edit = errorState.getByRole('button', { name: 'Modifier ma recherche' });
+    await expect(retry).toBeVisible();
+    await expect(edit).toBeVisible();
+    const inlineHandlers = await errorState.evaluate((el) =>
+        Array.from(el.querySelectorAll('*')).filter((n) => Array.from(n.attributes).some((a) => /^on/i.test(a.name))).length
+    );
+    expect(inlineHandlers).toBe(0);
+
+    // « Réessayer » relance l'analyse (rechargement → 2 nouveaux appels)
+    await retry.click();
+    await expect(page.locator('#singleResult .analysis-error')).toBeVisible({ timeout: 15000 });
+    expect(analyzeCalls).toBe(4);
+
+    // « Modifier ma recherche » → config.html
+    await page.locator('#singleResult .analysis-error').getByRole('button', { name: 'Modifier ma recherche' }).click();
+    await page.waitForURL('**/config.html');
+    await expect(page.locator('#configForm')).toBeVisible();
+    // Seuls les « Failed to load resource » des 500 mockés sont tolérés (aucune exception JS)
+    expect(consoleErrors.filter((e) => !/Failed to load resource/.test(e))).toEqual([]);
 });
 
-// BUG CONNU (non corrigé, hors périmètre Lot 2) : sans `finalData` dans le localStorage,
-// lancerAnalyse() fait un `return` silencieux (public/js/analyse.js, début de lancerAnalyse) :
-// le spinner « Analyse de vos profils en cours... » reste affiché indéfiniment, sans message
-// ni redirection vers config.html. Le test décrit le comportement attendu ; retirer `fixme`
-// une fois l'app corrigée.
-test.fixme('analyse.html sans finalData → message ou redirection (spinner infini actuellement)', async ({ page }) => {
-    await page.addInitScript(([consentKey, consent]) => {
-        localStorage.setItem(consentKey, consent);
-        localStorage.removeItem('finalData');
-    }, [CONSENT_KEY, acceptedConsent()]);
-    await page.goto('/analyse.html');
-    await expect(async () => {
-        const redirected = page.url().includes('config.html');
-        const spinnerHidden = !(await page.locator('#statusIndicator').isVisible());
-        expect(redirected || spinnerHidden).toBe(true);
-    }).toPass({ timeout: 5000 });
-});
+// Données de l'étape 2 absentes, corrompues ou vides : plus de spinner infini.
+const MISSING_DATA_CASES = [
+    { name: 'sans finalData', value: null },
+    { name: 'finalData corrompu', value: '{pas du json' },
+    { name: 'équipe vide', value: JSON.stringify({ contexte: 'Noël', equipe: [] }) },
+];
+
+for (const { name, value } of MISSING_DATA_CASES) {
+    test(`analyse.html ${name} → message clair + lien vers config.html`, async ({ page, consoleErrors }) => {
+        await page.addInitScript(([consentKey, consent, data]) => {
+            localStorage.setItem(consentKey, consent);
+            if (data === null) localStorage.removeItem('finalData');
+            else localStorage.setItem('finalData', data);
+        }, [CONSENT_KEY, acceptedConsent(), value]);
+        await page.goto('/analyse.html');
+
+        const errorState = page.locator('.analysis-error');
+        await expect(errorState).toBeVisible({ timeout: 5000 });
+        await expect(errorState).toHaveAttribute('role', 'alert');
+        await expect(errorState).toContainText('Aucun profil à analyser');
+        await expect(page.locator('#statusIndicator')).toBeHidden();
+        await expect(page.locator('.spinner')).toBeHidden();
+
+        const link = errorState.getByRole('link', { name: 'Commencer ma recherche' });
+        await expect(link).toHaveAttribute('href', 'config.html');
+        await link.click();
+        await page.waitForURL('**/config.html');
+        expect(consoleErrors).toEqual([]);
+    });
+}

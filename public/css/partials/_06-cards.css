@@ -30,6 +30,11 @@
     font-weight: 600;
 }
 
+/* Titre de page (h1) dans une .card : garde la taille de .card-title malgré « .card h1 » */
+.card h1.card-title {
+    font-size: 1.1rem;
+}
+
 .card-subtitle {
     font-size: 0.85rem;
     color: #9ca3af;

@@ -21,7 +21,11 @@
     <meta name="robots" content="noindex,nofollow">
 
     <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <script src="/js/sw-register.js" defer></script>
 
     <!-- Performance -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -29,7 +33,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800;900&display=swap" rel="stylesheet">
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
 
-    <link rel="stylesheet" href="style.min.css?v=202603151840">
+    <link rel="stylesheet" href="style.min.css?v=202611221200">
     <link rel="stylesheet" href="css/fontawesome/all.min.css">
 </head>
 
@@ -58,11 +62,13 @@
                     <div class="step-label">Profils</div>
                 </div>
                 <div class="step-connector step-connector--done"></div>
-                <div class="step step--active">
+                <div class="step step--active" aria-current="step">
                     <div class="step-index">3</div>
                     <div class="step-label">Recommandations</div>
                 </div>
             </div>
+
+            <h1 class="visually-hidden">Analyse et recommandations de cadeaux</h1>
 
             <section class="analysis-layout">
                 <!-- COLONNE GAUCHE : État de l'analyse (Loading UI) -->
@@ -74,7 +80,8 @@
                     <div id="statusIndicator" class="status-indicator">
                         <!-- Barre de progression globale animée par JS updateProgress() -->
                         <div id="globalProgress" style="width: 100%; max-width: 300px; margin: 0 auto 1rem;">
-                            <div
+                            <div id="progressTrack" role="progressbar" aria-label="Progression de l'analyse"
+                                aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
                                 style="background: rgba(99, 102, 241, 0.2); border-radius: 12px; height: 8px; overflow: hidden;">
                                 <div id="progressBar"
                                     style="background: linear-gradient(90deg, #6366f1, #818cf8); height: 100%; width: 0%; transition: width 0.5s ease; border-radius: 12px;">
@@ -85,7 +92,7 @@
                                 Initialisation...</span>
                         </div>
                         <div class="spinner"></div>
-                        <p id="statusMessage">Analyse de vos profils en cours...</p>
+                        <p id="statusMessage" role="status" aria-live="polite">Analyse de vos profils en cours...</p>
                     </div>
                 </div>
 
@@ -135,6 +142,7 @@
                                     <a href="politique-confidentialite.html" target="_blank">En savoir
                                         plus</a>.</label>
                             </div>
+                            <p id="emailError" class="form-error" role="alert"></p>
                         </form>
                         <div id="emailSuccess" class="email-success" style="display: none;">
                             <i class="fas fa-check-circle"></i> C'est envoyé !
@@ -178,7 +186,7 @@
     </div>
 
     <!-- Script logique principal (Le cerveau) -->
-    <script src="js/analyse.js?v=2026112001" type="module"></script>
+    <script src="js/analyse.js?v=2026112201" type="module"></script>
 
     <!-- Footer -->
     <footer class="site-footer">

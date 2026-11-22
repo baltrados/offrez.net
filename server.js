@@ -444,12 +444,23 @@ app.use(express.static(PUBLIC_DIR, {
     dotfiles: 'deny', // Bloque les fichiers .env, .git, etc.
     redirect: false, // Pas de /blog -> /blog/ : la route fallback redirige directement vers /blog.html
     setHeaders: (res, filePath) => {
-        // Cache agressif pour CSS/JS/Fonts
-        if (filePath.endsWith('.css') || filePath.endsWith('.js')) {
-            res.setHeader('Cache-Control', 'public, max-age=86400');
-        }
-        if (filePath.endsWith('.woff2') || filePath.endsWith('.woff')) {
+        // [LOT3b] Politique de cache HTTP (cohérente avec le service worker public/sw.js) :
+        // - HTML, sw.js, manifest.json : toujours revalidés (no-cache + ETag) pour propager les mises à jour
+        // - CSS/JS demandés avec ?v= : immuables 1 an (l'URL change à chaque version) ; sans ?v= : no-cache
+        // - Polices : 1 an ; images : 7 jours
+        const name = path.basename(filePath).toLowerCase();
+        const ext = path.extname(name);
+        const query = res.req && res.req.query;
+        // ?v= doit être une chaîne courte et simple (pas de tableau ?v[]=x ni de valeur arbitraire)
+        const versioned = Boolean(query && typeof query.v === 'string' && /^[0-9A-Za-z._-]{1,32}$/.test(query.v));
+        if (ext === '.html' || name === 'sw.js' || name === 'manifest.json') {
+            res.setHeader('Cache-Control', 'no-cache');
+        } else if (ext === '.css' || ext === '.js') {
+            res.setHeader('Cache-Control', versioned ? 'public, max-age=31536000, immutable' : 'no-cache');
+        } else if (ext === '.woff2' || ext === '.woff' || ext === '.ttf') {
             res.setHeader('Cache-Control', 'public, max-age=31536000');
+        } else if (['.png', '.jpg', '.jpeg', '.gif', '.webp', '.avif', '.svg', '.ico'].includes(ext)) {
+            res.setHeader('Cache-Control', 'public, max-age=604800');
         }
     }
 }));
