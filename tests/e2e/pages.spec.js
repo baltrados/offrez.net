@@ -38,14 +38,3 @@ test('/profils.html avec configuration : pas de débordement horizontal', async 
     await expectNoHorizontalOverflow(page);
     expect(consoleErrors).toEqual([]);
 });
-
-test('bannière cookies : refus enregistré et bannière fermée', async ({ page, consoleErrors }) => {
-    await page.goto('/');
-    await page.locator('#cookieDecline').click();
-    await expect(page.locator('#cookieBanner')).toHaveCount(0);
-    const consent = await page.evaluate(() => JSON.parse(localStorage.getItem('OFFREZ_cookie_consent') || 'null'));
-    expect(consent?.accepted).toBe(false);
-    await page.reload();
-    await expect(page.locator('#cookieBanner')).toHaveCount(0);
-    expect(consoleErrors).toEqual([]);
-});

@@ -83,7 +83,6 @@ OFFREZ/
     ├── profils.js      # Gestion profils
     ├── analyse.js      # Analyse IA + affichage
     ├── security.js     # Anti-XSS (escapeHtml, sanitizeUrl)
-    ├── legal.js        # Bannière cookies RGPD
     └── sw-register.js  # Enregistrement Service Worker
 ```
 

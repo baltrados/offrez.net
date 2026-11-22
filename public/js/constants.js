@@ -6,8 +6,7 @@
 
 export const STORAGE_KEYS = {
     GIFT_CONFIG: 'giftConfig',
-    FINAL_DATA: 'finalData',
-    COOKIE_CONSENT: 'OFFREZ_cookie_consent'
+    FINAL_DATA: 'finalData'
 };
 
 // [TASK-005] Limites centralisées

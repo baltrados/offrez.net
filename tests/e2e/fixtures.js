@@ -2,7 +2,6 @@
 // Fixtures E2E partagées : aucune requête ne sort de 127.0.0.1:3100.
 const base = require('@playwright/test');
 
-const CONSENT_KEY = 'OFFREZ_cookie_consent';
 const AFFILIATE_TAG = 'offreznet-21';
 
 // PNG 1x1 transparent
@@ -10,13 +9,6 @@ const PIXEL_PNG = Buffer.from(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
     'base64'
 );
-
-/** Consentement cookies accepté (format de public/js/legal.js). */
-function acceptedConsent() {
-    const expiry = new Date();
-    expiry.setDate(expiry.getDate() + 365);
-    return JSON.stringify({ accepted: true, date: new Date().toISOString(), expiry: expiry.toISOString() });
-}
 
 /**
  * Bloque/mocke tout ce qui n'est pas servi par le serveur local de test :
@@ -73,9 +65,7 @@ function analyzeResponse(suggestions) {
 module.exports = {
     test,
     expect: base.expect,
-    CONSENT_KEY,
     AFFILIATE_TAG,
-    acceptedConsent,
     expectNoHorizontalOverflow,
     analyzeResponse,
 };

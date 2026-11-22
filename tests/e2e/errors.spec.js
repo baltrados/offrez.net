@@ -1,6 +1,6 @@
 // @ts-check
 // Comportement de analyse.html en cas d'échec : message générique, aucun détail technique.
-const { test, expect, CONSENT_KEY, acceptedConsent } = require('./fixtures');
+const { test, expect } = require('./fixtures');
 
 const FINAL_DATA = {
     contexte: 'Anniversaire',
@@ -8,10 +8,9 @@ const FINAL_DATA = {
 };
 
 test('/api/analyze en 500 → état d\'erreur générique avec « Réessayer » et « Modifier ma recherche »', async ({ page, consoleErrors }) => {
-    await page.addInitScript(([consentKey, consent, data]) => {
-        localStorage.setItem(consentKey, consent);
+    await page.addInitScript((data) => {
         localStorage.setItem('finalData', data);
-    }, [CONSENT_KEY, acceptedConsent(), JSON.stringify(FINAL_DATA)]);
+    }, JSON.stringify(FINAL_DATA));
 
     let analyzeCalls = 0;
     let searchCalls = 0;
@@ -79,11 +78,10 @@ const MISSING_DATA_CASES = [
 
 for (const { name, value } of MISSING_DATA_CASES) {
     test(`analyse.html ${name} → message clair + lien vers config.html`, async ({ page, consoleErrors }) => {
-        await page.addInitScript(([consentKey, consent, data]) => {
-            localStorage.setItem(consentKey, consent);
+        await page.addInitScript((data) => {
             if (data === null) localStorage.removeItem('finalData');
             else localStorage.setItem('finalData', data);
-        }, [CONSENT_KEY, acceptedConsent(), value]);
+        }, value);
         await page.goto('/analyse.html');
 
         const errorState = page.locator('.analysis-error');

@@ -68,8 +68,6 @@ JSON.parse(localStorage.getItem('giftConfig'));
 // Voir les profils sauvegardés
 JSON.parse(localStorage.getItem('finalData'));
 
-// Voir le consentement cookies
-localStorage.getItem('OFFREZ_cookie_consent');
 ```
 
 ### Effacer les données (reset complet)

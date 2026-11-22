@@ -1,5 +1,5 @@
 // @ts-check
-// Parcours complet : accueil (cookies) → config → profils → analyse (API mockées) → carte cadeau.
+// Parcours complet : accueil → config → profils → analyse (API mockées) → carte cadeau.
 const { test, expect, AFFILIATE_TAG, expectNoHorizontalOverflow, analyzeResponse } = require('./fixtures');
 
 test('parcours utilisateur complet jusqu\'à la carte cadeau affiliée', async ({ page, consoleErrors }) => {
@@ -36,18 +36,11 @@ test('parcours utilisateur complet jusqu\'à la carte cadeau affiliée', async (
         });
     });
 
-    // 1. Accueil + bannière cookies
+    // 1. Accueil
     await page.goto('/');
-    const accept = page.locator('#cookieAccept');
-    await expect(accept).toBeVisible();
-    await accept.click();
-    await expect(page.locator('#cookieBanner')).toHaveCount(0);
-    const consent = await page.evaluate(() => JSON.parse(localStorage.getItem('OFFREZ_cookie_consent') || 'null'));
-    expect(consent?.accepted).toBe(true);
 
     // 2. Configuration (occasion, 1 personne, stratégie par défaut « custom »)
     await page.goto('/config.html');
-    await expect(page.locator('#cookieBanner')).toHaveCount(0);
     await page.locator('.occasion-chip[data-value="Fête des Pères"]').click();
     await expect(page.locator('#occasion')).toHaveValue('Fête des Pères');
     await page.locator('#nbPeople').fill('1');

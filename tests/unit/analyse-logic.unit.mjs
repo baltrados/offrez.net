@@ -1,4 +1,4 @@
-// Tests unitaires de la logique pure de l'analyse (public/js/analyse/*.js) et du consentement (public/js/consent.js).
+// Tests unitaires de la logique pure de l'analyse (public/js/analyse/*.js).
 // Ces modules ESM navigateur importent d'autres modules (avec ?v=) : on ne peut pas les charger en data: URL
 // comme security.js. Un hook de chargement force le format ESM pour les fichiers de public/js/
 // (package sans "type": "module", Node 20 ne détecte pas la syntaxe ESM).
@@ -30,11 +30,10 @@ globalThis.sessionStorage = new MemoryStorage();
 
 const JS = new URL('../../public/js/', import.meta.url);
 // Mêmes URL (avec ?v=) que celles importées par analyse.js : une seule instance par module.
-const products = await import(new URL('analyse/products.js?v=2026112204', JS).href);
-const cart = await import(new URL('analyse/cart.js?v=2026112204', JS).href);
-const session = await import(new URL('analyse/session-data.js?v=2026112204', JS).href);
-const settings = await import(new URL('analyse/settings.js?v=2026112204', JS).href);
-const { isTrackingAllowed, hasConsentDecision } = await import(new URL('consent.js', JS).href);
+const products = await import(new URL('analyse/products.js?v=2026112205', JS).href);
+const cart = await import(new URL('analyse/cart.js?v=2026112205', JS).href);
+const session = await import(new URL('analyse/session-data.js?v=2026112205', JS).href);
+const settings = await import(new URL('analyse/settings.js?v=2026112205', JS).href);
 
 const {
     normalizeProfile, buildAnalyzePayload, computeSearchPriceRange, computeFallbackMinPrice,
@@ -361,66 +360,6 @@ describe('panier', () => {
         const url = new URL(cart.generateCartURL([{ asin: 'A&tag=evil' }]));
         assert.deepEqual(url.searchParams.getAll('tag'), ['offreznet-21']);
         assert.equal(url.searchParams.get('ASIN.1'), 'A&tag=evil');
-    });
-});
-
-// ============================================================================
-// Consentement : isTrackingAllowed / hasConsentDecision
-// ============================================================================
-describe('consentement', () => {
-    const KEY = 'OFFREZ_cookie_consent';
-    const NOW = Date.parse('2026-11-22T12:00:00Z');
-    const set = (v) => localStorage.setItem(KEY, typeof v === 'string' ? v : JSON.stringify(v));
-    const future = '2027-11-22T12:00:00.000Z';
-    const past = '2026-11-21T12:00:00.000Z';
-    beforeEach(() => localStorage.clear());
-
-    test('accepté et non expiré → suivi autorisé', () => {
-        set({ accepted: true, date: past, expiry: future });
-        assert.equal(isTrackingAllowed(NOW), true);
-        assert.equal(hasConsentDecision(NOW), true);
-    });
-    test('accepté mais expiré → refusé (et la bannière doit se réafficher)', () => {
-        set({ accepted: true, date: past, expiry: past });
-        assert.equal(isTrackingAllowed(NOW), false);
-        assert.equal(hasConsentDecision(NOW), false);
-    });
-    test('expiration exactement maintenant → expiré', () => {
-        set({ accepted: true, expiry: new Date(NOW).toISOString() });
-        assert.equal(isTrackingAllowed(NOW), false);
-    });
-    test('refusé (non expiré) → pas de suivi, mais décision enregistrée', () => {
-        set({ accepted: false, date: past, expiry: future });
-        assert.equal(isTrackingAllowed(NOW), false);
-        assert.equal(hasConsentDecision(NOW), true);
-    });
-    test('accepted non booléen strict ("true", 1) → refusé', () => {
-        set({ accepted: 'true', expiry: future });
-        assert.equal(isTrackingAllowed(NOW), false);
-        set({ accepted: 1, expiry: future });
-        assert.equal(isTrackingAllowed(NOW), false);
-    });
-    test('absent, corrompu, null, sans expiration ou date invalide → refusé', () => {
-        assert.equal(isTrackingAllowed(NOW), false);
-        for (const raw of ['{pas du json', 'null', '42', '"texte"', JSON.stringify({ accepted: true }), JSON.stringify({ accepted: true, expiry: 'demain' })]) {
-            set(raw);
-            assert.equal(isTrackingAllowed(NOW), false, raw);
-            assert.equal(hasConsentDecision(NOW), false, raw);
-        }
-    });
-    test('localStorage qui lève une exception → refusé', () => {
-        const original = globalThis.localStorage;
-        globalThis.localStorage = { getItem() { throw new Error('SecurityError'); } };
-        try {
-            assert.equal(isTrackingAllowed(), false);
-            assert.equal(hasConsentDecision(), false);
-        } finally {
-            globalThis.localStorage = original;
-        }
-    });
-    test('horloge par défaut = maintenant', () => {
-        set({ accepted: true, expiry: new Date(Date.now() + 60_000).toISOString() });
-        assert.equal(isTrackingAllowed(), true);
     });
 });
 

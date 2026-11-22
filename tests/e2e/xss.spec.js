@@ -2,7 +2,7 @@
 // Non-régression XSS du rendu des cartes (analyse.html) : données IA / Amazon / profil hostiles.
 // Les réponses API sont mockées côté navigateur (page.route), donc NON normalisées par le serveur :
 // on vérifie la défense côté client (escapeHtml, buildAffiliateUrl, sanitizeUrl).
-const { test, expect, CONSENT_KEY, AFFILIATE_TAG, acceptedConsent } = require('./fixtures');
+const { test, expect, AFFILIATE_TAG } = require('./fixtures');
 
 test('analyse.html : charges XSS dans titre, note, lien, image, prix, raison et prénom neutralisées', async ({ page, consoleErrors }) => {
     const finalData = {
@@ -16,10 +16,9 @@ test('analyse.html : charges XSS dans titre, note, lien, image, prix, raison et 
             details: { adore: '<script>window.__xss="adore"</script>', eviter: '' },
         }],
     };
-    await page.addInitScript(([consentKey, consent, data]) => {
-        localStorage.setItem(consentKey, consent);
+    await page.addInitScript((data) => {
         localStorage.setItem('finalData', data);
-    }, [CONSENT_KEY, acceptedConsent(), JSON.stringify(finalData)]);
+    }, JSON.stringify(finalData));
 
     await page.route('**/api/analyze', (route) => route.fulfill({
         json: {
@@ -91,10 +90,9 @@ test('analyse.html : lien produit hors Amazon → CTA neutralisé (#)', async ({
         contexte: 'Noël',
         equipe: [{ nom: 'Tom', sexe: 'Homme', age: 40, budget: 80, tags: [], details: { adore: '', eviter: '' } }],
     };
-    await page.addInitScript(([consentKey, consent, data]) => {
-        localStorage.setItem(consentKey, consent);
+    await page.addInitScript((data) => {
         localStorage.setItem('finalData', data);
-    }, [CONSENT_KEY, acceptedConsent(), JSON.stringify(finalData)]);
+    }, JSON.stringify(finalData));
     await page.route('**/api/analyze', (route) => route.fulfill({
         json: { suggestions: [{ term: 'coffret whisky', reason: 'r', prix_estime: '60€' }] },
     }));

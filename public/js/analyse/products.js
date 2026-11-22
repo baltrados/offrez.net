@@ -18,7 +18,7 @@ import {
     MAX_PRODUCTS_PER_PERSON,
     TITLE_SIMILARITY_THRESHOLD,
     TITLE_MIN_WORD_LENGTH
-} from './settings.js?v=2026112204';
+} from './settings.js?v=2026112205';
 
 // ============================================
 // PROFIL & PAYLOAD

@@ -4,7 +4,7 @@
  */
 
 import { sanitizeUrl } from '../security.js?v=2026112001';
-import { PURCHASE_COUNTDOWN_SECONDS, SHARE_FEEDBACK_MS } from './settings.js?v=2026112204';
+import { PURCHASE_COUNTDOWN_SECONDS, SHARE_FEEDBACK_MS } from './settings.js?v=2026112205';
 
 const SHARE_URL = 'https://offrez.net';
 
