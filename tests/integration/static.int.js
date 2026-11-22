@@ -173,12 +173,12 @@ describe('en-têtes Cache-Control des fichiers statiques', () => {
         ['/sw.js?v=1', 'no-cache', /javascript/],
         ['/manifest.json', 'no-cache', /application\/json/],
         ['/js/config.js', 'no-cache', /javascript/],
-        ['/js/analyse.js?v=2026112207', IMMUTABLE, /javascript/],
+        ['/js/analyse.js?v=2026112301', IMMUTABLE, /javascript/],
         ['/js/api.js?v=', 'no-cache', /javascript/],
         ['/js/api.js?v[]=x', 'no-cache', /javascript/],
         ['/js/api.js?v=%3Cscript%3E', 'no-cache', /javascript/],
         ['/style.min.css', 'no-cache', /text\/css/],
-        ['/style.min.css?v=202611241200', IMMUTABLE, /text\/css/],
+        ['/style.min.css?v=202611251200', IMMUTABLE, /text\/css/],
         ['/css/webfonts/fa-solid-900.woff2', 'public, max-age=31536000', /font\/woff2/],
         ['/css/webfonts/fa-solid-900.woff2?v=650a', 'public, max-age=31536000', /font\/woff2/],
         ['/css/fontawesome/fa-offrez.min.css', 'no-cache', /text\/css/],
@@ -212,8 +212,8 @@ describe('PWA : service worker, manifest, en-têtes des pages', () => {
     const PUBLIC = path.join(__dirname, '..', '..', 'public');
     const swSource = fs.readFileSync(path.join(PUBLIC, 'sw.js'), 'utf8');
 
-    test("sw.js : CACHE_NAME = 'OFFREZ-v22' et /offline.html précachée", () => {
-        assert.match(swSource, /const CACHE_NAME = 'OFFREZ-v22';/);
+    test("sw.js : CACHE_NAME = 'OFFREZ-v23' et /offline.html précachée", () => {
+        assert.match(swSource, /const CACHE_NAME = 'OFFREZ-v23';/);
         assert.match(swSource, /const OFFLINE_URL = '\/offline\.html';/);
         assert.match(swSource, /PRECACHE_URLS = \[[\s\S]*OFFLINE_URL[\s\S]*?\];/);
     });
@@ -222,7 +222,7 @@ describe('PWA : service worker, manifest, en-têtes des pages', () => {
         assert.match(swSource, /const RUNTIME_CACHE = 'OFFREZ-v17-runtime';/);
         assert.match(swSource, /key !== CACHE_NAME && key !== RUNTIME_CACHE[\s\S]*?caches\.delete\(key\)/);
         const tokens = new Set([...swSource.matchAll(/\.js\?v=(\d+)/g)].map(m => m[1]));
-        assert.deepEqual([...tokens], ['2026112207'], 'un seul jeton ?v= pour les modules JS précachés');
+        assert.deepEqual([...tokens], ['2026112301'], 'un seul jeton ?v= pour les modules JS précachés');
     });
 
     test('chaque URL précachée par sw.js répond 200 (cache.addAll échoue sinon)', async () => {

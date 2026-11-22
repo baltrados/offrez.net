@@ -82,7 +82,5 @@ export const REVEAL_STAGGER_MS = 150;
 /** Effet de chargement à la découverte d'une nouvelle suggestion : 800 à 1500 ms. */
 export const DISCOVERY_DELAY_MIN_MS = 800;
 export const DISCOVERY_DELAY_JITTER_MS = 700;
-/** Modale d'achat : compte à rebours avant redirection (secondes). */
-export const PURCHASE_COUNTDOWN_SECONDS = 3;
 /** Retour visuel « Lien copié ! » (ms). */
 export const SHARE_FEEDBACK_MS = 2000;

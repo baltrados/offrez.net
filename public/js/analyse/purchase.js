@@ -1,20 +1,13 @@
 /**
- * ANALYSE/PURCHASE.JS - Clic « Voir sur Amazon » : modale de confirmation, redirection
+ * ANALYSE/PURCHASE.JS - Clic « Voir sur Amazon » : modale de remerciement non bloquante
  * ====================================================================================================
+ * Le lien <a target="_blank"> natif ouvre Amazon dans le geste utilisateur (fiable sur Safari iOS et
+ * avec les bloqueurs de popups) : aucun preventDefault ni window.open différé ici.
  */
 
-import { sanitizeUrl } from '../security.js?v=2026112207';
-import { PURCHASE_COUNTDOWN_SECONDS, SHARE_FEEDBACK_MS } from './settings.js?v=2026112207';
+import { SHARE_FEEDBACK_MS } from './settings.js?v=2026112301';
 
 const SHARE_URL = 'https://offrez.net';
-
-/** Ferme la modale et ouvre le lien Amazon (re-validé) dans un nouvel onglet. */
-function redirectToAmazon(link) {
-    const modal = document.getElementById('purchaseModal');
-    if (modal) modal.style.display = 'none';
-    const safeLink = sanitizeUrl(link);
-    if (safeLink !== '#') window.open(safeLink, '_blank', 'noopener,noreferrer');
-}
 
 function bindShareButton(shareBtn) {
     shareBtn.onclick = () => {
@@ -36,70 +29,61 @@ function bindShareButton(shareBtn) {
     };
 }
 
-/**
- * Modale de confirmation positive avant la redirection vers Amazon (compte à rebours).
- * @param {string} recipientName
- * @param {string} productLink - déjà passé par sanitizeUrl
- */
-function showPurchaseModal(recipientName, productLink) {
-    const modal = document.getElementById('purchaseModal');
-    const recipientNameEl = document.getElementById('recipientNameModal');
-    const countdownEl = document.getElementById('countdownSeconds');
-    const skipBtn = document.getElementById('skipCountdown');
-    const shareBtn = document.getElementById('shareButton');
+let lastTrigger = null;
 
-    if (!modal) {
-        // Pas de modale : ouverture directe
-        if (productLink !== '#') window.open(productLink, '_blank', 'noopener,noreferrer');
-        return;
-    }
+function closePurchaseModal() {
+    const modal = document.getElementById('purchaseModal');
+    if (!modal || modal.style.display === 'none') return;
+    modal.style.display = 'none';
+    if (lastTrigger && document.contains(lastTrigger)) lastTrigger.focus();
+    lastTrigger = null;
+}
+
+/**
+ * Modale de remerciement affichée pendant que le lien Amazon s'ouvre dans un nouvel onglet.
+ * @param {string} recipientName
+ */
+function showPurchaseModal(recipientName) {
+    const modal = document.getElementById('purchaseModal');
+    if (!modal) return;
+
+    const recipientNameEl = document.getElementById('recipientNameModal');
+    const closeBtn = document.getElementById('closePurchaseModal');
+    const shareBtn = document.getElementById('shareButton');
 
     if (recipientNameEl) recipientNameEl.textContent = recipientName;
     modal.style.display = 'flex';
 
-    let countdown = PURCHASE_COUNTDOWN_SECONDS;
-    if (countdownEl) countdownEl.textContent = countdown;
-
-    const countdownInterval = setInterval(() => {
-        countdown--;
-        if (countdownEl) countdownEl.textContent = countdown;
-        if (countdown <= 0) {
-            clearInterval(countdownInterval);
-            redirectToAmazon(productLink);
-        }
-    }, 1000);
-
-    if (skipBtn) {
-        skipBtn.onclick = () => {
-            clearInterval(countdownInterval);
-            redirectToAmazon(productLink);
-        };
+    if (closeBtn) {
+        closeBtn.onclick = closePurchaseModal;
+        closeBtn.focus();
     }
-
     if (shareBtn) bindShareButton(shareBtn);
 
-    // Clic sur l'overlay : ferme la modale et annule la redirection
+    // Clic sur l'overlay : ferme la modale
     const overlay = modal.querySelector('.modal-overlay');
-    if (overlay) {
-        overlay.onclick = () => {
-            clearInterval(countdownInterval);
-            modal.style.display = 'none';
-        };
-    }
+    if (overlay) overlay.onclick = closePurchaseModal;
 }
 
 /** Délégation globale des clics sur les liens suivis (.js-track-click). À appeler une seule fois. */
 export function initPurchaseTracking() {
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closePurchaseModal();
+    });
+
     document.addEventListener('click', (e) => {
         const btn = e.target.closest('.js-track-click');
         if (!btn) return;
 
         if (btn.classList.contains('js-purchase-btn')) {
-            e.preventDefault(); // la modale prend le relais de la navigation
-            const recipientName = btn.dataset.recipient || 'cette personne';
-            // Re-validation : ne jamais ouvrir une URL hors domaine Amazon/https
-            const productLink = sanitizeUrl(btn.dataset.link || btn.href);
-            showPurchaseModal(recipientName, productLink);
+            // Lien refusé par buildAffiliateUrl ('#') : aucune ouverture, pas de modale
+            if (btn.getAttribute('href') === '#') {
+                e.preventDefault();
+                return;
+            }
+            // Pas de preventDefault : la navigation native (target="_blank") ouvre Amazon.
+            lastTrigger = btn;
+            showPurchaseModal(btn.dataset.recipient || 'cette personne');
         }
     });
 }

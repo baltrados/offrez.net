@@ -4,9 +4,9 @@
  * Toute donnée externe (IA, Amazon, profil) passe par escapeHtml ; toute URL par buildAffiliateUrl.
  */
 
-import { escapeHtml, buildAffiliateUrl } from '../security.js?v=2026112207';
-import { getSelectedProducts, computeCartTotal, generateCartURL } from './cart.js?v=2026112207';
-import { buildAnalysisFailedState, buildLimitReachedState } from './ui.js?v=2026112207';
+import { escapeHtml, buildAffiliateUrl } from '../security.js?v=2026112301';
+import { getSelectedProducts, computeCartTotal, generateCartURL } from './cart.js?v=2026112301';
+import { buildAnalysisFailedState, buildLimitReachedState } from './ui.js?v=2026112301';
 import {
     AFFILIATE_TAG,
     TITLE_MAX_CHARS,
@@ -14,7 +14,7 @@ import {
     REVEAL_STAGGER_MS,
     DISCOVERY_DELAY_MIN_MS,
     DISCOVERY_DELAY_JITTER_MS
-} from './settings.js?v=2026112207';
+} from './settings.js?v=2026112301';
 
 const PLACEHOLDER_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect fill='%231e293b' width='200' height='200'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%2394a3b8' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E";
 
@@ -67,7 +67,7 @@ function giftCardHtml(pr, personIndex) {
                             ${savingsDisplay}
                         </div>
                         <p class="gift-reason">${displayReason}</p>
-                        <a href="${escapeHtml(link)}" target="_blank" rel="noopener" class="btn-amazon-cta js-track-click js-purchase-btn"
+                        <a href="${escapeHtml(link)}" target="_blank" rel="nofollow sponsored noopener" class="btn-amazon-cta js-track-click js-purchase-btn"
                            data-product="${escapeHtml(product.title)}"
                            data-price="${priceRaw}"
                            data-asin="${escapeHtml(product.asin || '')}"
@@ -78,11 +78,11 @@ function giftCardHtml(pr, personIndex) {
                         </a>
                         ${products.length > 1 ? `
                             <div class="suggestion-nav">
-                                <button class="btn-nav-suggestion btn-prev" data-person="${personIndex}" data-direction="prev" ${currentIndex === 0 ? 'disabled' : ''}>
+                                <button class="btn-nav-suggestion btn-prev" data-person="${personIndex}" data-direction="prev" aria-label="Suggestion précédente" ${currentIndex === 0 ? 'disabled' : ''}>
                                     <i class="fas fa-chevron-left"></i>
                                 </button>
                                 <span class="suggestion-indicator">${currentIndex + 1} / ${products.length}</span>
-                                <button class="btn-nav-suggestion btn-next" data-person="${personIndex}" data-direction="next" ${currentIndex >= products.length - 1 ? 'disabled' : ''}>
+                                <button class="btn-nav-suggestion btn-next" data-person="${personIndex}" data-direction="next" aria-label="Suggestion suivante" ${currentIndex >= products.length - 1 ? 'disabled' : ''}>
                                     <i class="fas fa-chevron-right"></i>
                                 </button>
                             </div>
@@ -159,7 +159,7 @@ export function updateCartButton(personResults) {
                     <span class="cart-count">${selectedProducts.length} cadeau${plural ? 'x' : ''} sélectionné${plural ? 's' : ''}</span>
                     <span class="cart-total">Total: ${totalPrice.toFixed(2)}€</span>
                 </div>
-                <a href="${escapeHtml(cartURL)}" target="_blank" rel="noopener noreferrer" class="btn btn-cart">
+                <a href="${escapeHtml(cartURL)}" target="_blank" rel="nofollow sponsored noopener" class="btn btn-cart">
                     <i class="fas fa-shopping-cart"></i> Ajouter tout au panier Amazon
                 </a>
             </div>

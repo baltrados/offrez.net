@@ -3,8 +3,6 @@
 
 User-agent: *
 Allow: /
-Disallow: /analyse.html
-Disallow: /config.html
-Disallow: /profils.html
+Disallow: /api/
 
 Sitemap: https://offrez.net/sitemap.xml

@@ -285,8 +285,8 @@
 }
 
 .amazon-affiliate {
-    font-size: 0.75rem;
-    color: var(--text-muted);
+    font-size: 0.8rem;
+    color: var(--text-secondary);
     margin-bottom: 1rem;
     padding: 0.5rem 1rem;
     background: rgba(255, 153, 0, 0.1);
