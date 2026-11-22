@@ -49,7 +49,10 @@ const RAPIDAPI_TIMEOUT_MS = 10000;
 const BREVO_TIMEOUT_MS = 8000;
 
 // [LOT1] Modèle Gemini configurable, format strictement contrôlé (il est inséré dans l'URL)
-const DEFAULT_GEMINI_MODEL = 'gemini-2.0-flash';
+// gemini-2.0-flash et gemini-2.5-flash-lite ne sont plus disponibles pour les nouvelles clés (404, nov. 2026).
+// gemini-3.5-flash-lite : testé le 24/11/2026 avec la requête réelle (systemInstruction + responseSchema),
+// 0 jeton de réflexion, réponse complète en ~1,6 s. Surchargeable via GEMINI_MODEL dans .env.
+const DEFAULT_GEMINI_MODEL = 'gemini-3.5-flash-lite';
 const GEMINI_MODEL = (() => {
     const raw = (process.env.GEMINI_MODEL || '').trim();
     if (!raw) return DEFAULT_GEMINI_MODEL;

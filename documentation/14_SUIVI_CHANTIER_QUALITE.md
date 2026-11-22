@@ -33,19 +33,31 @@ Aucun test n'appelle les vraies API payantes : tout est simulé (et un garde-fou
 
 ## 2. ⚠️ À FAIRE AVANT LA MISE EN LIGNE (checklist)
 
-1. **Tester avec la vraie clé Gemini en local** (`npm start`, parcours complet config → profils → analyse).
-   Le nouveau format de requête (instruction système + schéma JSON) n'a **jamais été testé avec le vrai service**.
-   Si le modèle `gemini-2.0-flash` est retiré par Google : définir `GEMINI_MODEL` dans `.env` (aucune modification de code).
+1. ✅ **Testé en local avec les vraies clés le 24/11/2026 : parcours complet fonctionnel.**
+   - `gemini-2.0-flash` puis `gemini-2.5-flash-lite` sont **retirés** pour les nouvelles clés (HTTP 404 → 502 côté site).
+     Modèle par défaut du code passé à **`gemini-3.5-flash-lite`** (recommandé par Google), testé avec la requête
+     réelle : 2 suggestions valides, 0 jeton de réflexion, ~1,6 s. Changer de modèle = `GEMINI_MODEL` dans `.env`.
+   - ⚠️ Tous les modèles Gemini récents « réfléchissent » : si un futur modèle renvoie des réponses vides
+     (`finishReason` MAX_TOKENS), augmenter `maxOutputTokens` (1024, `server.js`) ou désactiver la réflexion.
+   - Diagnostic des erreurs : le navigateur ne voit qu'un 502 générique ; la cause est dans le terminal du serveur
+     (`[GEMINI] Erreur API: HTTP …` / `[RAPIDAPI AMAZON] Erreur API: HTTP …`).
+   - RapidAPI : la clé doit être **abonnée à « Real-Time Amazon Data »** (au moins le plan gratuit), sinon
+     HTTP 403 « You are not subscribed to this API ». Le plan gratuit est limité (HTTP 429 au-delà).
+   - Les clés vont dans **`.env`** (lu par le serveur, ignoré par git) — **jamais dans `.env.example`** (suivi par git).
+   - Les clés Gemini et RapidAPI ayant été exposées pendant la mise au point, **les régénérer** avant la mise en ligne.
 2. **Vérifier sur données réelles RapidAPI** que les liens produits sont bien en `https://` (les liens `http://` sont désormais rejetés → produit écarté).
 3. **Sur le serveur (CM3588)** :
-   - `IP_HASH_SALT` doit être défini dans `.env` (sinon un sel par défaut public est utilisé → hash d'IP réversible) ;
+   - `IP_HASH_SALT` doit être défini dans `.env` avec une **valeur aléatoire propre** (pas la valeur d'exemple) :
+     `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. Il rend les empreintes d'IP de
+     `clicks.csv` impossibles à inverser ; sans lui (ou avec la valeur d'exemple / par défaut, publiques), une IP
+     se retrouve en quelques minutes. **Ne plus le changer ensuite** (sinon les statistiques de clics sont faussées) ;
    - `NODE_ENV=production` dans `.env` ;
    - le port 3000 ne doit être joignable **que** via le tunnel Cloudflare (sinon `X-Forwarded-For` peut être falsifié et les limites contournées) — idéalement écouter sur `127.0.0.1` (voir §5) ;
    - vérifier que `ssh.offrez.net` est protégé par Cloudflare Access + authentification SSH par clé uniquement ;
    - Node 20 est requis (fetch natif).
 4. **Variables d'environnement optionnelles** (valeurs par défaut entre parenthèses) :
    `GEMINI_DAILY_LIMIT` (1000), `RAPIDAPI_DAILY_LIMIT` (500), `GEMINI_DAILY_LIMIT_PER_IP` (60),
-   `RAPIDAPI_DAILY_LIMIT_PER_IP` (200), `MAX_CSV_BYTES` (10 Mo), `GEMINI_MODEL` (`gemini-2.0-flash`).
+   `RAPIDAPI_DAILY_LIMIT_PER_IP` (200), `MAX_CSV_BYTES` (10 Mo), `GEMINI_MODEL` (`gemini-3.5-flash-lite`).
    Adapter les quotas RapidAPI à l'abonnement réel.
 5. **Mettre à jour le script de déploiement SUR LE SERVEUR avant de déployer** (Lot 4b) :
    `tools/deploy-server.sh` ajoute l'étape `npm ci --omit=dev`, indispensable depuis Express 5 / Helmet 8
@@ -109,7 +121,7 @@ Tout ce qui est dans `public/` est en ligne. Rien d'autre ne l'est. Ne jamais y 
 | Gravité | Risque | Détail / piste |
 |---------|--------|----------------|
 | Moyen | **Quota global épuisable par un attaquant disposant de beaucoup d'IP** | Le coût reste plafonné, mais le service peut être coupé (503) jusqu'à minuit. Pistes : réserver une part du quota global par bloc d'IP, jeton de session ou preuve de travail sur `/api/analyze`. |
-| Moyen | **Format Gemini non testé en réel** | Voir checklist §2.1. |
+| Bas | Retrait de modèles Gemini par Google | Déjà arrivé (2.0-flash, 2.5-flash-lite). Symptôme : 502 sur l'analyse + `[GEMINI] Erreur API: HTTP 404` dans les logs. Parade : `GEMINI_MODEL` dans `.env` (voir §2.1). Format de requête validé en réel le 24/11/2026. |
 | Bas | Injection de prompt résiduelle | Un utilisateur peut orienter le texte des suggestions (≤ 300 caractères, quota consommé) ; seule cible : lui-même. |
 | Bas | Quotas et rate limits en mémoire | Remis à zéro au redémarrage, non partagés entre plusieurs processus ; utilisateurs derrière une même IP (bureau, 4G) partagent le quota par IP. |
 | Bas | Plafond CSV approximatif | Des requêtes simultanées peuvent le dépasser de quelques lignes ; une fois atteint, l'analytics s'arrête (pas de rotation). |

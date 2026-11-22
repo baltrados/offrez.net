@@ -95,7 +95,7 @@ describe('POST /api/analyze — succès', () => {
         assert.equal(call.headers['x-goog-api-key'], TEST_KEYS.GEMINI_API_KEY);
         assert.ok(!call.url.includes(TEST_KEYS.GEMINI_API_KEY), 'clé absente de l\'URL');
         assert.equal(call.parsedUrl.searchParams.has('key'), false);
-        assert.equal(call.parsedUrl.pathname, '/v1beta/models/gemini-2.0-flash:generateContent');
+        assert.equal(call.parsedUrl.pathname, '/v1beta/models/gemini-3.5-flash-lite:generateContent');
         assert.ok(call.signal, 'un AbortSignal (timeout) est transmis');
     });
 
