@@ -6,6 +6,7 @@
  */
 
 import { STORAGE_KEYS, LIMITS } from './constants.js';
+import { parsePrefill } from './config-prefill.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // Récupération des éléments du DOM
@@ -115,6 +116,28 @@ document.addEventListener('DOMContentLoaded', () => {
             chip.classList.toggle('selected', isSelected);
             chip.setAttribute('aria-pressed', String(isSelected));
         });
+    }
+
+    // ============================================
+    // Pré-remplissage depuis l'URL (liens des articles) : ?occasion=…&budget=…
+    // Prioritaire sur la saison et sur la configuration enregistrée. Appliqué après les autres scripts
+    // de la page (setTimeout 0) pour passer par leurs gestionnaires (chips, cartes budget, calcul).
+    // ============================================
+    const occasionValues = Array.from(document.querySelectorAll('.occasion-chip')).map(chip => chip.dataset.value);
+    const prefill = parsePrefill(window.location.search, occasionValues, LIMITS.MAX_BUDGET);
+    if (prefill.occasion || prefill.budget) {
+        setTimeout(() => {
+            if (prefill.occasion) {
+                Array.from(document.querySelectorAll('.occasion-chip'))
+                    .find(chip => chip.dataset.value === prefill.occasion)?.click();
+            }
+            if (prefill.budget && budgetAmountInput) {
+                // Budget identique pour chaque personne (stratégie « same »)
+                document.querySelector('.budget-strategy-radio[value="same"]')?.click();
+                budgetAmountInput.value = String(prefill.budget);
+                budgetAmountInput.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        }, 0);
     }
 
     // Soumission du formulaire

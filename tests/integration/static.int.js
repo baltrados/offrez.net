@@ -178,7 +178,7 @@ describe('en-têtes Cache-Control des fichiers statiques', () => {
         ['/js/api.js?v[]=x', 'no-cache', /javascript/],
         ['/js/api.js?v=%3Cscript%3E', 'no-cache', /javascript/],
         ['/style.min.css', 'no-cache', /text\/css/],
-        ['/style.min.css?v=202611251400', IMMUTABLE, /text\/css/],
+        ['/style.min.css?v=202611251500', IMMUTABLE, /text\/css/],
         ['/css/webfonts/fa-solid-900.woff2', 'public, max-age=31536000', /font\/woff2/],
         ['/css/webfonts/fa-solid-900.woff2?v=650a', 'public, max-age=31536000', /font\/woff2/],
         ['/css/fontawesome/fa-offrez.min.css', 'no-cache', /text\/css/],
@@ -212,8 +212,8 @@ describe('PWA : service worker, manifest, en-têtes des pages', () => {
     const PUBLIC = path.join(__dirname, '..', '..', 'public');
     const swSource = fs.readFileSync(path.join(PUBLIC, 'sw.js'), 'utf8');
 
-    test("sw.js : CACHE_NAME = 'OFFREZ-v26' et /offline.html précachée", () => {
-        assert.match(swSource, /const CACHE_NAME = 'OFFREZ-v26';/);
+    test("sw.js : CACHE_NAME = 'OFFREZ-v27' et /offline.html précachée", () => {
+        assert.match(swSource, /const CACHE_NAME = 'OFFREZ-v27';/);
         assert.match(swSource, /const OFFLINE_URL = '\/offline\.html';/);
         assert.match(swSource, /PRECACHE_URLS = \[[\s\S]*OFFLINE_URL[\s\S]*?\];/);
     });

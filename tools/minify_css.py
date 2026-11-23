@@ -15,6 +15,7 @@ PARTIALS_ORDER = [
     '_10-legal.css',
     '_11-animations.css',
     '_12-responsive.css',
+    '_13-blog.css',
 ]
 
 def minify_css():
