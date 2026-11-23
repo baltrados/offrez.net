@@ -19,7 +19,7 @@ Dashboard Render > service > Environment > Add Environment Variable.
 | `RAPIDAPI_DAILY_LIMIT` | `150` | plafond global par jour ; `0` = service coupé |
 | `GEMINI_DAILY_LIMIT_PER_IP` | `35` | |
 | `RAPIDAPI_DAILY_LIMIT_PER_IP` | `70` | |
-| `TRUST_PROXY` | `1` | un seul proxy (Render) devant l'application |
+| `TRUST_PROXY` | `3` | Cloudflare, répartiteur Render et proxy local devant l'application (mesuré en production le 23/11/2026) ; valeur par défaut du code |
 | `TZ` | `Europe/Paris` | les quotas repartent à minuit, heure de Paris |
 | `GEMINI_MODEL` | (vide) | modèle par défaut du code : `gemini-3.5-flash-lite` |
 

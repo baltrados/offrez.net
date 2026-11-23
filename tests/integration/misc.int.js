@@ -114,8 +114,8 @@ describe("X-Forwarded-For : usurpation d'IP (trust proxy = 1)", () => {
     });
 });
 
-describe('route de diagnostic IP', () => {
-    test('absente sans DEBUG_IP=1 → 404, aucune information réseau renvoyée', async () => {
+describe('route de diagnostic IP (retirée après validation de TRUST_PROXY)', () => {
+    test('/api/debug-ip → 404, aucune information réseau renvoyée', async () => {
         const res = await fetch(`${srv.base}/api/debug-ip`, { headers: { 'X-Forwarded-For': uniqueIp() } });
         assert.equal(res.status, 404);
         const text = await res.text();
