@@ -30,10 +30,10 @@ globalThis.sessionStorage = new MemoryStorage();
 
 const JS = new URL('../../public/js/', import.meta.url);
 // Mêmes URL (avec ?v=) que celles importées par analyse.js : une seule instance par module.
-const products = await import(new URL('analyse/products.js?v=2026112403', JS).href);
-const cart = await import(new URL('analyse/cart.js?v=2026112403', JS).href);
-const session = await import(new URL('analyse/session-data.js?v=2026112403', JS).href);
-const settings = await import(new URL('analyse/settings.js?v=2026112403', JS).href);
+const products = await import(new URL('analyse/products.js?v=2026112404', JS).href);
+const cart = await import(new URL('analyse/cart.js?v=2026112404', JS).href);
+const session = await import(new URL('analyse/session-data.js?v=2026112404', JS).href);
+const settings = await import(new URL('analyse/settings.js?v=2026112404', JS).href);
 
 const {
     normalizeProfile, buildAnalyzePayload, computeSearchPriceRange, bucketMaxPrice, buildSearchIdea, usableSuggestions,
@@ -586,5 +586,156 @@ describe('non-régression différentielle vs implémentation d\'origine', () => 
             }));
             assert.deepEqual(dedupeProducts(list), originalDedupe(list), `cas ${i}`);
         }
+    });
+});
+
+// ============================================================================
+// Lot 4 : résultats conservés dans l'onglet, rappel calendrier, partage
+// ============================================================================
+const store = await import(new URL('analyse/results-store.js?v=2026112404', JS).href);
+const retention = await import(new URL('analyse/retention.js?v=2026112404', JS).href);
+
+describe("results-store (sessionStorage de l'onglet)", () => {
+    const NOW = Date.UTC(2026, 10, 23, 12);
+    const pr = (over = {}) => ({
+        personne: { nom: 'Julie', budget: 50, age: 28, tags: ['Voyage'], details: { adore: 'randonnée' } },
+        currentIndex: 1,
+        products: [
+            { title: 'Sac cabine', link: 'https://www.amazon.fr/dp/B0PRIVACY1', asin: 'B0PRIVACY1', price: { value: 39.9, raw: '39,90 €' }, rating: 4.5, reviews: 120, is_prime: true, score: 0.9, budgetRatio: 0.8 },
+            { kind: 'search', term: 'gourde isotherme', searchTerm: 'gourde isotherme', title: 'gourde isotherme', reason: 'Pratique' }
+        ],
+        ...over
+    });
+    let s;
+    beforeEach(() => { s = new MemoryStorage(); });
+
+    test('aller-retour : champs connus seulement (ni âge, ni intérêts, ni texte libre), suggestion affichée conservée', () => {
+        assert.equal(store.saveResults([pr()], 'Noël', { session: s, now: NOW }), true);
+        const raw = s.getItem(store.RESULTS_KEY);
+        for (const secret of ['randonnée', 'Voyage', '"age"', 'score', 'budgetRatio']) assert.ok(!raw.includes(secret), secret);
+        const loaded = store.loadResults({ session: s, now: NOW + 1000 });
+        assert.equal(loaded.contexte, 'Noël');
+        assert.deepEqual(loaded.results[0].personne, { nom: 'Julie', budget: 50 });
+        assert.equal(loaded.results[0].currentIndex, 1);
+        // Index hors bornes ou invalide → 0
+        store.saveResults([pr({ currentIndex: 9 })], 'Noël', { session: s, now: NOW });
+        assert.equal(store.loadResults({ session: s, now: NOW }).results[0].currentIndex, 0);
+        store.saveResults([pr({ currentIndex: '1' })], 'Noël', { session: s, now: NOW });
+        assert.equal(store.loadResults({ session: s, now: NOW }).results[0].currentIndex, 0);
+        assert.equal(loaded.results[0].products[0].asin, 'B0PRIVACY1');
+        assert.equal(loaded.results[0].products[1].kind, 'search');
+    });
+    test('expiré (> 2 h) ou daté dans le futur → null et purgé', () => {
+        store.saveResults([pr()], 'Noël', { session: s, now: NOW });
+        assert.equal(store.loadResults({ session: s, now: NOW + store.RESULTS_TTL_MS + 1 }), null);
+        assert.equal(s.getItem(store.RESULTS_KEY), null);
+        store.saveResults([pr()], 'Noël', { session: s, now: NOW });
+        assert.equal(store.loadResults({ session: s, now: NOW - 1 }), null);
+    });
+    test('contenu corrompu ou modifié : purgé, champs invalides écartés', () => {
+        s.setItem(store.RESULTS_KEY, '{pas du json');
+        assert.equal(store.loadResults({ session: s, now: NOW }), null);
+        assert.equal(s.getItem(store.RESULTS_KEY), null);
+        s.setItem(store.RESULTS_KEY, JSON.stringify({ v: 1, savedAt: NOW, contexte: 'Noël', results: [
+            { personne: { nom: 'A', budget: -5 }, products: [{ title: 'x' }] },
+            { personne: { nom: 'B', budget: 30 }, products: [{ title: 'Ok', asin: 'bad"asin', rating: '5<img>' }, { kind: 'search', term: 'a' }] }
+        ] }));
+        const loaded = store.loadResults({ session: s, now: NOW });
+        assert.equal(loaded.results.length, 1);
+        assert.deepEqual([loaded.results[0].products.length, loaded.results[0].products[0].asin, loaded.results[0].products[0].rating], [1, null, null]);
+    });
+    test('rien à enregistrer ou stockage indisponible → false, sans erreur', () => {
+        assert.equal(store.saveResults([], 'Noël', { session: s }), false);
+        const broken = { setItem() { throw new Error('quota'); }, getItem() { throw new Error('x'); }, removeItem() { throw new Error('x'); } };
+        assert.equal(store.saveResults([pr()], 'Noël', { session: broken }), false);
+        assert.equal(store.loadResults({ session: broken }), null);
+        assert.doesNotThrow(() => store.clearResults({ session: broken }));
+    });
+});
+
+describe("rappel calendrier : dates d'occasion", () => {
+    const ymd = d => retention.toInputDate(d);
+    test('Pâques (dates connues)', () => {
+        assert.equal(ymd(retention.easterSunday(2024)), '2024-03-31');
+        assert.equal(ymd(retention.easterSunday(2026)), '2026-04-05');
+        assert.equal(ymd(retention.easterSunday(2027)), '2027-03-28');
+    });
+    test('fête des mères : dernier dimanche de mai, décalée au 1er dimanche de juin si Pentecôte', () => {
+        assert.equal(ymd(retention.mothersDay(2026)), '2026-05-31');
+        assert.equal(ymd(retention.mothersDay(2027)), '2027-05-30');
+        assert.equal(ymd(retention.mothersDay(2004)), '2004-06-06'); // Pentecôte le 30 mai 2004
+    });
+    test('fête des pères : 3e dimanche de juin', () => {
+        assert.equal(ymd(retention.fathersDay(2026)), '2026-06-21');
+        assert.equal(ymd(retention.fathersDay(2027)), '2027-06-20');
+    });
+    test("prochaine occurrence strictement après aujourd'hui ; occasion sans date : dans un an", () => {
+        const from = new Date(2026, 10, 23);
+        assert.equal(ymd(retention.nextOccasionDate('Noël', from)), '2026-12-25');
+        assert.equal(ymd(retention.nextOccasionDate('Noël', new Date(2026, 11, 25))), '2027-12-25');
+        assert.equal(ymd(retention.nextOccasionDate('Saint-Valentin', from)), '2027-02-14');
+        assert.equal(ymd(retention.nextOccasionDate('Fête des Mères', from)), '2027-05-30');
+        assert.equal(ymd(retention.nextOccasionDate('Anniversaire', from)), '2027-11-23');
+        // 31 décembre → Noël de l'année suivante ; 14 février le jour même → l'année suivante
+        assert.equal(ymd(retention.nextOccasionDate('Noël', new Date(2026, 11, 31))), '2027-12-25');
+        assert.equal(ymd(retention.nextOccasionDate('Saint-Valentin', new Date(2027, 1, 14, 23, 59))), '2028-02-14');
+        // Changement d'heure (29 mars 2026) sans effet : dates locales
+        assert.equal(ymd(retention.nextOccasionDate('Fête des Pères', new Date(2026, 2, 29, 2, 30))), '2026-06-21');
+    });
+    test('parseInputDate : dates réelles seulement', () => {
+        assert.equal(ymd(retention.parseInputDate('2027-02-14')), '2027-02-14');
+        for (const bad of ['2027-02-30', '2027-13-01', '14/02/2027', '', null, '2027-2-14']) {
+            assert.equal(retention.parseInputDate(bad), null, String(bad));
+        }
+    });
+});
+
+describe('rappel calendrier : fichier .ics', () => {
+    const ics = retention.buildIcs({ date: new Date(2027, 11, 25), occasion: 'Noël, en famille; enfin', now: new Date(Date.UTC(2026, 10, 23, 10, 0, 0)), uid: 'abc-123' });
+    test('événement journée entière, alerte 7 jours avant, fins de ligne CRLF', () => {
+        assert.ok(ics.startsWith('BEGIN:VCALENDAR\r\nVERSION:2.0\r\n'));
+        assert.ok(ics.includes('\r\nDTSTART;VALUE=DATE:20271225\r\n'));
+        assert.ok(ics.includes('\r\nDTEND;VALUE=DATE:20271226\r\n'));
+        assert.ok(ics.includes('\r\nTRIGGER:-P7D\r\n'));
+        assert.ok(ics.includes('\r\nUID:abc-123@offrez.net\r\n'));
+        assert.ok(ics.includes('\r\nDTSTAMP:20261123T100000Z\r\n'));
+        assert.ok(ics.trimEnd().endsWith('END:VCALENDAR'));
+        assert.ok(!/[^\r]\n/.test(ics), 'aucun saut de ligne sans CR');
+    });
+    test("texte échappé (virgule, point-virgule) et lien vers l'outil pré-rempli", () => {
+        const unfolded = ics.replace(/\r\n /g, ''); // lignes longues pliées (RFC 5545)
+        assert.ok(unfolded.includes('SUMMARY:🎁 Noël\\, en famille\\; enfin : penser au cadeau'));
+        assert.ok(unfolded.includes('URL:https://offrez.net/config.html?occasion=No%C3%ABl%2C%20en%20famille%3B%20enfin'));
+        assert.equal(retention.escapeIcsText('a\\b\nc'), 'a\\\\b\\nc');
+        assert.equal(retention.escapeIcsText('a\rb\r\nc'), 'a\\nb\\nc', 'retour chariot isolé échappé (pas de nouvelle ligne iCal)');
+    });
+    test('pliage RFC 5545 : aucune ligne de plus de 75 octets, dépliage identique', () => {
+        // Occasion ≤ 60 caractères (borne de buildIcs), mais SUMMARY > 75 octets (emojis et accents)
+        const occasion = 'Fête très spéciale 🎉🎉 avec toute la famille réunie';
+        const long = retention.buildIcs({ date: new Date(2027, 1, 14), occasion, uid: 'x' });
+        assert.ok(long.includes('\r\n '), 'au moins une ligne pliée');
+        for (const line of long.split('\r\n')) assert.ok(new TextEncoder().encode(line).length <= 75, line);
+        const unfolded = long.replace(/\r\n /g, '');
+        assert.ok(unfolded.includes(`SUMMARY:🎁 ${occasion} : penser au cadeau`));
+        assert.equal(retention.foldIcsLine('court'), 'court');
+        // Un caractère multi-octet n'est jamais coupé
+        const folded = retention.foldIcsLine('X'.repeat(74) + 'é' + 'Y');
+        assert.deepEqual(folded.split('\r\n'), ['X'.repeat(74), ' éY']);
+    });
+});
+
+describe('partage de la liste', () => {
+    test('une ligne par personne, élément affiché, liens affiliés taggés', () => {
+        const text = retention.buildShareText([
+            { personne: { nom: 'Julie' }, currentIndex: 0, products: [{ title: 'Sac cabine', asin: 'B0PRIVACY1', link: 'https://www.amazon.fr/dp/B0PRIVACY1' }] },
+            { personne: { nom: 'Marc' }, currentIndex: 1, products: [{ title: 'X', asin: 'B0AAAAAAA1' }, { kind: 'search', term: 'gourde isotherme' }] }
+        ]);
+        assert.ok(text.startsWith('Mes idées cadeaux trouvées avec OFFREZ :'));
+        assert.ok(text.includes('🎁 Julie : Sac cabine\nhttps://www.amazon.fr/dp/B0PRIVACY1?tag=offreznet-21'));
+        assert.ok(text.includes('🎁 Marc : Idée : gourde isotherme\nhttps://www.amazon.fr/s?k=gourde+isotherme&tag=offreznet-21'));
+    });
+    test('élément sans lien valide ignoré ; rien à partager → chaîne vide', () => {
+        assert.equal(retention.buildShareText([{ personne: { nom: 'A' }, currentIndex: 0, products: [{ title: 'x', link: 'javascript:alert(1)' }] }]), '');
+        assert.equal(retention.buildShareText(undefined), '');
     });
 });

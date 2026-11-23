@@ -305,3 +305,89 @@
     font-weight: 700;
     color: #ff9900;
 }
+
+/* Après les résultats : compléments cadeau, partage, rappel calendrier (analyse/retention.js) */
+.retention-tools {
+    margin-top: 1.5rem;
+    padding: 1.25rem;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 16px;
+    background: rgba(15, 23, 42, 0.6);
+}
+
+.retention-tools h3 {
+    font-size: 1.05rem;
+    margin: 0 0 0.75rem;
+    color: #f1f5f9;
+}
+
+.addon-links {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.addon-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 44px;
+    padding: 0.5rem 0.9rem;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    border-radius: 999px;
+    color: #e2e8f0;
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.addon-link:hover,
+.addon-link:focus-visible {
+    border-color: var(--primary);
+    color: #fff;
+}
+
+.retention-actions {
+    margin-bottom: 1rem;
+}
+
+.reminder-form label {
+    display: block;
+    font-size: 0.95rem;
+    color: #e2e8f0;
+    margin-bottom: 0.5rem;
+}
+
+.reminder-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.reminder-row input[type="date"] {
+    min-height: 44px;
+    padding: 0.4rem 0.6rem;
+    border-radius: 10px;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    background: rgba(15, 23, 42, 0.85);
+    color: #f1f5f9;
+    color-scheme: dark;
+    font-family: inherit;
+}
+
+.reminder-hint {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin: 0.5rem 0 0;
+}
+
+.retention-feedback {
+    font-size: 0.85rem;
+    color: var(--success);
+    margin: 0.5rem 0 0;
+    min-height: 1.2em;
+}
+

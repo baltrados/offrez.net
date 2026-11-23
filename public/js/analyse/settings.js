@@ -86,3 +86,14 @@ export const REVEAL_START_DELAY_MS = 100;
 export const REVEAL_STAGGER_MS = 150;
 /** Retour visuel « Lien copié ! » (ms). */
 export const SHARE_FEEDBACK_MS = 2000;
+
+// --- Rétention (compléments, partage, rappel) -------------------------------
+/** Compléments cadeau proposés en liens de recherche Amazon taggés (aucun appel API). */
+export const GIFT_ADDONS = Object.freeze([
+    Object.freeze({ label: 'Papier cadeau', term: 'papier cadeau', icon: '🎀' }),
+    Object.freeze({ label: 'Sac cadeau', term: 'sac cadeau', icon: '🛍️' }),
+    Object.freeze({ label: 'Carte de vœux', term: 'carte de voeux', icon: '💌' }),
+    Object.freeze({ label: 'Piles (si le cadeau en a besoin)', term: 'piles alcalines', icon: '🔋' })
+]);
+/** Alerte du rappel calendrier : nombre de jours avant l'occasion. */
+export const REMINDER_ALERT_DAYS = 7;
