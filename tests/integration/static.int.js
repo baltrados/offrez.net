@@ -212,8 +212,8 @@ describe('PWA : service worker, manifest, en-têtes des pages', () => {
     const PUBLIC = path.join(__dirname, '..', '..', 'public');
     const swSource = fs.readFileSync(path.join(PUBLIC, 'sw.js'), 'utf8');
 
-    test("sw.js : CACHE_NAME = 'OFFREZ-v29' et /offline.html précachée", () => {
-        assert.match(swSource, /const CACHE_NAME = 'OFFREZ-v29';/);
+    test("sw.js : CACHE_NAME = 'OFFREZ-v30' et /offline.html précachée", () => {
+        assert.match(swSource, /const CACHE_NAME = 'OFFREZ-v30';/);
         assert.match(swSource, /const OFFLINE_URL = '\/offline\.html';/);
         assert.match(swSource, /PRECACHE_URLS = \[[\s\S]*OFFLINE_URL[\s\S]*?\];/);
     });
