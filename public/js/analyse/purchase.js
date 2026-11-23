@@ -5,7 +5,7 @@
  * avec les bloqueurs de popups) : aucun preventDefault ni window.open différé ici.
  */
 
-import { SHARE_FEEDBACK_MS } from './settings.js?v=2026112403';
+import { SHARE_FEEDBACK_MS } from './settings.js?v=2026112404';
 
 const SHARE_URL = 'https://offrez.net';
 

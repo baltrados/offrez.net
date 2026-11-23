@@ -12,7 +12,7 @@
  */
 
 // À incrémenter à chaque modification de PRECACHE_URLS ou de ce fichier.
-const CACHE_NAME = 'OFFREZ-v27';
+const CACHE_NAME = 'OFFREZ-v28';
 const RUNTIME_CACHE = 'OFFREZ-v17-runtime';
 const RUNTIME_MAX_ENTRIES = 60;
 const OFFLINE_URL = '/offline.html';
@@ -27,7 +27,7 @@ const PRECACHE_URLS = [
     '/profils.html',
     '/analyse.html',
     OFFLINE_URL,
-    '/style.min.css?v=202611251500',
+    '/style.min.css?v=202611251600',
     '/fonts/outfit-latin.woff2',
     '/css/fontawesome/fa-offrez.min.css',
     '/css/webfonts/fa-solid-900.woff2?v=650a',
@@ -36,20 +36,22 @@ const PRECACHE_URLS = [
     '/js/analytics.js',
     '/js/constants.js',
     '/js/security.js',
-    '/js/security.js?v=2026112403',
-    '/js/api.js?v=2026112403',
+    '/js/security.js?v=2026112404',
+    '/js/api.js?v=2026112404',
     '/js/config.js',
     '/js/config-ui.js',
     '/js/config-prefill.js',
     '/js/profils.js',
-    '/js/analyse.js?v=2026112403',
-    '/js/analyse/settings.js?v=2026112403',
-    '/js/analyse/products.js?v=2026112403',
-    '/js/analyse/cart.js?v=2026112403',
-    '/js/analyse/session-data.js?v=2026112403',
-    '/js/analyse/ui.js?v=2026112403',
-    '/js/analyse/render.js?v=2026112403',
-    '/js/analyse/purchase.js?v=2026112403',
+    '/js/analyse.js?v=2026112404',
+    '/js/analyse/settings.js?v=2026112404',
+    '/js/analyse/products.js?v=2026112404',
+    '/js/analyse/cart.js?v=2026112404',
+    '/js/analyse/session-data.js?v=2026112404',
+    '/js/analyse/ui.js?v=2026112404',
+    '/js/analyse/render.js?v=2026112404',
+    '/js/analyse/purchase.js?v=2026112404',
+    '/js/analyse/results-store.js?v=2026112404',
+    '/js/analyse/retention.js?v=2026112404',
     '/favicon.svg',
     '/apple-touch-icon.png',
     '/icon-192.png',

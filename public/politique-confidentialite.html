@@ -11,7 +11,7 @@
 
     <link rel="stylesheet" href="fonts/poppins.css">
     <link rel="preload" href="fonts/outfit-latin.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="style.min.css?v=202611251500">
+    <link rel="stylesheet" href="style.min.css?v=202611251600">
     <link rel="stylesheet" href="css/fontawesome/fa-offrez.min.css">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -98,7 +98,16 @@
                             supprimée si vous cliquez sur « Modifier ma recherche » et disparaît à la fermeture de
                             l'onglet. Si le sessionStorage est indisponible, les profils restent dans le localStorage
                             jusqu'à la fin de l'analyse.</li>
+                        <li>Retrouver vos résultats si l'onglet se recharge (par exemple au retour depuis Amazon sur
+                            mobile) : les cartes affichées (prénom, budget et produits proposés) sont conservées dans le
+                            sessionStorage de l'onglet. Elles ne sont plus réaffichées au-delà de 2 heures (elles sont
+                            alors supprimées à la visite suivante de la page de résultats), sont effacées à la fermeture
+                            de l'onglet et remplacées à chaque nouvelle analyse.</li>
                     </ul>
+                    <p>Les boutons « Partager ma liste » et « Ajouter à mon agenda » fonctionnent entièrement dans votre
+                        navigateur : la liste partagée (prénoms et liens des cadeaux) n'est envoyée qu'à l'application que
+                        vous choisissez, et le fichier calendrier est créé sur votre appareil, sans aucun prénom. Rien
+                        n'est transmis à OFFREZ.</p>
                     <p><strong>Ces données restent sur votre appareil.</strong> Seules les informations utiles à la génération
                         (genre, âge, budget, centres d'intérêt, goûts, choses à éviter et occasion) sont transmises à notre
                         serveur, uniquement pour générer les recommandations ; elles ne sont pas conservées sur notre

@@ -36,14 +36,27 @@ test('finalData purgé du navigateur une fois les résultats affichés', async (
             sessionStorage.setItem('__seeded', '1');
         }
     }, JSON.stringify(FINAL_DATA));
-    await mockAnalysisApis(page);
+    const calls = await mockAnalysisApis(page);
 
     await page.goto('/analyse.html');
     await expect(page.locator('.gift-card').first()).toBeVisible({ timeout: 15000 });
     const stored = await page.evaluate(() => ({ local: localStorage.getItem('finalData'), session: sessionStorage.getItem('finalData') }));
     expect(stored).toEqual({ local: null, session: null });
 
-    // Rechargement : plus aucune donnée personnelle → invitation à recommencer
+    // Seuls les résultats affichés sont gardés dans l'onglet : ni âge, ni centres d'intérêt, ni texte libre
+    const savedRaw = /** @type {string} */ (await page.evaluate(() => sessionStorage.getItem('offrezResults')));
+    expect(savedRaw).toContain('Sac de voyage cabine');
+    for (const secret of ['randonnée', 'Voyage', '"age"', 'adore', 'tags']) expect(savedRaw).not.toContain(secret);
+
+    // Rechargement (ex. retour d'Amazon sur mobile) : résultats restaurés, sans aucun appel API
+    const callsBefore = { analyze: calls.analyze, search: calls.search.length };
+    await page.reload();
+    await expect(page.locator('.gift-card').first()).toBeVisible();
+    await expect(page.locator('.gift-title').first()).toContainText('Sac de voyage cabine');
+    expect({ analyze: calls.analyze, search: calls.search.length }).toEqual(callsBefore);
+
+    // Résultats expirés ou effacés : plus aucune donnée → invitation à recommencer
+    await page.evaluate(() => sessionStorage.removeItem('offrezResults'));
     await page.reload();
     await expect(page.locator('.analysis-error')).toContainText('Aucun profil à analyser');
     expect(consoleErrors).toEqual([]);

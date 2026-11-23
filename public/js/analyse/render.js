@@ -5,15 +5,15 @@
  * (produits : /dp/<ASIN> canonique) ou buildAmazonSearchUrl (idées affichées en lien de recherche).
  */
 
-import { escapeHtml, buildProductUrl, buildAmazonSearchUrl } from '../security.js?v=2026112403';
-import { getSelectedProducts, computeCartTotal, generateCartURL } from './cart.js?v=2026112403';
-import { buildAnalysisFailedState, buildLimitReachedState } from './ui.js?v=2026112403';
+import { escapeHtml, buildProductUrl, buildAmazonSearchUrl } from '../security.js?v=2026112404';
+import { getSelectedProducts, computeCartTotal, generateCartURL } from './cart.js?v=2026112404';
+import { buildAnalysisFailedState, buildLimitReachedState } from './ui.js?v=2026112404';
 import {
     AFFILIATE_TAG,
     TITLE_MAX_CHARS,
     REVEAL_START_DELAY_MS,
     REVEAL_STAGGER_MS
-} from './settings.js?v=2026112403';
+} from './settings.js?v=2026112404';
 
 const PLACEHOLDER_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect fill='%231e293b' width='200' height='200'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%2394a3b8' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E";
 

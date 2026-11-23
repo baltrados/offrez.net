@@ -15,7 +15,7 @@
  * (voir documentation/14_SUIVI_CHANTIER_QUALITE.md §3).
  */
 
-import { callGemini, searchAmazon } from './api.js?v=2026112403';
+import { callGemini, searchAmazon } from './api.js?v=2026112404';
 import {
     normalizeProfile,
     buildAnalyzePayload,
@@ -24,11 +24,13 @@ import {
     dedupeProducts,
     buildSearchIdea,
     usableSuggestions
-} from './analyse/products.js?v=2026112403';
-import { takeAnalysisData, purgeAnalysisData } from './analyse/session-data.js?v=2026112403';
-import { updateProgress, hideStatusIndicator, showMissingDataState, showFatalErrorOverlay } from './analyse/ui.js?v=2026112403';
-import { renderResults } from './analyse/render.js?v=2026112403';
-import { initPurchaseTracking } from './analyse/purchase.js?v=2026112403';
+} from './analyse/products.js?v=2026112404';
+import { takeAnalysisData, purgeAnalysisData } from './analyse/session-data.js?v=2026112404';
+import { updateProgress, hideStatusIndicator, showMissingDataState, showFatalErrorOverlay } from './analyse/ui.js?v=2026112404';
+import { renderResults } from './analyse/render.js?v=2026112404';
+import { initPurchaseTracking } from './analyse/purchase.js?v=2026112404';
+import { saveResults, loadResults, clearResults } from './analyse/results-store.js?v=2026112404';
+import { renderRetentionTools } from './analyse/retention.js?v=2026112404';
 import {
     GEMINI_MAX_ATTEMPTS,
     GEMINI_RETRY_DELAY_MS,
@@ -39,7 +41,7 @@ import {
     PROGRESS_START,
     PROGRESS_PROFILES_BASE,
     PROGRESS_PROFILES_SPAN
-} from './analyse/settings.js?v=2026112403';
+} from './analyse/settings.js?v=2026112404';
 
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -143,12 +145,41 @@ function scrollToResultsOnMobile() {
     document.getElementById('singleResult')?.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' });
 }
 
+/**
+ * Réaffiche les résultats conservés dans l'onglet (sans aucun appel API).
+ * @returns {boolean} vrai si des résultats ont été restaurés
+ */
+function restoreSavedResults() {
+    const saved = loadResults();
+    if (!saved) return false;
+    hideStatusIndicator();
+    updateProgress(100, "Vos résultats de tout à l'heure");
+    renderResults(saved.results, 0, false);
+    renderRetentionTools({ container: document.getElementById('retentionContainer'), personResults: saved.results, contexte: saved.contexte });
+    keepSavedResultsInSync(saved.results, saved.contexte);
+    return true;
+}
+
+/**
+ * Réenregistre les résultats après chaque navigation entre suggestions : au retour d'Amazon, l'utilisateur
+ * retrouve la suggestion qu'il regardait. Le gestionnaire du bouton (render.js) a déjà mis à jour
+ * currentIndex quand l'événement remonte jusqu'au document.
+ */
+function keepSavedResultsInSync(personResults, contexte) {
+    document.addEventListener('click', (e) => {
+        if (e.target instanceof Element && e.target.closest('.btn-nav-suggestion')) saveResults(personResults, contexte);
+    });
+}
+
 async function lancerAnalyse() {
     const data = takeAnalysisData();
     if (!data) {
-        showMissingDataState();
+        // Retour d'Amazon après rechargement de l'onglet : les profils sont purgés, mais les résultats
+        // affichés plus tôt dans cet onglet sont conservés (results-store.js)
+        if (!restoreSavedResults()) showMissingDataState();
         return;
     }
+    clearResults(); // nouvelle analyse : les anciens résultats de l'onglet ne doivent pas réapparaître
 
     const totalProfiles = data.equipe.length;
     let processedProfiles = 0;
@@ -186,6 +217,9 @@ async function lancerAnalyse() {
     updateProgress(100, 'Analyse terminée !');
 
     renderResults(personResults, apiFailures, limitReached);
+    renderRetentionTools({ container: document.getElementById('retentionContainer'), personResults, contexte: data.contexte });
+    saveResults(personResults, data.contexte);
+    keepSavedResultsInSync(personResults, data.contexte);
     scrollToResultsOnMobile();
     // RGPD : profils purgés une fois l'analyse terminée ; copie de session gardée seulement si
     // l'échec est technique (« Réessayer » recharge la page et relance l'analyse).
