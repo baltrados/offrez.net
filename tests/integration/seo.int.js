@@ -24,7 +24,8 @@ const read = rel => fs.readFileSync(path.join(PUBLIC, rel), 'utf8');
 const meta = (html, attr, name) => {
     const re = new RegExp(`<meta[^>]+${attr}=["']${name}["'][^>]*>`, 'i');
     const tag = html.match(re)?.[0];
-    return tag ? tag.match(/content=["']([^"']*)["']/i)?.[1] ?? null : null;
+    // Fin de valeur = même guillemet qu'à l'ouverture (une apostrophe est valide entre guillemets doubles)
+    return tag ? tag.match(/content=(["'])(.*?)\1/i)?.[2] ?? null : null;
 };
 const canonical = html => html.match(/<link[^>]+rel=["']canonical["'][^>]*>/i)?.[0].match(/href=["']([^"']+)["']/i)?.[1] ?? null;
 const isNoindex = html => /noindex/i.test(meta(html, 'name', 'robots') || '');
@@ -56,6 +57,51 @@ describe('sitemap.xml ↔ pages', () => {
         const mods = [...sitemap.matchAll(/<lastmod>([^<]+)<\/lastmod>/g)].map(m => m[1]);
         assert.equal(mods.length, locs.length);
         for (const d of mods) assert.match(d, /^\d{4}-\d{2}-\d{2}$/);
+    });
+});
+
+const decode = s => String(s ?? '').replace(/&quot;/g, '"').replace(/&#x27;|&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+const titleOf = html => decode(html.match(/<title>([^<]*)<\/title>/i)?.[1]).trim();
+
+describe('SEO : affichage dans Google et données structurées', () => {
+    test('titre ≤ 60 caractères et description 70-160 caractères (pas de coupure dans les résultats)', () => {
+        for (const p of indexable) {
+            const html = read(p);
+            const title = titleOf(html);
+            const desc = decode(meta(html, 'name', 'description')).replace(/\s+/g, ' ').trim();
+            assert.ok(title.length > 10 && title.length <= 60, `${p} : titre de ${title.length} caractères « ${title} »`);
+            assert.ok(desc.length >= 70 && desc.length <= 160, `${p} : description de ${desc.length} caractères`);
+        }
+    });
+
+    test('titres et descriptions uniques entre pages indexables', () => {
+        const titles = indexable.map(p => titleOf(read(p)));
+        const descs = indexable.map(p => meta(read(p), 'name', 'description'));
+        assert.equal(new Set(titles).size, titles.length, 'titres en double');
+        assert.equal(new Set(descs).size, descs.length, 'descriptions en double');
+    });
+
+    test('données structurées JSON-LD présentes et valides sur chaque page indexable ; articles : BlogPosting + BreadcrumbList', () => {
+        for (const p of indexable) {
+            const blocks = [...read(p).matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map(m => m[1]);
+            assert.ok(blocks.length >= 1, `${p} : JSON-LD absent`);
+            const types = blocks.flatMap(b => {
+                const data = JSON.parse(b);
+                const list = Array.isArray(data) ? data : (data['@graph'] || [data]);
+                return list.map(x => x['@type']);
+            });
+            if (p.startsWith('blog/')) {
+                assert.ok(types.includes('BlogPosting') && types.includes('BreadcrumbList'), `${p} : ${types}`);
+            }
+        }
+    });
+
+    test("la page d'accueil relie chaque article du sitemap (maillage interne)", () => {
+        const home = read('index.html');
+        for (const loc of locs.filter(l => l.includes('/blog/'))) {
+            const rel = loc.slice(ORIGIN.length + 1);
+            assert.ok(home.includes(`href="${rel}"`), `index.html ne relie pas ${rel}`);
+        }
     });
 });
 

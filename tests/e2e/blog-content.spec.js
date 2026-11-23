@@ -8,6 +8,9 @@ const ARTICLES = [
     '/blog/cadeau-saint-valentin-homme.html',
     '/blog/cadeau-saint-valentin-femme.html',
     '/blog/cadeau-saint-valentin-moins-de-30-euros.html',
+    '/blog/idees-cadeaux-femme.html',
+    '/blog/cadeau-original-homme.html',
+    '/blog/cadeau-anniversaire-maman.html',
 ];
 
 for (const path of ARTICLES) {
@@ -34,7 +37,7 @@ for (const path of ARTICLES) {
         expect(await ctas.count()).toBeGreaterThanOrEqual(2);
         for (const a of await ctas.all()) {
             const href = /** @type {string} */ (await a.getAttribute('href'));
-            expect(new URL(href, 'https://offrez.net/blog/').searchParams.get('occasion')).toMatch(/^(Noël|Saint-Valentin)$/);
+            expect(new URL(href, 'https://offrez.net/blog/').searchParams.get('occasion')).toMatch(/^(Noël|Saint-Valentin|Anniversaire)$/);
         }
 
         // Données structurées valides (JSON) : BlogPosting + BreadcrumbList
@@ -45,6 +48,22 @@ for (const path of ARTICLES) {
         expect(consoleErrors).toEqual([]);
     });
 }
+
+test("accueil : section « Nos guides cadeaux » visible, liens vers les 8 articles, sans débordement mobile", async ({ page, consoleErrors }) => {
+    await page.goto('/');
+    const guides = page.locator('section.home-guides');
+    await expect(guides.getByRole('heading', { name: 'Nos guides cadeaux' })).toBeVisible();
+    const links = guides.locator('.home-guides-group a');
+    await expect(links).toHaveCount(ARTICLES.length);
+    const hrefs = await links.evaluateAll((as) => as.map((a) => '/' + a.getAttribute('href')));
+    expect(hrefs.sort()).toEqual([...ARTICLES].sort());
+    for (const a of await links.all()) {
+        const box = await a.boundingBox();
+        expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+    }
+    await expectNoHorizontalOverflow(page);
+    expect(consoleErrors).toEqual([]);
+});
 
 test('config.html?occasion=Saint-Valentin&budget=30 : occasion et budget par personne pré-remplis', async ({ page }) => {
     await page.goto('/config.html?occasion=Saint-Valentin&budget=30');

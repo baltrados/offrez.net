@@ -12,7 +12,7 @@
  */
 
 // À incrémenter à chaque modification de PRECACHE_URLS ou de ce fichier.
-const CACHE_NAME = 'OFFREZ-v29';
+const CACHE_NAME = 'OFFREZ-v30';
 const RUNTIME_CACHE = 'OFFREZ-v17-runtime';
 const RUNTIME_MAX_ENTRIES = 60;
 const OFFLINE_URL = '/offline.html';
@@ -27,7 +27,7 @@ const PRECACHE_URLS = [
     '/profils.html',
     '/analyse.html',
     OFFLINE_URL,
-    '/style.min.css?v=202611251600',
+    '/style.min.css?v=202611251700',
     '/fonts/outfit-latin.woff2',
     '/css/fontawesome/fa-offrez.min.css',
     '/css/webfonts/fa-solid-900.woff2?v=650a',
