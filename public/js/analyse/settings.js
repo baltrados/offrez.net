@@ -6,7 +6,7 @@
  */
 
 /** Tag Amazon Partenaire (liens produits et panier groupé). */
-export const AFFILIATE_TAG = 'offreznet-21';
+export const AFFILIATE_TAG = 'offreznet04-21';
 
 // --- Appels IA (Gemini via /api/analyze) -----------------------------------
 /** Nombre d'appels à /api/analyze par profil (1 essai + 1 nouvelle tentative). */

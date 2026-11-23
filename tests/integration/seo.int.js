@@ -145,7 +145,7 @@ describe('balises des pages', () => {
     test('liens Amazon écrits en dur dans le HTML : tag affilié et rel sponsored', () => {
         for (const p of pages) {
             for (const a of read(p).match(/<a\s[^>]*href=["'][^"']*amazon\.[^"']*["'][^>]*>/gi) || []) {
-                assert.match(a, /tag=offreznet-21/, `${p} : ${a}`);
+                assert.match(a, /tag=offreznet04-21/, `${p} : ${a}`);
                 assert.match(a, /rel=["'][^"']*sponsored[^"']*["']/, `${p} : ${a}`);
                 assert.match(a, /target=["']_blank["']/, `${p} : ${a}`);
             }
