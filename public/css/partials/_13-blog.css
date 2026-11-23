@@ -1,0 +1,77 @@
+/* ============================================
+   BLOG : sélections de produits (liens de recherche Amazon taggés), mentions, maillage
+   Sélecteurs préfixés .blog-post pour passer devant le <style> commun des articles.
+   ============================================ */
+.blog-post .post-meta {
+    text-align: center;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 1.5rem;
+}
+
+.blog-post .affiliate-notice {
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.03);
+    border-left: 3px solid var(--primary);
+    border-radius: 0 8px 8px 0;
+    padding: 0.75rem 1rem;
+    margin-bottom: 2rem;
+}
+
+.blog-post .gift-picks {
+    display: grid;
+    gap: 1rem;
+    margin: 1.5rem 0 2rem;
+}
+
+.blog-post .gift-pick {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 12px;
+    padding: 1.25rem;
+}
+
+.blog-post .gift-pick h3 {
+    font-size: 1.2rem;
+    margin: 0 0 0.5rem;
+}
+
+.blog-post .gift-pick p {
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.blog-post .gift-pick-for {
+    color: #e2e8f0;
+}
+
+.blog-post .gift-pick-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 44px;
+    padding: 0.6rem 1.1rem;
+    border-radius: 10px;
+    background: var(--primary);
+    color: #0f172a;
+    font-weight: 700;
+    font-size: 0.95rem;
+    text-decoration: none;
+}
+
+.blog-post .gift-pick-cta:hover,
+.blog-post .gift-pick-cta:focus-visible {
+    background: var(--primary-dark);
+    color: #0f172a;
+}
+
+.blog-post .related-posts ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+.blog-post .related-posts a {
+    color: #a5b4fc;
+}
