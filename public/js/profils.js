@@ -217,6 +217,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (safeBudget <= 0) {
                 errors.push(`Budget invalide pour ${name}`);
+            } else if (safeBudget < LIMITS.MIN_BUDGET) {
+                errors.push(`Budget trop faible pour ${name} (minimum ${LIMITS.MIN_BUDGET}€)`);
             }
             // [TASK-005] Plafonnement du budget par personne
             if (safeBudget > LIMITS.MAX_BUDGET) {

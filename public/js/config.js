@@ -163,6 +163,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (budgetAmountInput) budgetAmountInput.focus();
                 return;
             }
+            // Budget par personne minimum (identique / total réparti) : en dessous, aucune idée trouvable
+            if (safeAmount !== null && (strategyValue === 'same' || strategyValue === 'global')) {
+                const perPerson = strategyValue === 'global' ? Math.floor(safeAmount / safeNb) : safeAmount;
+                if (perPerson < LIMITS.MIN_BUDGET) {
+                    showConfigError(`Budget trop faible : au moins ${LIMITS.MIN_BUDGET}€ par personne (actuellement ${perPerson}€).`);
+                    if (budgetAmountInput) budgetAmountInput.focus();
+                    return;
+                }
+            }
 
             const config = {
                 occasion: String(occasionInput ? occasionInput.value : 'Anniversaire'),

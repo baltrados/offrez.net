@@ -78,6 +78,9 @@ header {
     text-decoration: none;
     color: inherit;
     transition: opacity 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
 }
 
 .logo-link:hover {

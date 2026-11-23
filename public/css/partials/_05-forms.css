@@ -16,6 +16,7 @@ textarea {
     background-color: rgba(15, 23, 42, 0.85) !important;
     color: #e5e7eb !important;
     color-scheme: dark;
+    min-height: 44px;
 }
 
 input::placeholder,
@@ -216,6 +217,7 @@ input.readonly {
 .gender-chip {
     display: flex;
     align-items: center;
+    min-height: 44px;
     gap: 0.4rem;
     padding: 0.6rem 1rem;
     background: rgba(15, 23, 42, 0.85);
@@ -280,6 +282,7 @@ input.readonly {
 .occasion-chip {
     display: flex;
     align-items: center;
+    min-height: 44px;
     gap: 0.5rem;
     padding: 0.6rem 1rem;
     background: rgba(15, 23, 42, 0.85);

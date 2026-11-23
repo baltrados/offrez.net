@@ -157,6 +157,15 @@
     padding: 0.75rem;
     text-align: left;
     border: 1px solid rgba(148, 163, 184, 0.3);
+    /* Mots longs (sessionStorage, adresses) : coupés plutôt que d'élargir la page sur mobile */
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 600px) {
+    .legal-table th,
+    .legal-table td {
+        padding: 0.5rem;
+    }
 }
 
 .legal-table th {
@@ -177,10 +186,19 @@
     padding: 1rem;
 }
 
+/* Liste sans retrait par défaut : l'icône sert de puce (le retrait faisait déborder la page sur mobile) */
+.legal-highlight ul {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+
 .legal-highlight li {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .legal-highlight i.fa-times-circle {
@@ -254,6 +272,7 @@
 .legal-links a {
     display: inline-flex;
     align-items: center;
+    min-height: 44px;
     gap: 0.5rem;
     padding: 0.6rem 1rem;
     background: rgba(15, 23, 42, 0.7);
@@ -307,6 +326,12 @@
     text-decoration: none;
     font-size: 0.85rem;
     transition: color 0.2s ease;
+    /* Cible tactile de 44 × 44 px (WCAG 2.5.5), y compris pour les libellés courts (CGU, Blog) */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    min-width: 44px;
 }
 
 .footer-links a:hover {
@@ -573,3 +598,15 @@
     gap: 0.5rem;
     animation: fadeIn 0.3s ease;
 }
+
+/* Pages légales sur mobile : marges intérieures réduites (la carte et le tableau tiennent dans l'écran) */
+@media (max-width: 600px) {
+    .legal-page .card {
+        padding: 1.25rem !important;
+    }
+
+    .legal-page h1 {
+        font-size: 1.8rem !important;
+    }
+}
+

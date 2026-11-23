@@ -142,3 +142,12 @@
     text-align: center;
     margin-top: 1rem;
 }
+
+/* Fil d'Ariane des articles : liens de 44 px de haut (cibles tactiles) */
+.blog-post .breadcrumb a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    min-width: 44px;
+}
