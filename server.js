@@ -172,7 +172,7 @@ setInterval(() => {
 // ======================
 // CONFIGURATION EXPRESS
 // ======================
-// Nombre de proxys de confiance (TRUST_PROXY, entier >= 0, défaut 1 : Render). Jamais 'true' (IP falsifiable).
+// Nombre de proxys de confiance (TRUST_PROXY, entier >= 0, défaut 3 : Cloudflare + Render). Jamais 'true' (IP falsifiable).
 const trustProxy = parseTrustProxy(process.env.TRUST_PROXY);
 if (trustProxy.warning) console.warn('[CONFIG] ' + trustProxy.warning);
 app.set('trust proxy', trustProxy.value);
@@ -609,39 +609,6 @@ app.get('/api/search', apiLimiter, async (req, res) => {
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok' });
 });
-
-// ======================
-// DIAGNOSTIC IP (TEMPORAIRE) : actif seulement si DEBUG_IP=1, à retirer une fois TRUST_PROXY validé
-// ======================
-// Renvoie à l'appelant SES PROPRES informations réseau (ce que le serveur voit derrière le proxy Render)
-// et le décompte de quota de SA clé. Rien n'est écrit dans les logs. Route absente (404) sans DEBUG_IP=1.
-const DEBUG_IP_ENABLED = process.env.DEBUG_IP === '1';
-if (DEBUG_IP_ENABLED) {
-    console.warn('[CONFIG] DEBUG_IP=1 : route de diagnostic /api/debug-ip active (à désactiver après vérification)');
-    const headerValue = (req, name) => {
-        const v = req.get(name);
-        return typeof v === 'string' ? v.slice(0, 512) : null;
-    };
-    app.get('/api/debug-ip', apiLimiter, (req, res) => {
-        const xff = headerValue(req, 'x-forwarded-for');
-        const key = clientQuotaKey(req);
-        res.set('Cache-Control', 'no-store');
-        res.json({
-            trustProxy: trustProxy.value,
-            xForwardedFor: xff ? xff.split(',').map(s => s.trim()).slice(0, 20) : [],
-            reqIp: req.ip || null,
-            socketRemoteAddress: req.socket?.remoteAddress || null,
-            cfConnectingIp: headerValue(req, 'cf-connecting-ip'),
-            trueClientIp: headerValue(req, 'true-client-ip'),
-            xRealIp: headerValue(req, 'x-real-ip'),
-            quotaKey: key,
-            gemini: { usedToday: geminiIpQuota.used(key), limitPerIp: GEMINI_DAILY_LIMIT_PER_IP },
-            amazon: { usedToday: rapidApiIpQuota.used(key), limitPerIp: RAPIDAPI_DAILY_LIMIT_PER_IP },
-            // Uptime : s'il retombe près de 0 entre deux appels, l'instance a redémarré (compteurs remis à zéro)
-            uptimeSeconds: Math.round(process.uptime())
-        });
-    });
-}
 
 // ======================
 // ROUTE FALLBACK (404 & Redirections)

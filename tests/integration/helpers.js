@@ -27,12 +27,13 @@ function configureEnv(extra = {}) {
         RAPIDAPI_KEY: TEST_KEYS.RAPIDAPI_KEY,
         NODE_ENV: undefined,
         GEMINI_MODEL: undefined,
-        TRUST_PROXY: undefined,
+        // Les tests simulent un seul proxy (X-Forwarded-For à une entrée) ; la chaîne réelle de Render
+        // (3 proxys, valeur par défaut du code) est couverte par trust-proxy-render.int.js.
+        TRUST_PROXY: '1',
         GEMINI_DAILY_LIMIT: undefined,
         GEMINI_DAILY_LIMIT_PER_IP: undefined,
         RAPIDAPI_DAILY_LIMIT: undefined,
         RAPIDAPI_DAILY_LIMIT_PER_IP: undefined,
-        DEBUG_IP: undefined,
         ANALYTICS_ORIGIN: undefined,
         ...extra
     };
