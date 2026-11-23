@@ -299,9 +299,25 @@ test('normalizeProduct: liens non https / hôte non Amazon → produit ignoré',
         const p = rawProduct(); p.product_url = url;
         assert.equal(normalizeProduct(p), null, String(url));
     }
-    for (const url of ['https://amazon.com/x', 'https://amzn.to/abc', 'https://smile.amazon.com/x']) {
+    // amazon.com et liens courts : le tag -21 n'y serait pas attribué → produit ignoré
+    for (const url of ['https://amazon.com/x', 'https://amzn.to/abc', 'https://smile.amazon.com/x', 'https://www.amazon.de/dp/B0ABCDEF12']) {
         const p = rawProduct(); p.product_url = url;
-        assert.ok(normalizeProduct(p), url);
+        assert.equal(normalizeProduct(p), null, url);
+    }
+});
+
+test("normalizeProduct: lien canonique amazon.fr/dp/<ASIN>, ASIN lu dans l'URL si absent", () => {
+    const p = rawProduct();
+    p.product_url = 'https://www.amazon.fr/Lampe-Bureau/dp/B0ABCDEF12/ref=sr_1_3?keywords=x&psc=1&tag=concurrent-21';
+    assert.equal(normalizeProduct(p).link, 'https://www.amazon.fr/dp/B0ABCDEF12');
+    p.asin = undefined;
+    p.product_url = 'https://www.amazon.fr/gp/product/b0zzzzzz99?th=1';
+    assert.deepEqual([normalizeProduct(p).link, normalizeProduct(p).asin], ['https://www.amazon.fr/dp/B0ZZZZZZ99', 'B0ZZZZZZ99']);
+    // Sans ASIN (ni champ ni /dp/), redirection Amazon, sous-domaine ou port : produit ignoré
+    for (const url of ['https://www.amazon.fr/s?k=lampe', 'https://www.amazon.fr/gp/redirect.html?location=https://evil.com',
+        'https://smile.amazon.fr/dp/B0ABCDEF12', 'https://www.amazon.fr:8443/dp/B0ABCDEF12']) {
+        p.product_url = url;
+        assert.equal(normalizeProduct(p), null, url);
     }
 });
 
@@ -335,9 +351,12 @@ test('normalizeProduct: rating / reviews / asin', () => {
     p.product_num_ratings = -3; assert.equal(normalizeProduct(p).reviews, null);
     p.product_num_ratings = 1.5; assert.equal(normalizeProduct(p).reviews, null);
     p.product_num_ratings = '<script>'; assert.equal(normalizeProduct(p).reviews, null);
+    // ASIN invalide : repli sur l'ASIN lu dans le lien amazon.fr (/dp/B0ABCDEF12), sinon null
     for (const asin of ['b0abcdef12', 'B0ABC', '<img src=x>', 123]) {
-        p.asin = asin; assert.equal(normalizeProduct(p).asin, null, String(asin));
+        p.asin = asin; assert.equal(normalizeProduct(p).asin, 'B0ABCDEF12', String(asin));
     }
+    p.product_url = 'https://www.amazon.fr/s?k=lampe';
+    p.asin = '<img src=x>'; assert.equal(normalizeProduct(p), null, 'ni ASIN valide ni /dp/ → ignoré');
 });
 
 test('normalizeProduct: prix non chaîne', () => {

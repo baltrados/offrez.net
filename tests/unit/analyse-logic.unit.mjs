@@ -30,10 +30,10 @@ globalThis.sessionStorage = new MemoryStorage();
 
 const JS = new URL('../../public/js/', import.meta.url);
 // Mêmes URL (avec ?v=) que celles importées par analyse.js : une seule instance par module.
-const products = await import(new URL('analyse/products.js?v=2026112401', JS).href);
-const cart = await import(new URL('analyse/cart.js?v=2026112401', JS).href);
-const session = await import(new URL('analyse/session-data.js?v=2026112401', JS).href);
-const settings = await import(new URL('analyse/settings.js?v=2026112401', JS).href);
+const products = await import(new URL('analyse/products.js?v=2026112403', JS).href);
+const cart = await import(new URL('analyse/cart.js?v=2026112403', JS).href);
+const session = await import(new URL('analyse/session-data.js?v=2026112403', JS).href);
+const settings = await import(new URL('analyse/settings.js?v=2026112403', JS).href);
 
 const {
     normalizeProfile, buildAnalyzePayload, computeSearchPriceRange, bucketMaxPrice, buildSearchIdea, usableSuggestions,
@@ -290,12 +290,20 @@ describe('scoreProduct / rankProducts', () => {
         const expected = 1 * 0.35 + (4 / 5) * 0.35 + 1 * 0.20 + (1 / 2) * 0.10 + 0.1;
         assert.ok(Math.abs(score - expected) < 1e-12, `${score} ≠ ${expected}`);
     });
-    test('note absente ou non numérique ("4,5") → 4 dans le scoring', () => {
+    test('note absente ou non numérique ("4,5") → 3 dans le scoring (prudent)', () => {
         const a = scoreProduct({ price: { value: 30 }, rating: undefined, reviews: 0 }, 0, 50).score;
         const b = scoreProduct({ price: { value: 30 }, rating: '4,5', reviews: 0 }, 0, 50).score;
-        const c = scoreProduct({ price: { value: 30 }, rating: 4, reviews: 0 }, 0, 50).score;
+        const c = scoreProduct({ price: { value: 30 }, rating: 3, reviews: 0 }, 0, 50).score;
         assert.equal(a, c);
         assert.equal(b, c);
+        // Un produit sans note ne passe pas devant un produit noté 4/5 à conditions égales
+        assert.ok(scoreProduct({ price: { value: 30 }, rating: 4, reviews: 0 }, 0, 50).score > a);
+    });
+    test('bonus « Meilleure vente » : +0.05 seulement si is_best_seller === true', () => {
+        const base = { price: { value: 30 }, rating: 4, reviews: 10 };
+        const a = scoreProduct(base, 0, 50).score;
+        assert.ok(Math.abs(scoreProduct({ ...base, is_best_seller: true }, 0, 50).score - a - 0.05) < 1e-12);
+        assert.equal(scoreProduct({ ...base, is_best_seller: 'true' }, 0, 50).score, a);
     });
     test('tri décroissant, annotation searchTerm/reason, objets d\'origine non modifiés', () => {
         const cheap = item({ title: 'cheap', price: { value: 5 }, rating: 3.5, reviews: 5 });
@@ -362,9 +370,9 @@ describe('dedupeProducts', () => {
 // Panier Amazon
 // ============================================================================
 describe('panier', () => {
-    test('extractASIN : /dp/ et /gp/product/, insensible à la casse', () => {
+    test('extractASIN : /dp/ et /gp/product/, insensible à la casse, ASIN rendu en majuscules', () => {
         assert.equal(cart.extractASIN('https://www.amazon.fr/dp/B0TESTE2E1?tag=x'), 'B0TESTE2E1');
-        assert.equal(cart.extractASIN('https://www.amazon.fr/Titre/dp/b0abcdefgh/ref=sr'), 'b0abcdefgh');
+        assert.equal(cart.extractASIN('https://www.amazon.fr/Titre/dp/b0abcdefgh/ref=sr'), 'B0ABCDEFGH');
         assert.equal(cart.extractASIN('https://www.amazon.fr/gp/product/B012345678'), 'B012345678');
     });
     test('extractASIN : absent, trop court, non chaîne → null', () => {
@@ -392,7 +400,8 @@ describe('panier', () => {
         const url = new URL(cart.generateCartURL([{ asin: 'AAAAAAAAAA' }, { asin: 'BBBBBBBBBB' }]));
         assert.equal(url.origin + url.pathname, 'https://www.amazon.fr/gp/aws/cart/add.html');
         assert.deepEqual([...url.searchParams], [
-            ['ASIN.1', 'AAAAAAAAAA'], ['Quantity.1', '1'], ['ASIN.2', 'BBBBBBBBBB'], ['Quantity.2', '1'], ['tag', 'offreznet-21']
+            ['ASIN.1', 'AAAAAAAAAA'], ['Quantity.1', '1'], ['ASIN.2', 'BBBBBBBBBB'], ['Quantity.2', '1'],
+            ['tag', 'offreznet-21'], ['AssociateTag', 'offreznet-21']
         ]);
     });
     test('generateCartURL : valeurs encodées (pas d\'injection de paramètre)', () => {
@@ -489,7 +498,7 @@ function originalBestProduct(results, budget, sugg) {
     if (validProducts.length === 0) return null;
     return validProducts.map((item, index) => {
         const priceValue = Number(item.price?.value) || 0;
-        const rating = Number(item.rating) || 4;
+        const rating = Number(item.rating) || 3; // lot 2 : note absente comptée 3 (au lieu de 4)
         const reviewCount = Number(item.reviews || item.reviews_count) || 0;
         const isPrime = item.is_prime || false;
         const budgetRatio = priceValue / budget;
@@ -503,7 +512,8 @@ function originalBestProduct(results, budget, sugg) {
         const ratingScore = rating / 5;
         const popularityScore = Math.min(1, Math.log10(reviewCount + 1) / 3);
         const primeBonus = isPrime ? 0.1 : 0;
-        const score = (budgetScore * 0.35) + (ratingScore * 0.35) + (popularityScore * 0.20) + (1 / (index + 1)) * 0.10 + primeBonus;
+        const bestSellerBonus = item.is_best_seller === true ? 0.05 : 0; // lot 2
+        const score = (budgetScore * 0.35) + (ratingScore * 0.35) + (popularityScore * 0.20) + (1 / (index + 1)) * 0.10 + primeBonus + bestSellerBonus;
         return { ...item, score, budgetRatio, searchTerm: sugg.term, reason: sugg.reason };
     }).sort((a, b) => b.score - a.score)[0];
 }
@@ -555,7 +565,8 @@ describe('non-régression différentielle vs implémentation d\'origine', () => 
         rating: pick([undefined, null, 0, 2.99, 3, 3.49, 3.5, '3,5', '4,5', 4.8, 5, 'n/a', '']),
         reviews: pick([undefined, 0, 1, 4, 5, 6, '1 200', '1,200', 250, 'aucun']),
         reviews_count: pick([undefined, 0, 3, 12]),
-        is_prime: pick([undefined, true, false])
+        is_prime: pick([undefined, true, false]),
+        is_best_seller: pick([undefined, true, false, 'true'])
     });
 
     test('pickBestProduct ≡ filtre 3 niveaux + scoring d\'origine (3000 cas)', () => {

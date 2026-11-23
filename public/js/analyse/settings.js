@@ -33,8 +33,8 @@ export function shouldRetryGemini(error) {
 export function isLimitReachedError(error) {
     return error?.status === 429 || error?.status === 503;
 }
-/** « Temps de réflexion » affiché avant l'appel IA (ms). */
-export const THINK_DELAY_MS = 800;
+/** « Temps de réflexion » affiché avant l'appel IA (ms) : court, l'appel IA prend déjà 1 à 3 s. */
+export const THINK_DELAY_MS = 300;
 
 // --- Recherche Amazon (via /api/search) -------------------------------------
 /**
@@ -84,8 +84,5 @@ export const TITLE_MAX_CHARS = 80;
 /** Animation « Gift Reveal » : délai initial et décalage entre cartes (ms). */
 export const REVEAL_START_DELAY_MS = 100;
 export const REVEAL_STAGGER_MS = 150;
-/** Effet de chargement à la découverte d'une nouvelle suggestion : 800 à 1500 ms. */
-export const DISCOVERY_DELAY_MIN_MS = 800;
-export const DISCOVERY_DELAY_JITTER_MS = 700;
 /** Retour visuel « Lien copié ! » (ms). */
 export const SHARE_FEEDBACK_MS = 2000;

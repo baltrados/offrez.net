@@ -4,7 +4,7 @@
  * Extraction d'ASIN, produits sélectionnés, total et URL « ajouter au panier » multi-articles.
  */
 
-import { AFFILIATE_TAG } from './settings.js?v=2026112401';
+import { AFFILIATE_TAG } from './settings.js?v=2026112403';
 
 const CART_ADD_URL = 'https://www.amazon.fr/gp/aws/cart/add.html';
 // Formats supportés : /dp/ASIN ou /gp/product/ASIN (ASIN = 10 caractères alphanumériques)
@@ -18,7 +18,7 @@ const ASIN_PATTERN = /\/(?:dp|gp\/product)\/([A-Z0-9]{10})/i;
 export function extractASIN(url) {
     if (!url || typeof url !== 'string') return null;
     const match = url.match(ASIN_PATTERN);
-    return match ? match[1] : null;
+    return match ? match[1].toUpperCase() : null;
 }
 
 /**
@@ -29,7 +29,10 @@ export function extractASIN(url) {
 export function getSelectedProducts(personResults) {
     return personResults.map(pr => {
         const product = pr.products[pr.currentIndex];
-        return { personne: pr.personne.nom, product, asin: extractASIN(product.link) };
+        const asin = typeof product?.asin === 'string' && /^[A-Z0-9]{10}$/.test(product.asin)
+            ? product.asin
+            : extractASIN(product?.link);
+        return { personne: pr.personne.nom, product, asin };
     }).filter(item => item.asin);
 }
 
@@ -40,6 +43,8 @@ export function computeCartTotal(selectedProducts) {
 
 /**
  * URL Amazon ajoutant tous les articles au panier en une fois (ASIN.n / Quantity.n + tag affilié).
+ * Le tag est passé deux fois : `tag` (paramètre des liens actuels) et `AssociateTag` (nom documenté
+ * historiquement pour cart/add.html) ; l'attribution réelle reste à confirmer dans Associates Central.
  * @param {Array<{asin: string}>} selectedProducts
  * @param {string} [tag=AFFILIATE_TAG]
  */
@@ -51,5 +56,6 @@ export function generateCartURL(selectedProducts, tag = AFFILIATE_TAG) {
         params.append(`Quantity.${num}`, '1');
     });
     params.append('tag', tag);
+    params.append('AssociateTag', tag);
     return `${CART_ADD_URL}?${params.toString()}`;
 }

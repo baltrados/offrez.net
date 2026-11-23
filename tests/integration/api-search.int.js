@@ -57,7 +57,7 @@ const RAW_PRODUCTS = [
     null,
     'not-an-object',
     {
-        // Note non conforme (injection) → rating null ; asin invalide → null
+        // Note non conforme (injection) → rating null ; asin invalide → lu dans le lien
         asin: 'bad"asin',
         product_title: 'Note piégée',
         product_price: '19,90 €',
@@ -106,7 +106,9 @@ describe('GET /api/search — succès et normalisation', () => {
         assert.equal(p2.rating, 4);
         assert.equal(p3.rating, null, 'note avec HTML → null');
         assert.equal(p3.reviews, null);
-        assert.equal(p3.asin, null);
+        // ASIN fourni invalide : repli sur l'ASIN du lien amazon.fr, lien canonique /dp/<ASIN>
+        assert.equal(p3.asin, 'B0TESTOK03');
+        assert.equal(p3.link, 'https://www.amazon.fr/dp/B0TESTOK03');
         assert.equal(p3.image, null);
         assert.ok(!r.text.includes('<img'));
         assert.ok(!r.text.includes('evil.com'));

@@ -18,7 +18,7 @@ import {
     MAX_PRODUCTS_PER_PERSON,
     TITLE_SIMILARITY_THRESHOLD,
     TITLE_MIN_WORD_LENGTH
-} from './settings.js?v=2026112401';
+} from './settings.js?v=2026112403';
 
 // ============================================
 // PROFIL & PAYLOAD
@@ -188,8 +188,10 @@ export function selectValidProducts(results, maxPrice) {
 
 const SCORE_WEIGHTS = Object.freeze({ budget: 0.35, rating: 0.35, popularity: 0.20, position: 0.10 });
 const PRIME_BONUS = 0.1;
-/** Note supposée quand elle est absente ou non numérique (le scoring n'utilise pas parseRating). */
-const DEFAULT_SCORING_RATING = 4;
+/** Note supposée quand elle est absente ou non numérique : prudente, un produit sans avis ne passe pas devant un produit bien noté. */
+const DEFAULT_SCORING_RATING = 3;
+/** Bonus « Meilleure vente » Amazon (signal de conversion). */
+const BEST_SELLER_BONUS = 0.05;
 
 /**
  * Score budget : favorise les produits qui utilisent 60-90 % du budget.
@@ -206,7 +208,8 @@ export function computeBudgetScore(budgetRatio) {
 }
 
 /**
- * Score pondéré d'un produit (budget 35 %, note 35 %, popularité 20 %, position 10 %, bonus Prime).
+ * Score pondéré d'un produit (budget 35 %, note 35 %, popularité 20 %, position 10 %, bonus Prime
+ * et « Meilleure vente »).
  * @param {any} item
  * @param {number} index - position dans les résultats Amazon (0 = premier)
  * @param {number} budget
@@ -222,12 +225,14 @@ export function scoreProduct(item, index, budget) {
     const ratingScore = rating / 5;
     const popularityScore = Math.min(1, Math.log10(reviewCount + 1) / 3);
     const primeBonus = isPrime ? PRIME_BONUS : 0;
+    const bestSellerBonus = item.is_best_seller === true ? BEST_SELLER_BONUS : 0;
 
     const score = (computeBudgetScore(budgetRatio) * SCORE_WEIGHTS.budget)
         + (ratingScore * SCORE_WEIGHTS.rating)
         + (popularityScore * SCORE_WEIGHTS.popularity)
         + (1 / (index + 1)) * SCORE_WEIGHTS.position
-        + primeBonus;
+        + primeBonus
+        + bestSellerBonus;
     return { score, budgetRatio };
 }
 

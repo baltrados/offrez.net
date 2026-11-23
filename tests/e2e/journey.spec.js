@@ -96,7 +96,12 @@ test('parcours utilisateur complet jusqu\'à la carte cadeau affiliée', async (
     const ctaUrl = new URL(/** @type {string} */ (href));
     expect(ctaUrl.searchParams.getAll('tag')).toEqual([AFFILIATE_TAG]);
     expect((href || '').match(/tag=/g)).toHaveLength(1);
-    expect(ctaUrl.searchParams.get('psc')).toBe('1');
+    // Lien canonique /dp/<ASIN> : paramètres de suivi et tag concurrent retirés
+    expect(href).toBe(`https://www.amazon.fr/dp/B0TESTE2E1?tag=${AFFILIATE_TAG}`);
+    // Confiance : nombre d'avis affiché ; plus de faux badge « économisés »
+    await expect(giftCard.locator('.gift-reviews')).toHaveText('250 avis');
+    await expect(giftCard.locator('.savings-badge')).toHaveCount(0);
+    await expect(giftCard.locator('.gift-title')).not.toContainText('...');
     await expect(cta).toHaveAttribute('target', '_blank');
     for (const token of ['nofollow', 'sponsored', 'noopener']) {
         await expect(cta).toHaveAttribute('rel', new RegExp(`\\b${token}\\b`));

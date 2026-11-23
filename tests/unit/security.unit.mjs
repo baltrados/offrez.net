@@ -14,6 +14,7 @@ const {
     sanitizeUrl,
     buildAffiliateUrl,
     buildAmazonSearchUrl,
+    buildProductUrl,
     truncateText,
     generateId
 } = await import('data:text/javascript;charset=utf-8,' + encodeURIComponent(source));
@@ -46,8 +47,12 @@ test('escapeHtml : null / undefined → chaîne vide, nombres convertis', () => 
 test('sanitizeUrl : URL Amazon https valide → href normalisé', () => {
     assert.equal(sanitizeUrl('https://www.amazon.fr/dp/B08XYZ1234'), 'https://www.amazon.fr/dp/B08XYZ1234');
     assert.equal(sanitizeUrl('https://AMAZON.FR/dp/B08XYZ1234'), 'https://amazon.fr/dp/B08XYZ1234');
-    assert.equal(sanitizeUrl('https://amzn.to/abc'), 'https://amzn.to/abc');
-    assert.equal(sanitizeUrl('https://smile.amazon.com/dp/X'), 'https://smile.amazon.com/dp/X');
+});
+
+test('sanitizeUrl : amazon.com et liens courts refusés (tag -21 non attribué hors amazon.fr)', () => {
+    for (const url of ['https://amzn.to/abc', 'https://smile.amazon.com/dp/X', 'https://www.amazon.com/dp/X']) {
+        assert.equal(sanitizeUrl(url), '#', url);
+    }
 });
 
 test('sanitizeUrl : protocoles et hôtes refusés → #', () => {
@@ -196,4 +201,25 @@ test('buildAmazonSearchUrl : la coupe à 100 caractères ne casse pas un emoji',
     const k = new URL(buildAmazonSearchUrl('a'.repeat(99) + '🎁🎁', 't')).searchParams.get('k');
     assert.equal(k, 'a'.repeat(99) + '🎁');
     assert.ok(!k.includes('�'));
+});
+
+// ---------- buildProductUrl ----------
+test('buildProductUrl : ASIN valide → URL canonique /dp/<ASIN> avec un seul tag', () => {
+    const url = buildProductUrl({ asin: 'B0ABCDEF12', link: 'https://www.amazon.fr/x/dp/B0ABCDEF12?psc=1&tag=concurrent-21' }, 'offreznet-21');
+    assert.equal(url, 'https://www.amazon.fr/dp/B0ABCDEF12?tag=offreznet-21');
+});
+
+test('buildProductUrl : ASIN absent ou invalide → lien amazon.fr taggé, sinon #', () => {
+    assert.equal(buildProductUrl({ asin: 'b0abc"><x', link: 'https://www.amazon.fr/dp/B0ABCDEF12?psc=1' }, 't'),
+        'https://www.amazon.fr/dp/B0ABCDEF12?psc=1&tag=t');
+    assert.equal(buildProductUrl({ link: 'https://www.amazon.com/dp/B0ABCDEF12' }, 't'), '#');
+    assert.equal(buildProductUrl({ link: 'javascript:alert(1)' }, 't'), '#');
+    assert.equal(buildProductUrl(null, 't'), '#');
+});
+
+test('sanitizeUrl : hôte exact amazon.fr, sans port ni identifiants', () => {
+    for (const url of ['https://smile.amazon.fr/dp/X', 'https://www.amazon.fr:8443/dp/X', 'https://user:pw@www.amazon.fr/dp/X']) {
+        assert.equal(sanitizeUrl(url), '#', url);
+    }
+    assert.equal(sanitizeUrl('https://amazon.fr/dp/X'), 'https://amazon.fr/dp/X');
 });

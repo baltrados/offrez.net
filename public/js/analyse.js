@@ -15,7 +15,7 @@
  * (voir documentation/14_SUIVI_CHANTIER_QUALITE.md §3).
  */
 
-import { callGemini, searchAmazon } from './api.js?v=2026112401';
+import { callGemini, searchAmazon } from './api.js?v=2026112403';
 import {
     normalizeProfile,
     buildAnalyzePayload,
@@ -24,11 +24,11 @@ import {
     dedupeProducts,
     buildSearchIdea,
     usableSuggestions
-} from './analyse/products.js?v=2026112401';
-import { takeAnalysisData, purgeAnalysisData } from './analyse/session-data.js?v=2026112401';
-import { updateProgress, hideStatusIndicator, showMissingDataState, showFatalErrorOverlay } from './analyse/ui.js?v=2026112401';
-import { renderResults } from './analyse/render.js?v=2026112401';
-import { initPurchaseTracking } from './analyse/purchase.js?v=2026112401';
+} from './analyse/products.js?v=2026112403';
+import { takeAnalysisData, purgeAnalysisData } from './analyse/session-data.js?v=2026112403';
+import { updateProgress, hideStatusIndicator, showMissingDataState, showFatalErrorOverlay } from './analyse/ui.js?v=2026112403';
+import { renderResults } from './analyse/render.js?v=2026112403';
+import { initPurchaseTracking } from './analyse/purchase.js?v=2026112403';
 import {
     GEMINI_MAX_ATTEMPTS,
     GEMINI_RETRY_DELAY_MS,
@@ -39,13 +39,13 @@ import {
     PROGRESS_START,
     PROGRESS_PROFILES_BASE,
     PROGRESS_PROFILES_SPAN
-} from './analyse/settings.js?v=2026112401';
+} from './analyse/settings.js?v=2026112403';
 
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 /** Résultat affichable pour une personne. */
 function personResult(personne, products) {
-    return { personne, products, currentIndex: 0, viewedIndices: new Set([0]) };
+    return { personne, products, currentIndex: 0 };
 }
 
 /**
@@ -133,6 +133,16 @@ async function analyseProfile(personne, contexte, profileProgress, searchState) 
     }
 }
 
+/**
+ * Sur mobile (une colonne), les résultats sont sous le journal d'analyse : on les amène à l'écran.
+ * Défilement instantané si l'utilisateur a demandé moins d'animations.
+ */
+function scrollToResultsOnMobile() {
+    if (!window.matchMedia?.('(max-width: 900px)').matches) return;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    document.getElementById('singleResult')?.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' });
+}
+
 async function lancerAnalyse() {
     const data = takeAnalysisData();
     if (!data) {
@@ -176,6 +186,7 @@ async function lancerAnalyse() {
     updateProgress(100, 'Analyse terminée !');
 
     renderResults(personResults, apiFailures, limitReached);
+    scrollToResultsOnMobile();
     // RGPD : profils purgés une fois l'analyse terminée ; copie de session gardée seulement si
     // l'échec est technique (« Réessayer » recharge la page et relance l'analyse).
     // Limite atteinte : rien à relancer, la copie de session n'est pas conservée.

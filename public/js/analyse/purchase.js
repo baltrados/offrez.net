@@ -5,7 +5,7 @@
  * avec les bloqueurs de popups) : aucun preventDefault ni window.open différé ici.
  */
 
-import { SHARE_FEEDBACK_MS } from './settings.js?v=2026112401';
+import { SHARE_FEEDBACK_MS } from './settings.js?v=2026112403';
 
 const SHARE_URL = 'https://offrez.net';
 
@@ -39,11 +39,52 @@ function closePurchaseModal() {
     lastTrigger = null;
 }
 
+/** Carte cadeau suivante (personne suivante) après celle du lien cliqué, ou null. */
+function nextGiftCard(trigger) {
+    const card = trigger?.closest('.gift-card');
+    let next = card?.nextElementSibling;
+    while (next && !next.classList.contains('gift-card')) next = next.nextElementSibling;
+    return next || null;
+}
+
+/**
+ * Actions de relance dans la modale : « Ajouter tous les cadeaux au panier » (au moins 2 produits dans le
+ * panier groupé) et « Voir le cadeau suivant » (s'il reste une personne). Masquées sinon.
+ */
+function bindFollowUpActions(trigger) {
+    const cartAction = document.getElementById('purchaseModalCart');
+    const nextAction = document.getElementById('purchaseModalNext');
+
+    if (cartAction) {
+        const cartLink = document.querySelector('#cartContainer .btn-cart');
+        const count = Number(cartLink?.dataset.count) || 0;
+        const show = count >= 2 && cartLink.getAttribute('href') !== '#';
+        if (show) cartAction.setAttribute('href', cartLink.getAttribute('href'));
+        cartAction.style.display = show ? '' : 'none';
+    }
+
+    if (nextAction) {
+        const next = nextGiftCard(trigger);
+        nextAction.style.display = next ? '' : 'none';
+        nextAction.onclick = () => {
+            const nextCta = next?.querySelector('.btn-amazon-cta');
+            lastTrigger = nextCta || lastTrigger; // le focus ira sur le bouton du cadeau suivant
+            closePurchaseModal();
+            next?.scrollIntoView({ block: 'center', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+        };
+    }
+}
+
+function prefersReducedMotion() {
+    return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
+}
+
 /**
  * Modale de remerciement affichée pendant que le lien Amazon s'ouvre dans un nouvel onglet.
  * @param {string} recipientName
+ * @param {Element} trigger - lien cliqué
  */
-function showPurchaseModal(recipientName) {
+function showPurchaseModal(recipientName, trigger) {
     const modal = document.getElementById('purchaseModal');
     if (!modal) return;
 
@@ -52,6 +93,7 @@ function showPurchaseModal(recipientName) {
     const shareBtn = document.getElementById('shareButton');
 
     if (recipientNameEl) recipientNameEl.textContent = recipientName;
+    bindFollowUpActions(trigger);
     modal.style.display = 'flex';
 
     if (closeBtn) {
@@ -83,7 +125,7 @@ export function initPurchaseTracking() {
             }
             // Pas de preventDefault : la navigation native (target="_blank") ouvre Amazon.
             lastTrigger = btn;
-            showPurchaseModal(btn.dataset.recipient || 'cette personne');
+            showPurchaseModal(btn.dataset.recipient || 'cette personne', btn);
         }
     });
 }
