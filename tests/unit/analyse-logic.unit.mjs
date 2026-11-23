@@ -30,10 +30,10 @@ globalThis.sessionStorage = new MemoryStorage();
 
 const JS = new URL('../../public/js/', import.meta.url);
 // Mêmes URL (avec ?v=) que celles importées par analyse.js : une seule instance par module.
-const products = await import(new URL('analyse/products.js?v=2026112405', JS).href);
-const cart = await import(new URL('analyse/cart.js?v=2026112405', JS).href);
-const session = await import(new URL('analyse/session-data.js?v=2026112405', JS).href);
-const settings = await import(new URL('analyse/settings.js?v=2026112405', JS).href);
+const products = await import(new URL('analyse/products.js?v=2026112406', JS).href);
+const cart = await import(new URL('analyse/cart.js?v=2026112406', JS).href);
+const session = await import(new URL('analyse/session-data.js?v=2026112406', JS).href);
+const settings = await import(new URL('analyse/settings.js?v=2026112406', JS).href);
 
 const {
     normalizeProfile, buildAnalyzePayload, computeSearchPriceRange, bucketMaxPrice, buildSearchIdea, usableSuggestions,
@@ -52,7 +52,7 @@ test('les modules purs se chargent sans document/window', () => {
     assert.equal(typeof globalThis.document, 'undefined');
     assert.equal(typeof globalThis.window, 'undefined');
     assert.equal(typeof products.selectValidProducts, 'function');
-    assert.equal(settings.AFFILIATE_TAG, 'offreznet-21');
+    assert.equal(settings.AFFILIATE_TAG, 'offreznet04-21');
 });
 
 // ============================================================================
@@ -401,12 +401,12 @@ describe('panier', () => {
         assert.equal(url.origin + url.pathname, 'https://www.amazon.fr/gp/aws/cart/add.html');
         assert.deepEqual([...url.searchParams], [
             ['ASIN.1', 'AAAAAAAAAA'], ['Quantity.1', '1'], ['ASIN.2', 'BBBBBBBBBB'], ['Quantity.2', '1'],
-            ['tag', 'offreznet-21'], ['AssociateTag', 'offreznet-21']
+            ['tag', 'offreznet04-21'], ['AssociateTag', 'offreznet04-21']
         ]);
     });
     test('generateCartURL : valeurs encodées (pas d\'injection de paramètre)', () => {
         const url = new URL(cart.generateCartURL([{ asin: 'A&tag=evil' }]));
-        assert.deepEqual(url.searchParams.getAll('tag'), ['offreznet-21']);
+        assert.deepEqual(url.searchParams.getAll('tag'), ['offreznet04-21']);
         assert.equal(url.searchParams.get('ASIN.1'), 'A&tag=evil');
     });
 });
@@ -592,8 +592,8 @@ describe('non-régression différentielle vs implémentation d\'origine', () => 
 // ============================================================================
 // Lot 4 : résultats conservés dans l'onglet, rappel calendrier, partage
 // ============================================================================
-const store = await import(new URL('analyse/results-store.js?v=2026112405', JS).href);
-const retention = await import(new URL('analyse/retention.js?v=2026112405', JS).href);
+const store = await import(new URL('analyse/results-store.js?v=2026112406', JS).href);
+const retention = await import(new URL('analyse/retention.js?v=2026112406', JS).href);
 
 describe("results-store (sessionStorage de l'onglet)", () => {
     const NOW = Date.UTC(2026, 10, 23, 12);
@@ -731,8 +731,8 @@ describe('partage de la liste', () => {
             { personne: { nom: 'Marc' }, currentIndex: 1, products: [{ title: 'X', asin: 'B0AAAAAAA1' }, { kind: 'search', term: 'gourde isotherme' }] }
         ]);
         assert.ok(text.startsWith('Mes idées cadeaux trouvées avec OFFREZ :'));
-        assert.ok(text.includes('🎁 Julie : Sac cabine\nhttps://www.amazon.fr/dp/B0PRIVACY1?tag=offreznet-21'));
-        assert.ok(text.includes('🎁 Marc : Idée : gourde isotherme\nhttps://www.amazon.fr/s?k=gourde+isotherme&tag=offreznet-21'));
+        assert.ok(text.includes('🎁 Julie : Sac cabine\nhttps://www.amazon.fr/dp/B0PRIVACY1?tag=offreznet04-21'));
+        assert.ok(text.includes('🎁 Marc : Idée : gourde isotherme\nhttps://www.amazon.fr/s?k=gourde+isotherme&tag=offreznet04-21'));
     });
     test('élément sans lien valide ignoré ; rien à partager → chaîne vide', () => {
         assert.equal(retention.buildShareText([{ personne: { nom: 'A' }, currentIndex: 0, products: [{ title: 'x', link: 'javascript:alert(1)' }] }]), '');

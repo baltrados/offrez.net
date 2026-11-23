@@ -19,7 +19,7 @@ const {
     generateId
 } = await import('data:text/javascript;charset=utf-8,' + encodeURIComponent(source));
 
-const TAG = 'offreznet-21';
+const TAG = 'offreznet04-21';
 
 // ---------- escapeHtml ----------
 test('escapeHtml : balise script neutralisée', () => {
@@ -95,7 +95,7 @@ test('sanitizeUrl : chevrons dans le chemin encodés', () => {
 // ---------- buildAffiliateUrl ----------
 test('buildAffiliateUrl : ajoute le tag', () => {
     assert.equal(buildAffiliateUrl('https://www.amazon.fr/dp/B08XYZ1234', TAG),
-        'https://www.amazon.fr/dp/B08XYZ1234?tag=offreznet-21');
+        'https://www.amazon.fr/dp/B08XYZ1234?tag=offreznet04-21');
 });
 
 test('buildAffiliateUrl : conserve les autres paramètres', () => {
@@ -114,7 +114,7 @@ test('buildAffiliateUrl : remplace un tag existant (un seul tag au final)', () =
 
 test('buildAffiliateUrl : tag placé avant le #fragment', () => {
     const out = buildAffiliateUrl('https://www.amazon.fr/dp/X#avis', TAG);
-    assert.equal(out, 'https://www.amazon.fr/dp/X?tag=offreznet-21#avis');
+    assert.equal(out, 'https://www.amazon.fr/dp/X?tag=offreznet04-21#avis');
 });
 
 test('buildAffiliateUrl : tag malveillant dans l\'URL source neutralisé', () => {
@@ -175,20 +175,20 @@ test('generateId : préfixe OFFREZ_ et identifiants distincts', () => {
 
 // ---------- buildAmazonSearchUrl ----------
 test('buildAmazonSearchUrl : domaine fixe amazon.fr, terme encodé, tag ajouté', () => {
-    const u = new URL(buildAmazonSearchUrl('gourde isotherme', 'offreznet-21'));
+    const u = new URL(buildAmazonSearchUrl('gourde isotherme', 'offreznet04-21'));
     assert.equal(u.origin, 'https://www.amazon.fr');
     assert.equal(u.pathname, '/s');
     assert.equal(u.searchParams.get('k'), 'gourde isotherme');
-    assert.deepEqual(u.searchParams.getAll('tag'), ['offreznet-21']);
+    assert.deepEqual(u.searchParams.getAll('tag'), ['offreznet04-21']);
 });
 
 test("buildAmazonSearchUrl : caractères spéciaux et tentatives d'injection restent dans k", () => {
     const term = 'café & thé"><script>alert(1)</script>&tag=concurrent-21';
-    const u = new URL(buildAmazonSearchUrl(term, 'offreznet-21'));
+    const u = new URL(buildAmazonSearchUrl(term, 'offreznet04-21'));
     assert.equal(u.hostname, 'www.amazon.fr');
     assert.equal(u.searchParams.get('k'), term);
-    assert.deepEqual(u.searchParams.getAll('tag'), ['offreznet-21']);
-    assert.ok(!buildAmazonSearchUrl(term, 'offreznet-21').includes('<'));
+    assert.deepEqual(u.searchParams.getAll('tag'), ['offreznet04-21']);
+    assert.ok(!buildAmazonSearchUrl(term, 'offreznet04-21').includes('<'));
 });
 
 test('buildAmazonSearchUrl : espaces réduits, longueur bornée, terme vide → #', () => {
@@ -205,8 +205,8 @@ test('buildAmazonSearchUrl : la coupe à 100 caractères ne casse pas un emoji',
 
 // ---------- buildProductUrl ----------
 test('buildProductUrl : ASIN valide → URL canonique /dp/<ASIN> avec un seul tag', () => {
-    const url = buildProductUrl({ asin: 'B0ABCDEF12', link: 'https://www.amazon.fr/x/dp/B0ABCDEF12?psc=1&tag=concurrent-21' }, 'offreznet-21');
-    assert.equal(url, 'https://www.amazon.fr/dp/B0ABCDEF12?tag=offreznet-21');
+    const url = buildProductUrl({ asin: 'B0ABCDEF12', link: 'https://www.amazon.fr/x/dp/B0ABCDEF12?psc=1&tag=concurrent-21' }, 'offreznet04-21');
+    assert.equal(url, 'https://www.amazon.fr/dp/B0ABCDEF12?tag=offreznet04-21');
 });
 
 test('buildProductUrl : ASIN absent ou invalide → lien amazon.fr taggé, sinon #', () => {

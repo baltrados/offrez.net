@@ -6,8 +6,8 @@
  * Logique pure exportée (testée sous Node) ; renderRetentionTools gère le DOM.
  */
 
-import { escapeHtml, buildProductUrl, buildAmazonSearchUrl } from '../security.js?v=2026112405';
-import { AFFILIATE_TAG, GIFT_ADDONS, REMINDER_ALERT_DAYS } from './settings.js?v=2026112405';
+import { escapeHtml, buildProductUrl, buildAmazonSearchUrl } from '../security.js?v=2026112406';
+import { AFFILIATE_TAG, GIFT_ADDONS, REMINDER_ALERT_DAYS } from './settings.js?v=2026112406';
 
 const SITE = 'https://offrez.net';
 const FEEDBACK_MS = 6000; // assez long pour lire le message (WCAG 2.2.1)

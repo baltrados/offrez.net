@@ -2,7 +2,7 @@
 // Fixtures E2E partagées : aucune requête ne sort de 127.0.0.1:3100.
 const base = require('@playwright/test');
 
-const AFFILIATE_TAG = 'offreznet-21';
+const AFFILIATE_TAG = 'offreznet04-21';
 
 // PNG 1x1 transparent
 const PIXEL_PNG = Buffer.from(
