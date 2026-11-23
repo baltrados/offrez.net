@@ -1,21 +1,19 @@
 /**
  * ANALYSE/RENDER.JS - Affichage des résultats (cartes cadeaux, navigation, panier groupé)
  * ======================================================================================
- * Toute donnée externe (IA, Amazon, profil) passe par escapeHtml ; toute URL par buildAffiliateUrl
- * (produits) ou buildAmazonSearchUrl (idées affichées en lien de recherche).
+ * Toute donnée externe (IA, Amazon, profil) passe par escapeHtml ; toute URL par buildProductUrl
+ * (produits : /dp/<ASIN> canonique) ou buildAmazonSearchUrl (idées affichées en lien de recherche).
  */
 
-import { escapeHtml, buildAffiliateUrl, buildAmazonSearchUrl } from '../security.js?v=2026112401';
-import { getSelectedProducts, computeCartTotal, generateCartURL } from './cart.js?v=2026112401';
-import { buildAnalysisFailedState, buildLimitReachedState } from './ui.js?v=2026112401';
+import { escapeHtml, buildProductUrl, buildAmazonSearchUrl } from '../security.js?v=2026112403';
+import { getSelectedProducts, computeCartTotal, generateCartURL } from './cart.js?v=2026112403';
+import { buildAnalysisFailedState, buildLimitReachedState } from './ui.js?v=2026112403';
 import {
     AFFILIATE_TAG,
     TITLE_MAX_CHARS,
     REVEAL_START_DELAY_MS,
-    REVEAL_STAGGER_MS,
-    DISCOVERY_DELAY_MIN_MS,
-    DISCOVERY_DELAY_JITTER_MS
-} from './settings.js?v=2026112401';
+    REVEAL_STAGGER_MS
+} from './settings.js?v=2026112403';
 
 const PLACEHOLDER_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect fill='%231e293b' width='200' height='200'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%2394a3b8' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E";
 
@@ -23,7 +21,11 @@ const AFFILIATION_DISCLAIMER = `<div class="affiliation-disclaimer" style="text-
   <i class="fas fa-info-circle"></i> OFFREZ est soutenu par ses utilisateurs. Si vous finalisez un achat via les boutons Amazon ci-dessous, nous pouvons percevoir une commission sans frais supplémentaires pour vous.
 </div>`;
 
-const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+/** Nombre d'avis au format français (1 234), ou '' s'il est absent. */
+function formatReviewCount(reviews) {
+    const n = Number(reviews);
+    return Number.isInteger(n) && n > 0 ? n.toLocaleString('fr-FR') : '';
+}
 
 /** Navigation ‹ › entre les suggestions d'une personne (rien s'il n'y en a qu'une). */
 function suggestionNavHtml(products, currentIndex, personIndex) {
@@ -68,10 +70,6 @@ function searchIdeaCardHtml(pr, personIndex) {
                         </a>
                         ${suggestionNavHtml(products, currentIndex, personIndex)}
                     </div>
-                    <div class="card-loading-overlay" style="display: none;">
-                        <div class="loading-spinner"></div>
-                        <span>Analyse en cours...</span>
-                    </div>
                 </div>
             `;
 }
@@ -93,18 +91,18 @@ function giftCardHtml(pr, personIndex) {
 
     const priceValue = Number(product.price?.value);
     const priceRaw = escapeHtml(product.price?.raw || `${priceValue}€`);
-    // Ajout du tag affilié + sécurisation URL (https + domaine Amazon) ; échappée à l'interpolation
-    const link = buildAffiliateUrl(product.link, AFFILIATE_TAG);
+    // Lien canonique amazon.fr/dp/<ASIN> + tag affilié (sinon lien amazon.fr vérifié, ou '#') ; échappé à l'interpolation
+    const link = buildProductUrl(product, AFFILIATE_TAG);
 
-    const titleShort = escapeHtml((product.title || 'Produit sans titre').substring(0, TITLE_MAX_CHARS));
+    const fullTitle = product.title || 'Produit sans titre';
+    const titleShort = escapeHtml(fullTitle.length > TITLE_MAX_CHARS ? `${fullTitle.substring(0, TITLE_MAX_CHARS)}…` : fullTitle);
     const imageUrl = escapeHtml(product.image || PLACEHOLDER_IMAGE);
     const displayReason = escapeHtml(product.reason || '');
     const isPrime = product.is_prime || false;
     const safePersonName = escapeHtml(personne.nom);
 
-    // Économies affichées (budget - prix)
-    const savings = Math.round(personne.budget - priceValue);
-    const savingsDisplay = savings > 0 ? `<span class="savings-badge">💰 ${savings}€ économisés</span>` : '';
+    const reviewCount = formatReviewCount(product.reviews);
+    const isBestSeller = product.is_best_seller === true;
 
     return `
                 <div class="gift-card" data-person-index="${personIndex}">
@@ -115,10 +113,11 @@ function giftCardHtml(pr, personIndex) {
                     <div class="gift-content">
                         <div class="gift-owner">🎁 ${safePersonName}</div>
                         ${isPrime ? '<span class="prime-mini">✓ Prime</span>' : ''}
-                        <h4 class="gift-title">${titleShort}...</h4>
+                        ${isBestSeller ? '<span class="best-seller-mini">🏆 Meilleure vente</span>' : ''}
+                        <h4 class="gift-title">${titleShort}</h4>
                         <div class="gift-price-row">
                             <span class="gift-price">${priceRaw}</span>
-                            ${savingsDisplay}
+                            ${reviewCount ? `<span class="gift-reviews">${escapeHtml(reviewCount)} avis</span>` : ''}
                         </div>
                         <p class="gift-reason">${displayReason}</p>
                         <a href="${escapeHtml(link)}" target="_blank" rel="nofollow sponsored noopener" class="btn-amazon-cta js-track-click js-purchase-btn"
@@ -131,11 +130,6 @@ function giftCardHtml(pr, personIndex) {
                             <i class="fas fa-external-link-alt"></i>
                         </a>
                         ${suggestionNavHtml(products, currentIndex, personIndex)}
-                    </div>
-                    <!-- Loading overlay pour effet visuel au changement -->
-                    <div class="card-loading-overlay" style="display: none;">
-                        <div class="loading-spinner"></div>
-                        <span>Analyse en cours...</span>
                     </div>
                 </div>
             `;
@@ -150,36 +144,24 @@ function revealCards() {
     }, REVEAL_START_DELAY_MS);
 }
 
-/**
- * Navigation ‹ › entre les suggestions d'une personne. Une suggestion jamais vue affiche
- * un court effet de chargement avant d'être révélée.
- */
+/** Navigation ‹ › entre les suggestions d'une personne (instantanée : les données sont déjà chargées). */
 function bindSuggestionNavigation(personResults) {
     document.querySelectorAll('.btn-nav-suggestion').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
+        btn.addEventListener('click', (e) => {
             const personIndex = parseInt(e.currentTarget.dataset.person);
             const direction = e.currentTarget.dataset.direction;
             const person = personResults[personIndex];
-            const card = document.querySelector(`.gift-card[data-person-index="${personIndex}"]`);
-            const loadingOverlay = card?.querySelector('.card-loading-overlay');
 
-            let newIndex = person.currentIndex;
             if (direction === 'next' && person.currentIndex < person.products.length - 1) {
-                newIndex = person.currentIndex + 1;
+                person.currentIndex += 1;
             } else if (direction === 'prev' && person.currentIndex > 0) {
-                newIndex = person.currentIndex - 1;
+                person.currentIndex -= 1;
             }
-
-            // Effet de découverte réservé aux produits : une idée en lien de recherche n'a rien à charger
-            const isSearchIdea = person.products[newIndex]?.kind === 'search';
-            if (!person.viewedIndices.has(newIndex) && loadingOverlay && !isSearchIdea) {
-                loadingOverlay.style.display = 'flex';
-                await wait(DISCOVERY_DELAY_MIN_MS + Math.random() * DISCOVERY_DELAY_JITTER_MS);
-                person.viewedIndices.add(newIndex);
-            }
-
-            person.currentIndex = newIndex;
             renderResults(personResults, 0);
+            // Le focus suit le bouton utilisé (la carte vient d'être redessinée) ; en bout de carrousel ce bouton
+            // est désactivé : le focus passe à l'autre bouton plutôt que de retomber sur <body>.
+            const nav = document.querySelector(`.gift-card[data-person-index="${personIndex}"] .suggestion-nav`);
+            (nav?.querySelector(`[data-direction="${direction}"]:not([disabled])`) || nav?.querySelector('button:not([disabled])'))?.focus();
         });
     });
 }
@@ -205,7 +187,7 @@ export function updateCartButton(personResults) {
                     <span class="cart-count">${selectedProducts.length} cadeau${plural ? 'x' : ''} sélectionné${plural ? 's' : ''}</span>
                     <span class="cart-total">Total: ${totalPrice.toFixed(2)}€</span>
                 </div>
-                <a href="${escapeHtml(cartURL)}" target="_blank" rel="nofollow sponsored noopener" class="btn btn-cart">
+                <a href="${escapeHtml(cartURL)}" target="_blank" rel="nofollow sponsored noopener" class="btn btn-cart" data-count="${selectedProducts.length}">
                     <i class="fas fa-shopping-cart"></i> Ajouter tout au panier Amazon
                 </a>
             </div>
@@ -215,7 +197,7 @@ export function updateCartButton(personResults) {
 
 /**
  * Affiche tous les résultats (une carte par personne), ou l'état vide / d'erreur.
- * @param {Array<{personne: any, products: any[], currentIndex: number, viewedIndices: Set<number>}>} personResults
+ * @param {Array<{personne: any, products: any[], currentIndex: number}>} personResults
  * @param {number} apiFailures - profils dont l'analyse IA a échoué (distingue panne / aucun produit)
  * @param {boolean} [limitReached] - le serveur a répondu 429 / 503 (limite atteinte : pas de « Réessayer »)
  */

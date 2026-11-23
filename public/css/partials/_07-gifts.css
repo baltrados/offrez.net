@@ -91,6 +91,16 @@
     margin-left: 0.5rem;
 }
 
+.best-seller-mini {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-left: 0.5rem;
+}
+
 /* Gift title - version clamp (garder L1782) */
 .gift-title {
     font-size: 0.95rem;
@@ -141,17 +151,11 @@
     margin-bottom: 0.5rem;
 }
 
-/* Savings badge (version gradient, garder L3497) */
-.savings-badge {
-    display: inline-block;
-    background: linear-gradient(135deg, #10b981, #059669);
-    color: white;
-    font-size: 0.7rem;
-    font-weight: 600;
-    padding: 0.2rem 0.5rem;
-    border-radius: 4px;
+/* Nombre d'avis Amazon (ligne du prix) */
+.gift-reviews {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
     margin-left: 0.5rem;
-    text-transform: uppercase;
 }
 
 /* Single result container */

@@ -31,38 +31,6 @@
     animation: pulse 2s infinite;
 }
 
-/* Loading overlay */
-.card-loading-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(15, 23, 42, 0.95);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 1rem;
-    z-index: 10;
-    border-radius: 16px;
-}
-
-.card-loading-overlay span {
-    color: #a5b4fc;
-    font-size: 0.9rem;
-    font-weight: 500;
-}
-
-.loading-spinner {
-    width: 40px;
-    height: 40px;
-    border: 3px solid rgba(99, 102, 241, 0.2);
-    border-top-color: #6366f1;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-}
-
 /* Spinner legacy */
 .spinner {
     width: 50px;
@@ -194,6 +162,10 @@
 
 .purchase-confirmation-modal .modal-actions {
     margin: 1.5rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: stretch;
 }
 
 .purchase-confirmation-modal .share-prompt {

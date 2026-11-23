@@ -19,14 +19,15 @@ export function escapeHtml(str) {
         .replace(/'/g, '&#039;');
 }
 
-// Domaines Amazon autorisés (sous-domaines acceptés via endsWith('.' + domaine))
+// Hôtes Amazon autorisés (correspondance exacte) : amazon.fr seulement, le tag partenaire (-21) n'étant
+// attribué que sur amazon.fr (amazon.com et amzn.to le perdraient).
 const ALLOWED_URL_DOMAINS = [
     'amazon.fr',
-    'amazon.com',
-    'www.amazon.fr',
-    'www.amazon.com',
-    'amzn.to'
+    'www.amazon.fr'
 ];
+
+/** ASIN Amazon : 10 caractères alphanumériques majuscules. */
+const ASIN_PATTERN = /^[A-Z0-9]{10}$/;
 
 /**
  * Parse une URL et la retourne seulement si elle est en https et sur un domaine autorisé.
@@ -37,12 +38,8 @@ function parseAllowedUrl(url) {
     if (!url || typeof url !== 'string') return null;
     try {
         const parsed = new URL(url);
-        if (parsed.protocol !== 'https:') return null;
-        const hostname = parsed.hostname.toLowerCase();
-        const allowed = ALLOWED_URL_DOMAINS.some(domain =>
-            hostname === domain || hostname.endsWith('.' + domain)
-        );
-        return allowed ? parsed : null;
+        if (parsed.protocol !== 'https:' || parsed.username || parsed.password || parsed.port !== '') return null;
+        return ALLOWED_URL_DOMAINS.includes(parsed.hostname.toLowerCase()) ? parsed : null;
     } catch (e) {
         return null; // URL invalide
     }
@@ -69,6 +66,23 @@ export function buildAffiliateUrl(url, tag) {
     if (!parsed) return '#';
     parsed.searchParams.set('tag', String(tag));
     return parsed.href;
+}
+
+/**
+ * Lien affilié d'un produit : URL canonique https://www.amazon.fr/dp/<ASIN>?tag=<tag> si l'ASIN est valide
+ * (sans paramètres de suivi), sinon le lien fourni passé par buildAffiliateUrl (amazon.fr, ou '#').
+ * @param {{asin?: unknown, link?: unknown}} product
+ * @param {string} tag
+ * @returns {string}
+ */
+export function buildProductUrl(product, tag) {
+    const asin = product?.asin;
+    if (typeof asin === 'string' && ASIN_PATTERN.test(asin)) {
+        const url = new URL(`https://www.amazon.fr/dp/${asin}`);
+        url.searchParams.set('tag', String(tag));
+        return url.href;
+    }
+    return buildAffiliateUrl(/** @type {string} */ (product?.link), tag);
 }
 
 /** Longueur maximale du terme placé dans un lien de recherche Amazon. */
