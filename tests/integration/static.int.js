@@ -173,7 +173,7 @@ describe('en-têtes Cache-Control des fichiers statiques', () => {
         ['/sw.js?v=1', 'no-cache', /javascript/],
         ['/manifest.json', 'no-cache', /application\/json/],
         ['/js/config.js', 'no-cache', /javascript/],
-        ['/js/analyse.js?v=2026112404', IMMUTABLE, /javascript/],
+        ['/js/analyse.js?v=2026112405', IMMUTABLE, /javascript/],
         ['/js/api.js?v=', 'no-cache', /javascript/],
         ['/js/api.js?v[]=x', 'no-cache', /javascript/],
         ['/js/api.js?v=%3Cscript%3E', 'no-cache', /javascript/],
@@ -222,7 +222,7 @@ describe('PWA : service worker, manifest, en-têtes des pages', () => {
         assert.match(swSource, /const RUNTIME_CACHE = 'OFFREZ-v17-runtime';/);
         assert.match(swSource, /key !== CACHE_NAME && key !== RUNTIME_CACHE[\s\S]*?caches\.delete\(key\)/);
         const tokens = new Set([...swSource.matchAll(/\.js\?v=(\d+)/g)].map(m => m[1]));
-        assert.deepEqual([...tokens], ['2026112404'], 'un seul jeton ?v= pour les modules JS précachés');
+        assert.deepEqual([...tokens], ['2026112405'], 'un seul jeton ?v= pour les modules JS précachés');
     });
 
     test('chaque URL précachée par sw.js répond 200 (cache.addAll échoue sinon)', async () => {
