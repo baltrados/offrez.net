@@ -168,7 +168,10 @@ export async function searchAmazon(term, budget, minPrice = 10) {
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
             apiError('Amazon RapidAPI non-OK', errorData);
-            throw new Error(errorData.error || `Échec API Recherche: ${response.status} ${response.statusText}`);
+            // Statut HTTP joint à l'erreur : 429 / 503 = quota ou plafond atteint (voir isLimitReachedError)
+            const error = new Error(errorData.error || `Échec API Recherche: ${response.status} ${response.statusText}`);
+            error.status = response.status;
+            throw error;
         }
 
         const data = await response.json();

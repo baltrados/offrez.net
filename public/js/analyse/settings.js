@@ -37,18 +37,23 @@ export function isLimitReachedError(error) {
 export const THINK_DELAY_MS = 800;
 
 // --- Recherche Amazon (via /api/search) -------------------------------------
-/** Nombre maximal de suggestions IA cherchées sur Amazon par profil (coût API). */
-export const MAX_AMAZON_SEARCHES = 2;
-/** Prix minimum demandé = budget × ce ratio (arrondi à l'entier inférieur). */
+/**
+ * Nombre maximal de recherches RapidAPI par profil (coût API : le plan Basic n'offre que 100 requêtes
+ * par mois). Les autres idées de l'IA deviennent des liens de recherche Amazon taggés, sans appel API.
+ */
+export const MAX_AMAZON_SEARCHES = 1;
+/**
+ * Paliers de prix maximum (€, croissants) : la recherche utilise le plus grand palier ≤ budget, pour
+ * que des budgets voisins (47 € et 49 €) partagent la même clé de cache serveur.
+ */
+export const PRICE_BUCKETS = Object.freeze([
+    10, 15, 20, 25, 30, 35, 40, 45, 50, 60, 70, 80, 90, 100, 120, 150, 175, 200, 250, 300, 350, 400,
+    500, 600, 750, 1000, 1250, 1500, 2000, 2500, 3000, 4000, 5000
+]);
+/** Prix minimum demandé = palier maximum × ce ratio (arrondi à l'entier inférieur). */
 export const MIN_PRICE_RATIO = 0.20;
-/** Si le prix minimum atteint budget × ce ratio, il est ramené à 0 (RapidAPI refuse min ≈ max). */
+/** Si le prix minimum atteint max × ce ratio, il est ramené à 0 (RapidAPI refuse min ≈ max). */
 export const MIN_PRICE_COLLAPSE_RATIO = 0.9;
-/** Prix minimum de la recherche de secours = budget × ce ratio. */
-export const FALLBACK_MIN_PRICE_RATIO = 0.10;
-/** Nombre de termes génériques essayés par la recherche de secours. */
-export const FALLBACK_MAX_TERMS = 1;
-/** Score attribué au produit de secours. */
-export const FALLBACK_PRODUCT_SCORE = 0.5;
 
 // --- Filtrage qualité des produits (3 niveaux puis repli) ---------------------
 /** Prix strictement supérieur à ce seuil (€) pour écarter les prix aberrants (0, 1 €). */

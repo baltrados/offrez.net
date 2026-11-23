@@ -2,8 +2,10 @@
  * ANALYSE.JS - Orchestrateur de l'étape 3 (point d'entrée de analyse.html)
  * ========================================================================
  * 1. Récupère les profils de l'étape 2 (et les retire du localStorage, voir analyse/session-data.js).
- * 2. Pour chaque profil : suggestions IA (serveur → Gemini), recherches Amazon (serveur → RapidAPI),
- *    filtrage / scoring / déduplication (analyse/products.js), recherche de secours si besoin.
+ * 2. Pour chaque profil : suggestions IA (serveur → Gemini), une recherche Amazon (serveur → RapidAPI)
+ *    pour la première idée, filtrage / scoring / déduplication (analyse/products.js). Les autres idées,
+ *    et toute idée sans produit (aucun résultat, erreur, quota atteint), deviennent des liens de
+ *    recherche Amazon taggés : aucun appel API supplémentaire.
  * 3. Affiche les résultats (analyse/render.js) et le suivi des clics d'achat.
  *
  * Modules : analyse/settings.js (constantes), products.js et cart.js (logique pure, testée sous Node),
@@ -13,21 +15,20 @@
  * (voir documentation/14_SUIVI_CHANTIER_QUALITE.md §3).
  */
 
-import { callGemini, searchAmazon } from './api.js?v=2026112301';
+import { callGemini, searchAmazon } from './api.js?v=2026112401';
 import {
     normalizeProfile,
     buildAnalyzePayload,
     computeSearchPriceRange,
-    computeFallbackMinPrice,
     pickBestProduct,
     dedupeProducts,
-    buildFallbackTerms,
-    filterFallbackProducts
-} from './analyse/products.js?v=2026112301';
-import { takeAnalysisData, purgeAnalysisData } from './analyse/session-data.js?v=2026112301';
-import { updateProgress, hideStatusIndicator, showMissingDataState, showFatalErrorOverlay } from './analyse/ui.js?v=2026112301';
-import { renderResults } from './analyse/render.js?v=2026112301';
-import { initPurchaseTracking } from './analyse/purchase.js?v=2026112301';
+    buildSearchIdea,
+    usableSuggestions
+} from './analyse/products.js?v=2026112401';
+import { takeAnalysisData, purgeAnalysisData } from './analyse/session-data.js?v=2026112401';
+import { updateProgress, hideStatusIndicator, showMissingDataState, showFatalErrorOverlay } from './analyse/ui.js?v=2026112401';
+import { renderResults } from './analyse/render.js?v=2026112401';
+import { initPurchaseTracking } from './analyse/purchase.js?v=2026112401';
 import {
     GEMINI_MAX_ATTEMPTS,
     GEMINI_RETRY_DELAY_MS,
@@ -35,12 +36,10 @@ import {
     isLimitReachedError,
     THINK_DELAY_MS,
     MAX_AMAZON_SEARCHES,
-    FALLBACK_MAX_TERMS,
-    FALLBACK_PRODUCT_SCORE,
     PROGRESS_START,
     PROGRESS_PROFILES_BASE,
     PROGRESS_PROFILES_SPAN
-} from './analyse/settings.js?v=2026112301';
+} from './analyse/settings.js?v=2026112401';
 
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -73,18 +72,26 @@ async function fetchSuggestions(payload, personne, profileProgress) {
     return { iaResult: iaResult?.suggestions?.length > 0 ? iaResult : null, limitReached };
 }
 
-/** Meilleur produit de chacune des premières suggestions IA (une recherche Amazon par suggestion). */
-async function searchSuggestedProducts(suggestions, personne) {
+/**
+ * Meilleur produit des premières suggestions IA (MAX_AMAZON_SEARCHES recherches au plus).
+ * Dès qu'une recherche répond 429 / 503 (quota ou plafond atteint), searchState.blocked passe à vrai :
+ * plus aucune recherche n'est lancée pendant cette analyse (les idées restent proposées en liens).
+ * @param {Array<{term: string, reason?: string}>} suggestions - suggestions exploitables
+ * @param {{budget: number}} personne
+ * @param {{blocked: boolean}} searchState - partagé entre les profils d'une même analyse
+ */
+async function searchSuggestedProducts(suggestions, personne, searchState) {
     const products = [];
     for (const sugg of suggestions.slice(0, MAX_AMAZON_SEARCHES)) {
-        if (!sugg?.term || typeof sugg.term !== 'string') continue;
+        if (searchState.blocked) break;
         const { maxPrice, minPrice } = computeSearchPriceRange(personne.budget);
 
         let response;
         try {
             response = await searchAmazon(sugg.term, maxPrice, minPrice);
-        } catch {
-            continue; // recherche suivante
+        } catch (error) {
+            if (isLimitReachedError(error)) searchState.blocked = true;
+            continue; // l'idée sera proposée en lien de recherche
         }
         const results = response?.search_results ?? [];
         if (!Array.isArray(results) || results.length === 0) continue;
@@ -96,32 +103,12 @@ async function searchSuggestedProducts(suggestions, personne) {
     return products;
 }
 
-/** Recherche de secours avec un terme générique ; renvoie un produit ou null. */
-async function searchFallbackProduct(personne, contexte) {
-    for (const term of buildFallbackTerms(personne, contexte).slice(0, FALLBACK_MAX_TERMS)) {
-        try {
-            const response = await searchAmazon(term, personne.budget, computeFallbackMinPrice(personne.budget));
-            const products = filterFallbackProducts(response?.search_results ?? [], personne.budget);
-            if (products.length > 0) {
-                const best = products[0];
-                best.searchTerm = term;
-                best.reason = `Suggestion alternative pour ${personne.nom}`;
-                best.score = FALLBACK_PRODUCT_SCORE;
-                best.budgetRatio = Number(best.price?.value) / personne.budget;
-                return best;
-            }
-        } catch {
-            // échec de la recherche de secours : profil sans résultat
-        }
-    }
-    return null;
-}
-
 /**
  * Analyse complète d'un profil.
+ * @param {{blocked: boolean}} searchState - état des recherches Amazon partagé entre les profils
  * @returns {Promise<{status: 'ok', result: object}|{status: 'empty'}|{status: 'failed', limitReached?: boolean}>}
  */
-async function analyseProfile(personne, contexte, profileProgress) {
+async function analyseProfile(personne, contexte, profileProgress, searchState) {
     try {
         // « Temps de réflexion » affiché avant l'appel IA
         updateProgress(profileProgress + 5, `Analyse psychologique de ${personne.nom}...`);
@@ -131,15 +118,16 @@ async function analyseProfile(personne, contexte, profileProgress) {
         const { iaResult, limitReached } = await fetchSuggestions(buildAnalyzePayload(contexte, personne), personne, profileProgress);
         if (!iaResult) return { status: 'failed', limitReached };
 
+        const suggestions = usableSuggestions(iaResult.suggestions);
         updateProgress(profileProgress + 20, `Recherche produits pour ${personne.nom}...`);
-        const products = await searchSuggestedProducts(iaResult.suggestions, personne);
-        if (products.length > 0) {
-            return { status: 'ok', result: personResult(personne, dedupeProducts(products)) };
-        }
+        const products = dedupeProducts(await searchSuggestedProducts(suggestions, personne, searchState));
 
-        updateProgress(profileProgress + 30, `Recherche alternative pour ${personne.nom}...`);
-        const fallback = await searchFallbackProduct(personne, contexte);
-        return fallback ? { status: 'ok', result: personResult(personne, [fallback]) } : { status: 'empty' };
+        // Idées sans produit affiché : liens de recherche Amazon taggés (coût API nul)
+        const shownTerms = new Set(products.map(p => p.searchTerm));
+        const searchIdeas = suggestions.filter(s => !shownTerms.has(s.term)).map(buildSearchIdea);
+
+        const items = [...products, ...searchIdeas];
+        return items.length > 0 ? { status: 'ok', result: personResult(personne, items) } : { status: 'empty' };
     } catch {
         return { status: 'failed' };
     }
@@ -161,6 +149,8 @@ async function lancerAnalyse() {
     let apiFailures = 0;
     // Limite serveur atteinte (429 / 503) : inutile d'appeler pour les profils suivants, et pas de « Réessayer ».
     let limitReached = false;
+    // Recherches Amazon bloquées (429 / 503) : les profils suivants n'appellent plus /api/search
+    const searchState = { blocked: false };
 
     for (const raw of data.equipe) {
         const personne = normalizeProfile(raw);
@@ -169,7 +159,7 @@ async function lancerAnalyse() {
         const profileProgress = PROGRESS_PROFILES_BASE + (processedProfiles / totalProfiles) * PROGRESS_PROFILES_SPAN;
         updateProgress(profileProgress, `Analyse de ${personne.nom}...`);
 
-        const outcome = await analyseProfile(personne, data.contexte, profileProgress);
+        const outcome = await analyseProfile(personne, data.contexte, profileProgress, searchState);
         if (outcome.status === 'ok') {
             personResults.push(outcome.result);
             processedProfiles++;

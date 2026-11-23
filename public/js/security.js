@@ -71,6 +71,26 @@ export function buildAffiliateUrl(url, tag) {
     return parsed.href;
 }
 
+/** Longueur maximale du terme placé dans un lien de recherche Amazon. */
+const SEARCH_TERM_MAX_CHARS = 100;
+
+/**
+ * Lien de recherche Amazon.fr taggé pour une idée cadeau (repli sans appel API) :
+ * https://www.amazon.fr/s?k=<terme>&tag=<tag>. Domaine fixe ; le terme est encodé par URLSearchParams.
+ * @param {string} term - Idée cadeau (texte libre venant de l'IA)
+ * @param {string} tag - Tag partenaire
+ * @returns {string} - URL de recherche, ou '#' si le terme est inexploitable
+ */
+export function buildAmazonSearchUrl(term, tag) {
+    // Array.from : coupe par caractère (un emoji n'est jamais coupé en deux)
+    const cleaned = Array.from(String(term ?? '').replace(/\s+/g, ' ').trim()).slice(0, SEARCH_TERM_MAX_CHARS).join('');
+    if (cleaned.length < 2) return '#';
+    const url = new URL('https://www.amazon.fr/s');
+    url.searchParams.set('k', cleaned);
+    url.searchParams.set('tag', String(tag));
+    return url.href;
+}
+
 /**
  * Tronque un texte de manière sécurisée.
  * @param {string} text - Texte à tronquer

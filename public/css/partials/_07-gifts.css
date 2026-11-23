@@ -43,6 +43,19 @@
     object-fit: contain;
 }
 
+/* Idée proposée en lien de recherche Amazon (aucun produit précis) */
+.gift-image-search {
+    background: var(--primary-light);
+    color: var(--primary);
+    font-size: 2.5rem;
+}
+
+.gift-search-hint {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin: 0.25rem 0 0;
+}
+
 /* Gift rating badge */
 .gift-rating-badge {
     position: absolute;

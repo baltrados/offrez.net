@@ -13,6 +13,7 @@ const {
     escapeHtml,
     sanitizeUrl,
     buildAffiliateUrl,
+    buildAmazonSearchUrl,
     truncateText,
     generateId
 } = await import('data:text/javascript;charset=utf-8,' + encodeURIComponent(source));
@@ -165,4 +166,34 @@ test('generateId : préfixe OFFREZ_ et identifiants distincts', () => {
     const b = generateId();
     assert.match(a, /^OFFREZ_[a-z0-9]+$/);
     assert.notEqual(a, b);
+});
+
+// ---------- buildAmazonSearchUrl ----------
+test('buildAmazonSearchUrl : domaine fixe amazon.fr, terme encodé, tag ajouté', () => {
+    const u = new URL(buildAmazonSearchUrl('gourde isotherme', 'offreznet-21'));
+    assert.equal(u.origin, 'https://www.amazon.fr');
+    assert.equal(u.pathname, '/s');
+    assert.equal(u.searchParams.get('k'), 'gourde isotherme');
+    assert.deepEqual(u.searchParams.getAll('tag'), ['offreznet-21']);
+});
+
+test("buildAmazonSearchUrl : caractères spéciaux et tentatives d'injection restent dans k", () => {
+    const term = 'café & thé"><script>alert(1)</script>&tag=concurrent-21';
+    const u = new URL(buildAmazonSearchUrl(term, 'offreznet-21'));
+    assert.equal(u.hostname, 'www.amazon.fr');
+    assert.equal(u.searchParams.get('k'), term);
+    assert.deepEqual(u.searchParams.getAll('tag'), ['offreznet-21']);
+    assert.ok(!buildAmazonSearchUrl(term, 'offreznet-21').includes('<'));
+});
+
+test('buildAmazonSearchUrl : espaces réduits, longueur bornée, terme vide → #', () => {
+    assert.equal(new URL(buildAmazonSearchUrl('  a   b  ', 't')).searchParams.get('k'), 'a b');
+    assert.equal(new URL(buildAmazonSearchUrl('x'.repeat(300), 't')).searchParams.get('k').length, 100);
+    for (const bad of ['', ' ', 'a', null, undefined]) assert.equal(buildAmazonSearchUrl(bad, 't'), '#');
+});
+
+test('buildAmazonSearchUrl : la coupe à 100 caractères ne casse pas un emoji', () => {
+    const k = new URL(buildAmazonSearchUrl('a'.repeat(99) + '🎁🎁', 't')).searchParams.get('k');
+    assert.equal(k, 'a'.repeat(99) + '🎁');
+    assert.ok(!k.includes('�'));
 });
