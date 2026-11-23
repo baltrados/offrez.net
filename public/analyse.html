@@ -24,6 +24,8 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#0f172a">
+    <!-- Garde-fou de démarrage (script classique, avant le module) : message + « Réessayer » si l'analyse ne démarre pas -->
+    <script src="/js/analyse-boot.js"></script>
     <script src="/js/sw-register.js" defer></script>
     <script src="/js/analytics.js" defer></script>
 
@@ -147,7 +149,7 @@
     </div>
 
     <!-- Script logique principal (Le cerveau) -->
-    <script src="js/analyse.js?v=2026112404" type="module"></script>
+    <script src="js/analyse.js?v=2026112405" type="module"></script>
 
     <!-- Footer -->
     <footer class="site-footer">

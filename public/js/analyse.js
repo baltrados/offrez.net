@@ -15,7 +15,7 @@
  * (voir documentation/14_SUIVI_CHANTIER_QUALITE.md §3).
  */
 
-import { callGemini, searchAmazon } from './api.js?v=2026112404';
+import { callGemini, searchAmazon } from './api.js?v=2026112405';
 import {
     normalizeProfile,
     buildAnalyzePayload,
@@ -24,13 +24,13 @@ import {
     dedupeProducts,
     buildSearchIdea,
     usableSuggestions
-} from './analyse/products.js?v=2026112404';
-import { takeAnalysisData, purgeAnalysisData } from './analyse/session-data.js?v=2026112404';
-import { updateProgress, hideStatusIndicator, showMissingDataState, showFatalErrorOverlay } from './analyse/ui.js?v=2026112404';
-import { renderResults } from './analyse/render.js?v=2026112404';
-import { initPurchaseTracking } from './analyse/purchase.js?v=2026112404';
-import { saveResults, loadResults, clearResults } from './analyse/results-store.js?v=2026112404';
-import { renderRetentionTools } from './analyse/retention.js?v=2026112404';
+} from './analyse/products.js?v=2026112405';
+import { takeAnalysisData, purgeAnalysisData } from './analyse/session-data.js?v=2026112405';
+import { updateProgress, hideStatusIndicator, showMissingDataState, showFatalErrorOverlay } from './analyse/ui.js?v=2026112405';
+import { renderResults } from './analyse/render.js?v=2026112405';
+import { initPurchaseTracking } from './analyse/purchase.js?v=2026112405';
+import { saveResults, loadResults, clearResults } from './analyse/results-store.js?v=2026112405';
+import { renderRetentionTools } from './analyse/retention.js?v=2026112405';
 import {
     GEMINI_MAX_ATTEMPTS,
     GEMINI_RETRY_DELAY_MS,
@@ -41,7 +41,14 @@ import {
     PROGRESS_START,
     PROGRESS_PROFILES_BASE,
     PROGRESS_PROFILES_SPAN
-} from './analyse/settings.js?v=2026112404';
+} from './analyse/settings.js?v=2026112405';
+
+// Tout le graphe de modules est chargé et lu : signal pour le garde-fou de démarrage (analyse-boot.js).
+// Démarrage tardif (connexion lente) : on retire son éventuel message d'échec et on réaffiche la progression.
+document.documentElement.setAttribute('data-analyse-boot', 'started');
+document.querySelector('.boot-error')?.remove();
+const bootStatus = document.getElementById('statusIndicator');
+if (bootStatus) bootStatus.style.display = '';
 
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 

@@ -30,10 +30,10 @@ globalThis.sessionStorage = new MemoryStorage();
 
 const JS = new URL('../../public/js/', import.meta.url);
 // Mêmes URL (avec ?v=) que celles importées par analyse.js : une seule instance par module.
-const products = await import(new URL('analyse/products.js?v=2026112404', JS).href);
-const cart = await import(new URL('analyse/cart.js?v=2026112404', JS).href);
-const session = await import(new URL('analyse/session-data.js?v=2026112404', JS).href);
-const settings = await import(new URL('analyse/settings.js?v=2026112404', JS).href);
+const products = await import(new URL('analyse/products.js?v=2026112405', JS).href);
+const cart = await import(new URL('analyse/cart.js?v=2026112405', JS).href);
+const session = await import(new URL('analyse/session-data.js?v=2026112405', JS).href);
+const settings = await import(new URL('analyse/settings.js?v=2026112405', JS).href);
 
 const {
     normalizeProfile, buildAnalyzePayload, computeSearchPriceRange, bucketMaxPrice, buildSearchIdea, usableSuggestions,
@@ -592,8 +592,8 @@ describe('non-régression différentielle vs implémentation d\'origine', () => 
 // ============================================================================
 // Lot 4 : résultats conservés dans l'onglet, rappel calendrier, partage
 // ============================================================================
-const store = await import(new URL('analyse/results-store.js?v=2026112404', JS).href);
-const retention = await import(new URL('analyse/retention.js?v=2026112404', JS).href);
+const store = await import(new URL('analyse/results-store.js?v=2026112405', JS).href);
+const retention = await import(new URL('analyse/retention.js?v=2026112405', JS).href);
 
 describe("results-store (sessionStorage de l'onglet)", () => {
     const NOW = Date.UTC(2026, 10, 23, 12);

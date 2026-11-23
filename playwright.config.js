@@ -37,5 +37,11 @@ module.exports = defineConfig({
     projects: [
         { name: 'desktop-chromium', use: { ...devices['Desktop Chrome'] } },
         { name: 'mobile', use: { ...devices['Pixel 5'] } },
+        // Safari (moteur WebKit) sur iPhone : parcours critique et démarrage de l'analyse
+        {
+            name: 'webkit-iphone',
+            use: { ...devices['iPhone 13'] },
+            testMatch: ['**/journey.spec.js', '**/boot.spec.js', '**/retention.spec.js', '**/search-ideas.spec.js', '**/conversion.spec.js'],
+        },
     ],
 });
