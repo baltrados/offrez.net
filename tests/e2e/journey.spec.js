@@ -84,10 +84,9 @@ test('parcours utilisateur complet jusqu\'à la carte cadeau affiliée', async (
         },
     });
 
-    // Recherche : prix entiers (le serveur n'accepte que ^\d{1,5}$), max 2 recherches
-    expect(searchRequests.length).toBeGreaterThanOrEqual(1);
-    expect(searchRequests.length).toBeLessThanOrEqual(2);
-    expect(searchRequests[0]).toMatchObject({ term: 'montre sport homme', min_price: '9', max_price: '49' });
+    // Recherche : une seule par personne (coût RapidAPI), prix entiers par palier (budget 49,5 € → 45 €)
+    expect(searchRequests).toHaveLength(1);
+    expect(searchRequests[0]).toMatchObject({ term: 'montre sport homme', min_price: '9', max_price: '45' });
     expect(searchRequests[0]).not.toHaveProperty('consent');
 
     // CTA affilié : https://www.amazon.fr/..., un seul tag, celui d'OFFREZ
@@ -130,6 +129,18 @@ test('parcours utilisateur complet jusqu\'à la carte cadeau affiliée', async (
     await expect(page.locator('#closePurchaseModal')).toBeFocused();
     await page.keyboard.press('Escape');
     await expect(modal).toBeHidden();
+
+    // 2e idée : lien de recherche Amazon taggé (aucun appel RapidAPI supplémentaire)
+    await giftCard.locator('.btn-next').click();
+    const ideaCard = page.locator('.gift-card-search').first();
+    await expect(ideaCard).toBeVisible();
+    await expect(ideaCard.locator('.gift-title')).toHaveText('Idée : gourde isotherme');
+    const ideaUrl = new URL(/** @type {string} */ (await ideaCard.locator('a.btn-amazon-cta').getAttribute('href')));
+    expect(ideaUrl.origin + ideaUrl.pathname).toBe('https://www.amazon.fr/s');
+    expect(ideaUrl.searchParams.get('k')).toBe('gourde isotherme');
+    expect(ideaUrl.searchParams.getAll('tag')).toEqual([AFFILIATE_TAG]);
+    await expect(ideaCard.locator('a.btn-amazon-cta')).toHaveAttribute('rel', /\bsponsored\b/);
+    expect(searchRequests).toHaveLength(1);
 
     await expectNoHorizontalOverflow(page);
     expect(consoleErrors).toEqual([]);

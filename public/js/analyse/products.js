@@ -2,14 +2,14 @@
  * ANALYSE/PRODUCTS.JS - Logique pure de l'analyse (sans DOM, sans réseau)
  * ======================================================================
  * Normalisation du profil, payload /api/analyze, fourchette de prix de recherche,
- * filtrage qualité à 3 niveaux, scoring, déduplication et termes de secours.
+ * filtrage qualité à 3 niveaux, scoring, déduplication et idées en lien de recherche Amazon.
  * Importable sous Node (tests unitaires) : aucun effet de bord à l'import.
  */
 
 import {
     MIN_PRICE_RATIO,
     MIN_PRICE_COLLAPSE_RATIO,
-    FALLBACK_MIN_PRICE_RATIO,
+    PRICE_BUCKETS,
     MIN_VALID_PRICE,
     STRICT_MIN_RATING,
     STRICT_MIN_REVIEWS,
@@ -18,7 +18,7 @@ import {
     MAX_PRODUCTS_PER_PERSON,
     TITLE_SIMILARITY_THRESHOLD,
     TITLE_MIN_WORD_LENGTH
-} from './settings.js?v=2026112301';
+} from './settings.js?v=2026112401';
 
 // ============================================
 // PROFIL & PAYLOAD
@@ -64,20 +64,61 @@ export function buildAnalyzePayload(contexte, personne) {
 }
 
 /**
- * Fourchette de prix d'une recherche Amazon : min = 20 % du budget (entier inférieur),
- * ramené à 0 s'il est trop proche du max (RapidAPI n'aime pas min ≈ max).
+ * Prix maximum de recherche : le plus grand palier de PRICE_BUCKETS ≤ budget (entier inférieur du budget
+ * sous le premier palier). Ne dépasse jamais le budget : aucun produit hors budget n'est demandé.
+ * @param {number} budget
+ * @returns {number}
+ */
+export function bucketMaxPrice(budget) {
+    const b = Number(budget);
+    if (!Number.isFinite(b) || b <= 0) return 0;
+    let max = Math.floor(b);
+    for (const bucket of PRICE_BUCKETS) {
+        if (bucket <= b) max = bucket;
+        else break;
+    }
+    return max;
+}
+
+/**
+ * Fourchette de prix d'une recherche Amazon, dérivée du palier (et non du budget exact) pour que
+ * des budgets voisins réutilisent le même résultat en cache : max = palier ≤ budget,
+ * min = 20 % du palier (entier inférieur), ramené à 0 s'il est trop proche du max.
  * @param {number} budget
  * @returns {{maxPrice: number, minPrice: number}}
  */
 export function computeSearchPriceRange(budget) {
-    let minPrice = Math.floor(budget * MIN_PRICE_RATIO);
-    if (minPrice >= budget * MIN_PRICE_COLLAPSE_RATIO) minPrice = 0;
-    return { maxPrice: budget, minPrice };
+    const maxPrice = bucketMaxPrice(budget);
+    let minPrice = Math.floor(maxPrice * MIN_PRICE_RATIO);
+    if (minPrice >= maxPrice * MIN_PRICE_COLLAPSE_RATIO) minPrice = 0;
+    return { maxPrice, minPrice };
 }
 
-/** Prix minimum de la recherche de secours (10 % du budget, entier inférieur). */
-export function computeFallbackMinPrice(budget) {
-    return Math.floor(budget * FALLBACK_MIN_PRICE_RATIO);
+/**
+ * Idée de l'IA affichée comme lien de recherche Amazon (sans appel API) : pas d'ASIN, pas de prix.
+ * Le lien est construit au rendu (buildAmazonSearchUrl + tag).
+ * @param {{term: string, reason?: string}} suggestion
+ * @returns {{kind: 'search', term: string, searchTerm: string, title: string, reason: string}}
+ */
+export function buildSearchIdea(suggestion) {
+    const term = String(suggestion.term).trim();
+    return { kind: 'search', term, searchTerm: term, title: term, reason: String(suggestion.reason || '') };
+}
+
+/**
+ * Suggestions IA exploitables (terme texte d'au moins 2 caractères), sans doublon de terme.
+ * @param {any[]} suggestions
+ * @returns {Array<{term: string, reason?: string}>}
+ */
+export function usableSuggestions(suggestions) {
+    const seen = new Set();
+    return (Array.isArray(suggestions) ? suggestions : []).filter(s => {
+        if (!s || typeof s.term !== 'string') return false;
+        const key = s.term.trim().toLowerCase();
+        if (key.length < 2 || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
 }
 
 // ============================================
@@ -259,35 +300,4 @@ export function dedupeProducts(products) {
         if (!isDuplicate(product)) uniqueProducts.push(product);
     }
     return uniqueProducts;
-}
-
-// ============================================
-// RECHERCHE DE SECOURS
-// ============================================
-
-/**
- * Termes génériques quand aucune suggestion IA n'a donné de produit.
- * @param {ReturnType<typeof normalizeProfile>} personne
- * @param {any} contexte
- * @returns {string[]}
- */
-export function buildFallbackTerms(personne, contexte) {
-    const terms = [];
-    if (personne.tags.length > 0) {
-        const genre = personne.sexe === 'Femme' ? 'femme' : personne.sexe === 'Homme' ? 'homme' : '';
-        terms.push(`cadeau ${personne.tags[0].toLowerCase()} ${genre}`.trim());
-    }
-    if (personne.age) {
-        const ageRange = personne.age < 18 ? 'adolescent' : personne.age < 30 ? 'jeune adulte' : personne.age < 60 ? 'adulte' : 'senior';
-        terms.push(`idée cadeau ${ageRange}`);
-    }
-    if (terms.length === 0) {
-        terms.push(`coffret cadeau ${contexte || 'anniversaire'}`);
-    }
-    return terms;
-}
-
-/** Filtre de la recherche de secours : identique au niveau souple (prix + titre). */
-export function filterFallbackProducts(results, budget) {
-    return filterProducts(results, budget, FILTER_LEVELS.SOFT);
 }

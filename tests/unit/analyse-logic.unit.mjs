@@ -30,16 +30,16 @@ globalThis.sessionStorage = new MemoryStorage();
 
 const JS = new URL('../../public/js/', import.meta.url);
 // Mêmes URL (avec ?v=) que celles importées par analyse.js : une seule instance par module.
-const products = await import(new URL('analyse/products.js?v=2026112301', JS).href);
-const cart = await import(new URL('analyse/cart.js?v=2026112301', JS).href);
-const session = await import(new URL('analyse/session-data.js?v=2026112301', JS).href);
-const settings = await import(new URL('analyse/settings.js?v=2026112301', JS).href);
+const products = await import(new URL('analyse/products.js?v=2026112401', JS).href);
+const cart = await import(new URL('analyse/cart.js?v=2026112401', JS).href);
+const session = await import(new URL('analyse/session-data.js?v=2026112401', JS).href);
+const settings = await import(new URL('analyse/settings.js?v=2026112401', JS).href);
 
 const {
-    normalizeProfile, buildAnalyzePayload, computeSearchPriceRange, computeFallbackMinPrice,
+    normalizeProfile, buildAnalyzePayload, computeSearchPriceRange, bucketMaxPrice, buildSearchIdea, usableSuggestions,
     FILTER_LEVELS, filterProducts, selectValidProducts, parseRating, parseReviewCount,
     computeBudgetScore, scoreProduct, rankProducts, pickBestProduct,
-    areTitlesSimilar, dedupeProducts, buildFallbackTerms, filterFallbackProducts
+    areTitlesSimilar, dedupeProducts
 } = products;
 
 /** Produit Amazon minimal valide. */
@@ -128,20 +128,50 @@ describe('limite atteinte (429 / 503)', () => {
     });
 });
 
-describe('fourchette de prix', () => {
-    test('min = 20 % du budget arrondi à l\'entier inférieur', () => {
-        assert.deepEqual(computeSearchPriceRange(49.5), { maxPrice: 49.5, minPrice: 9 });
+describe('fourchette de prix (paliers)', () => {
+    test('max = plus grand palier ≤ budget, min = 20 % du palier', () => {
+        assert.deepEqual(computeSearchPriceRange(49.5), { maxPrice: 45, minPrice: 9 });
         assert.deepEqual(computeSearchPriceRange(100), { maxPrice: 100, minPrice: 20 });
+        assert.deepEqual(computeSearchPriceRange(30), { maxPrice: 30, minPrice: 6 });
+    });
+    test('des budgets voisins partagent la même fourchette (clé de cache serveur commune)', () => {
+        assert.deepEqual(computeSearchPriceRange(47), computeSearchPriceRange(49));
+        assert.deepEqual(computeSearchPriceRange(110), computeSearchPriceRange(119.9));
+    });
+    test('jamais au-dessus du budget', () => {
+        for (const b of [5, 9.9, 10, 11, 44.99, 45, 199, 4999, 6000, 123456]) {
+            assert.ok(bucketMaxPrice(b) <= b, `budget ${b}`);
+        }
+        assert.equal(bucketMaxPrice(6000), 5000);
+    });
+    test('sous le premier palier : entier inférieur du budget', () => {
+        assert.deepEqual(computeSearchPriceRange(9.9), { maxPrice: 9, minPrice: 1 });
         assert.deepEqual(computeSearchPriceRange(4), { maxPrice: 4, minPrice: 0 });
     });
-    test('min ramené à 0 s\'il atteint 90 % du max (petits budgets)', () => {
-        // budget 1 → floor(0.2) = 0 ; budget 0.5 → 0 ; aucune valeur réelle n'atteint 90 % hors cas dégénérés
+    test('budgets dégénérés : 0', () => {
+        assert.equal(bucketMaxPrice(0), 0);
+        assert.equal(bucketMaxPrice(-5), 0);
+        assert.equal(bucketMaxPrice(Number.NaN), 0);
         assert.equal(computeSearchPriceRange(1).minPrice, 0);
-        assert.equal(computeSearchPriceRange(0).minPrice, 0); // 0 >= 0 → 0
+        assert.equal(computeSearchPriceRange(0).minPrice, 0);
     });
-    test('recherche de secours : min = 10 % du budget', () => {
-        assert.equal(computeFallbackMinPrice(49.5), 4);
-        assert.equal(computeFallbackMinPrice(9), 0);
+});
+
+describe('idées en lien de recherche', () => {
+    test('buildSearchIdea : terme nettoyé, sans prix ni ASIN', () => {
+        assert.deepEqual(buildSearchIdea({ term: '  gourde isotherme ', reason: 'Pratique' }),
+            { kind: 'search', term: 'gourde isotherme', searchTerm: 'gourde isotherme', title: 'gourde isotherme', reason: 'Pratique' });
+        assert.equal(buildSearchIdea({ term: 'x y' }).reason, '');
+    });
+    test('usableSuggestions : terme texte ≥ 2 caractères, doublons (casse) retirés', () => {
+        const list = [{ term: 'Montre' }, { term: 'montre ' }, { term: 'a' }, { term: 42 }, null, { term: 'Gourde' }];
+        assert.deepEqual(usableSuggestions(list).map(s => s.term), ['Montre', 'Gourde']);
+        assert.deepEqual(usableSuggestions(undefined), []);
+    });
+    test("une idée en lien n'entre pas dans le panier groupé (pas d'ASIN)", () => {
+        const idea = buildSearchIdea({ term: 'gourde' });
+        const pr = [{ personne: { nom: 'A' }, products: [idea], currentIndex: 0 }];
+        assert.deepEqual(cart.getSelectedProducts(pr), []);
     });
 });
 
@@ -228,11 +258,6 @@ describe('selectValidProducts : cascade strict → intermédiaire → souple', (
         const a = item({ title: 'X1' }); const b = item({ title: 'X2' });
         assert.deepEqual(selectValidProducts([a, b], 50).products, [a, b]);
     });
-});
-
-test('filterFallbackProducts = niveau souple (prix + titre)', () => {
-    const list = [item({ rating: 0, reviews: 0 }), item({ title: '' }), item({ price: { value: 51 } })];
-    assert.deepEqual(filterFallbackProducts(list, 50), [list[0]]);
 });
 
 // ============================================================================
@@ -330,27 +355,6 @@ describe('dedupeProducts', () => {
         assert.equal(dedupeProducts(list).length, 7);
         const sameTerm = ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf'].map((w, i) => p(`${w} article${i}`, 't'));
         assert.equal(dedupeProducts(sameTerm).length, 5);
-    });
-});
-
-// ============================================================================
-// Recherche de secours
-// ============================================================================
-describe('buildFallbackTerms', () => {
-    const P = (over) => normalizeProfile({ budget: 30, ...over });
-    test('intérêt + genre, puis tranche d\'âge', () => {
-        assert.deepEqual(buildFallbackTerms(P({ tags: ['Sport'], sexe: 'Femme', age: 25 }), 'Noël'), ['cadeau sport femme', 'idée cadeau jeune adulte']);
-        assert.deepEqual(buildFallbackTerms(P({ tags: ['Tech'], sexe: 'Homme' }), 'Noël'), ['cadeau tech homme']);
-        assert.deepEqual(buildFallbackTerms(P({ tags: ['Art'] }), 'Noël'), ['cadeau art']);
-    });
-    test('tranches d\'âge', () => {
-        assert.deepEqual(buildFallbackTerms(P({ age: 15 }), ''), ['idée cadeau adolescent']);
-        assert.deepEqual(buildFallbackTerms(P({ age: 45 }), ''), ['idée cadeau adulte']);
-        assert.deepEqual(buildFallbackTerms(P({ age: 60 }), ''), ['idée cadeau senior']);
-    });
-    test('ni intérêt ni âge → coffret selon l\'occasion (défaut anniversaire)', () => {
-        assert.deepEqual(buildFallbackTerms(P({}), 'Noël'), ['coffret cadeau Noël']);
-        assert.deepEqual(buildFallbackTerms(P({}), ''), ['coffret cadeau anniversaire']);
     });
 });
 

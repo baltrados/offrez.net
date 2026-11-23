@@ -440,7 +440,7 @@ app.post('/api/analyze', strictLimiter, async (req, res) => {
                 systemInstruction: { parts: [{ text: systemInstruction }] },
                 contents: [{ role: 'user', parts: [{ text: userText }] }],
                 generationConfig: {
-                    temperature: 0.7, // Créativité modérée
+                    temperature: 0.3, // Termes stables : meilleure réutilisation du cache des recherches
                     maxOutputTokens: 1024,
                     responseMimeType: 'application/json',
                     responseSchema: GEMINI_RESPONSE_SCHEMA

@@ -1,12 +1,13 @@
 /**
  * ANALYSE/RENDER.JS - Affichage des résultats (cartes cadeaux, navigation, panier groupé)
  * ======================================================================================
- * Toute donnée externe (IA, Amazon, profil) passe par escapeHtml ; toute URL par buildAffiliateUrl.
+ * Toute donnée externe (IA, Amazon, profil) passe par escapeHtml ; toute URL par buildAffiliateUrl
+ * (produits) ou buildAmazonSearchUrl (idées affichées en lien de recherche).
  */
 
-import { escapeHtml, buildAffiliateUrl } from '../security.js?v=2026112301';
-import { getSelectedProducts, computeCartTotal, generateCartURL } from './cart.js?v=2026112301';
-import { buildAnalysisFailedState, buildLimitReachedState } from './ui.js?v=2026112301';
+import { escapeHtml, buildAffiliateUrl, buildAmazonSearchUrl } from '../security.js?v=2026112401';
+import { getSelectedProducts, computeCartTotal, generateCartURL } from './cart.js?v=2026112401';
+import { buildAnalysisFailedState, buildLimitReachedState } from './ui.js?v=2026112401';
 import {
     AFFILIATE_TAG,
     TITLE_MAX_CHARS,
@@ -14,7 +15,7 @@ import {
     REVEAL_STAGGER_MS,
     DISCOVERY_DELAY_MIN_MS,
     DISCOVERY_DELAY_JITTER_MS
-} from './settings.js?v=2026112301';
+} from './settings.js?v=2026112401';
 
 const PLACEHOLDER_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect fill='%231e293b' width='200' height='200'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%2394a3b8' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E";
 
@@ -23,6 +24,57 @@ const AFFILIATION_DISCLAIMER = `<div class="affiliation-disclaimer" style="text-
 </div>`;
 
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+/** Navigation ‹ › entre les suggestions d'une personne (rien s'il n'y en a qu'une). */
+function suggestionNavHtml(products, currentIndex, personIndex) {
+    if (products.length <= 1) return '';
+    return `
+                        <div class="suggestion-nav">
+                            <button class="btn-nav-suggestion btn-prev" data-person="${personIndex}" data-direction="prev" aria-label="Suggestion précédente" ${currentIndex === 0 ? 'disabled' : ''}>
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <span class="suggestion-indicator">${currentIndex + 1} / ${products.length}</span>
+                            <button class="btn-nav-suggestion btn-next" data-person="${personIndex}" data-direction="next" aria-label="Suggestion suivante" ${currentIndex >= products.length - 1 ? 'disabled' : ''}>
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>`;
+}
+
+/**
+ * Carte d'une idée proposée en lien de recherche Amazon taggé (aucun produit précis, aucun appel API) :
+ * ni prix, ni image, ni ASIN (exclue du panier groupé).
+ */
+function searchIdeaCardHtml(pr, personIndex) {
+    const { personne, products, currentIndex } = pr;
+    const idea = products[currentIndex];
+    const link = buildAmazonSearchUrl(idea.term, AFFILIATE_TAG);
+    const term = escapeHtml(idea.term);
+    const safePersonName = escapeHtml(personne.nom);
+
+    return `
+                <div class="gift-card gift-card-search" data-person-index="${personIndex}">
+                    <div class="gift-image gift-image-search" aria-hidden="true">
+                        <i class="fas fa-magic"></i>
+                    </div>
+                    <div class="gift-content">
+                        <div class="gift-owner">🎁 ${safePersonName}</div>
+                        <h4 class="gift-title">Idée : ${term}</h4>
+                        <p class="gift-search-hint">Comparez les modèles et les prix directement sur Amazon.</p>
+                        <p class="gift-reason">${escapeHtml(idea.reason)}</p>
+                        <a href="${escapeHtml(link)}" target="_blank" rel="nofollow sponsored noopener" class="btn-amazon-cta js-track-click js-purchase-btn"
+                           data-recipient="${safePersonName}">
+                            <i class="fab fa-amazon"></i> Voir les idées sur Amazon
+                            <i class="fas fa-external-link-alt"></i>
+                        </a>
+                        ${suggestionNavHtml(products, currentIndex, personIndex)}
+                    </div>
+                    <div class="card-loading-overlay" style="display: none;">
+                        <div class="loading-spinner"></div>
+                        <span>Analyse en cours...</span>
+                    </div>
+                </div>
+            `;
+}
 
 /**
  * HTML d'une carte cadeau (produit courant d'une personne).
@@ -37,6 +89,8 @@ function giftCardHtml(pr, personIndex) {
     }
 
     const product = products[currentIndex];
+    if (product.kind === 'search') return searchIdeaCardHtml(pr, personIndex);
+
     const priceValue = Number(product.price?.value);
     const priceRaw = escapeHtml(product.price?.raw || `${priceValue}€`);
     // Ajout du tag affilié + sécurisation URL (https + domaine Amazon) ; échappée à l'interpolation
@@ -76,17 +130,7 @@ function giftCardHtml(pr, personIndex) {
                             <i class="fab fa-amazon"></i> Voir sur Amazon
                             <i class="fas fa-external-link-alt"></i>
                         </a>
-                        ${products.length > 1 ? `
-                            <div class="suggestion-nav">
-                                <button class="btn-nav-suggestion btn-prev" data-person="${personIndex}" data-direction="prev" aria-label="Suggestion précédente" ${currentIndex === 0 ? 'disabled' : ''}>
-                                    <i class="fas fa-chevron-left"></i>
-                                </button>
-                                <span class="suggestion-indicator">${currentIndex + 1} / ${products.length}</span>
-                                <button class="btn-nav-suggestion btn-next" data-person="${personIndex}" data-direction="next" aria-label="Suggestion suivante" ${currentIndex >= products.length - 1 ? 'disabled' : ''}>
-                                    <i class="fas fa-chevron-right"></i>
-                                </button>
-                            </div>
-                        ` : ''}
+                        ${suggestionNavHtml(products, currentIndex, personIndex)}
                     </div>
                     <!-- Loading overlay pour effet visuel au changement -->
                     <div class="card-loading-overlay" style="display: none;">
@@ -126,7 +170,9 @@ function bindSuggestionNavigation(personResults) {
                 newIndex = person.currentIndex - 1;
             }
 
-            if (!person.viewedIndices.has(newIndex) && loadingOverlay) {
+            // Effet de découverte réservé aux produits : une idée en lien de recherche n'a rien à charger
+            const isSearchIdea = person.products[newIndex]?.kind === 'search';
+            if (!person.viewedIndices.has(newIndex) && loadingOverlay && !isSearchIdea) {
                 loadingOverlay.style.display = 'flex';
                 await wait(DISCOVERY_DELAY_MIN_MS + Math.random() * DISCOVERY_DELAY_JITTER_MS);
                 person.viewedIndices.add(newIndex);
