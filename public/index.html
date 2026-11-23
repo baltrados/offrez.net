@@ -18,7 +18,7 @@
     -->
     <title>OFFREZ – Trouvez le cadeau parfait en 30 secondes</title>
     <meta name="description"
-        content="OFFREZ analyse les profils de vos proches et trouve des cadeaux parfaits sur Amazon.fr en respectant votre budget. Recommandations personnalisées en 30 secondes.">
+        content="Trouvez un cadeau personnalisé en 30 secondes : OFFREZ analyse le profil de vos proches et propose des idées sur Amazon.fr dans votre budget.">
     <meta name="keywords" content="cadeau, idée cadeau, offrir, Amazon, budget, recommandation, personnalisé">
     <meta name="author" content="OFFREZ">
     <link rel="canonical" href="https://offrez.net/">
@@ -69,25 +69,56 @@
         Données structurées pour que Google affiche des "Rich Snippets" (étoiles, prix...).
     -->
     <script type="application/ld+json">
-    {
-        "@context": "https://schema.org",
-        "@type": "WebApplication",
-        "name": "OFFREZ",
-        "description": "Application de recommandation de cadeaux personnalisés",
-        "url": "https://offrez.net",
-        "applicationCategory": "ShoppingApplication",
-        "operatingSystem": "Web",
-        "offers": {
-            "@type": "Offer",
-            "price": "0",
-            "priceCurrency": "EUR"
+{
+    "@context": "https://schema.org",
+    "@graph": [
+        {
+            "@type": "Organization",
+            "@id": "https://offrez.net/#organization",
+            "name": "OFFREZ",
+            "url": "https://offrez.net/",
+            "logo": {
+                "@type": "ImageObject",
+                "url": "https://offrez.net/apple-touch-icon.png",
+                "width": 180,
+                "height": 180
+            }
+        },
+        {
+            "@type": "WebSite",
+            "@id": "https://offrez.net/#website",
+            "name": "OFFREZ",
+            "url": "https://offrez.net/",
+            "inLanguage": "fr-FR",
+            "publisher": {
+                "@id": "https://offrez.net/#organization"
+            }
+        },
+        {
+            "@type": "WebApplication",
+            "@id": "https://offrez.net/#webapp",
+            "name": "OFFREZ",
+            "url": "https://offrez.net/",
+            "description": "Recommandation de cadeaux personnalisés selon le profil et le budget",
+            "applicationCategory": "ShoppingApplication",
+            "operatingSystem": "Web",
+            "inLanguage": "fr-FR",
+            "offers": {
+                "@type": "Offer",
+                "price": "0",
+                "priceCurrency": "EUR"
+            },
+            "publisher": {
+                "@id": "https://offrez.net/#organization"
+            }
         }
-    }
+    ]
+}
     </script>
 
     <!-- Styles CSS (police Outfit auto-hébergée, préchargée) -->
     <link rel="preload" href="fonts/outfit-latin.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="style.min.css?v=202611251600">
+    <link rel="stylesheet" href="style.min.css?v=202611251700">
     <link rel="stylesheet" href="css/fontawesome/fa-offrez.min.css">
 
     <!-- Responsive overrides for landing page -->
@@ -226,6 +257,40 @@
                         <p>Comparez les recommandations, cliquez, et achetez directement sur Amazon.fr.</p>
                     </div>
                 </div>
+            </section>
+
+            <!-- ═══════════════════════════════════════ -->
+            <!-- SECTION : GUIDES CADEAUX (maillage SEO)  -->
+            <!-- ═══════════════════════════════════════ -->
+            <section class="home-guides" aria-labelledby="homeGuidesTitle">
+                <h2 id="homeGuidesTitle">Nos guides cadeaux</h2>
+                <p class="home-guides-intro">Des idées classées par occasion, par personne et par budget.</p>
+                <div class="home-guides-grid">
+                    <div class="home-guides-group">
+                        <h3>Saint-Valentin</h3>
+                        <ul>
+                            <li><a href="blog/cadeau-saint-valentin-homme.html">Cadeau de Saint-Valentin pour homme</a></li>
+                            <li><a href="blog/cadeau-saint-valentin-femme.html">Cadeau de Saint-Valentin pour femme</a></li>
+                            <li><a href="blog/cadeau-couple-saint-valentin.html">Cadeaux à vivre à deux</a></li>
+                            <li><a href="blog/cadeau-saint-valentin-moins-de-30-euros.html">Saint-Valentin à moins de 30 €</a></li>
+                        </ul>
+                    </div>
+                    <div class="home-guides-group">
+                        <h3>Noël</h3>
+                        <ul>
+                            <li><a href="blog/cadeau-noel-pas-cher.html">Cadeaux de Noël à moins de 30 €</a></li>
+                        </ul>
+                    </div>
+                    <div class="home-guides-group">
+                        <h3>Par personne</h3>
+                        <ul>
+                            <li><a href="blog/idees-cadeaux-femme.html">Idées cadeaux pour femme</a></li>
+                            <li><a href="blog/cadeau-original-homme.html">Cadeau original pour homme</a></li>
+                            <li><a href="blog/cadeau-anniversaire-maman.html">Cadeau d'anniversaire pour maman</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <p class="home-guides-more"><a href="blog.html">Tous les guides <i class="fas fa-arrow-right" aria-hidden="true"></i></a></p>
             </section>
 
             <!-- ═══════════════════════════════════════ -->

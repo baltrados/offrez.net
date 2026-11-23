@@ -75,3 +75,70 @@
 .blog-post .related-posts a {
     color: #a5b4fc;
 }
+
+/* Page d'accueil : guides cadeaux (maillage interne vers les articles) */
+.home-guides {
+    max-width: 960px;
+    margin: 1rem auto 2rem;
+    padding: 0 1rem;
+}
+
+.home-guides h2 {
+    text-align: center;
+    font-size: 1.6rem;
+    color: #f8fafc;
+    margin-bottom: 0.5rem;
+}
+
+.home-guides-intro {
+    text-align: center;
+    color: var(--text-secondary);
+    margin-bottom: 1.5rem;
+}
+
+.home-guides-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1rem;
+}
+
+.home-guides-group {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 12px;
+    padding: 1.25rem;
+}
+
+.home-guides-group h3 {
+    font-size: 1.1rem;
+    margin: 0 0 0.75rem;
+    color: #f1f5f9;
+}
+
+.home-guides-group ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.home-guides-group a,
+.home-guides-more a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 44px;
+    color: #a5b4fc;
+    text-decoration: none;
+}
+
+.home-guides-group a:hover,
+.home-guides-group a:focus-visible,
+.home-guides-more a:hover,
+.home-guides-more a:focus-visible {
+    text-decoration: underline;
+}
+
+.home-guides-more {
+    text-align: center;
+    margin-top: 1rem;
+}
