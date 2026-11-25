@@ -125,3 +125,46 @@ test('script facultatif bloqué (analytics.js) : aucune fausse alerte, analyse n
     expect(await page.evaluate(() => document.documentElement.getAttribute('data-analyse-boot'))).toBe('started');
     expect(unexpected(consoleErrors)).toEqual([]);
 });
+
+test('échec ponctuel d\'un module : réparation et rechargement automatiques, analyse réussie sans message', async ({ page }) => {
+    await seed(page);
+    let failures = 0;
+    await page.route('**/js/analyse/retention.js*', (route) => {
+        if (failures === 0) {
+            failures += 1;
+            return route.abort('blockedbyclient');
+        }
+        return route.continue();
+    });
+    let loads = 0;
+    page.on('load', () => { loads += 1; });
+
+    await page.goto('/analyse.html');
+    await expect(page.locator('.gift-card').first()).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.boot-error')).toHaveCount(0);
+    expect(failures).toBe(1);
+    expect(loads).toBeGreaterThanOrEqual(2); // un rechargement automatique a eu lieu
+    // Analyse démarrée : le drapeau de réparation est oublié
+    expect(await page.evaluate(() => sessionStorage.getItem('offrezBootRepair'))).toBeNull();
+});
+
+test('échec persistant : un seul rechargement automatique (pas de boucle), puis message avec code de diagnostic', async ({ page }) => {
+    await seed(page);
+    await page.route('**/js/analyse/retention.js*', (route) => route.fulfill({
+        contentType: 'text/javascript; charset=utf-8',
+        body: 'export const casse = ;',
+    }));
+    let navigations = 0;
+    page.on('framenavigated', (frame) => { if (frame === page.mainFrame()) navigations += 1; });
+
+    await page.goto('/analyse.html');
+    const error = page.locator('.boot-error');
+    await expect(error).toBeVisible({ timeout: 8000 });
+    // Laisse le temps à un éventuel rechargement en trop de se produire
+    await page.waitForTimeout(1500);
+    expect(navigations).toBe(2); // chargement initial + une seule réparation
+    const code = error.locator('.boot-error-code');
+    await expect(code).toContainText('Code :');
+    await expect(code).toContainText('réparation faite');
+    expect(await page.evaluate(() => localStorage.getItem('finalData'))).not.toBeNull();
+});

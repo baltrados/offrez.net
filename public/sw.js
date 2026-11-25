@@ -12,7 +12,7 @@
  */
 
 // À incrémenter à chaque modification de PRECACHE_URLS ou de ce fichier.
-const CACHE_NAME = 'OFFREZ-v32';
+const CACHE_NAME = 'OFFREZ-v33';
 const RUNTIME_CACHE = 'OFFREZ-v17-runtime';
 const RUNTIME_MAX_ENTRIES = 60;
 const OFFLINE_URL = '/offline.html';
