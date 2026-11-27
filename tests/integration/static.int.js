@@ -114,6 +114,27 @@ describe('fichiers hors public/ et chemins malveillants → 404', () => {
         });
     }
 
+    test('/.well-known/security.txt : servi en texte, contact OFFREZ, sans mention OFFRLY, expiration future', async () => {
+        const r = await rawRequest(srv.port, '/.well-known/security.txt');
+        assert.equal(r.status, 200);
+        assert.match(r.headers['content-type'], /text\/plain/);
+        assert.match(r.text, /^Contact: mailto:contact@offrez\.net$/m);
+        assert.match(r.text, /^Canonical: https:\/\/offrez\.net\/\.well-known\/security\.txt$/m);
+        assert.ok(!/offrly/i.test(r.text), 'aucune mention de l\'ancien nom OFFRLY');
+        const expires = r.text.match(/^Expires: (.+)$/m);
+        assert.ok(expires, 'champ Expires présent');
+        const delay = Date.parse(expires[1]) - Date.now();
+        assert.ok(delay > 0 && delay <= 366 * 24 * 3600 * 1000, 'Expires dans le futur et à moins d\'un an (RFC 9116)');
+    });
+
+    for (const p of ['/.well-known/', '/.well-known/autre.txt', '/.well-known/security.txt/..%2f..%2f.env', '/.well-known/%2e%2e/server.js']) {
+        test(`GET ${p} → 404 (seul security.txt est servi dans .well-known)`, async () => {
+            const r = await rawRequest(srv.port, p);
+            assert.equal(r.status, 404);
+            assert.ok(!r.text.includes('require('), 'aucun code source renvoyé');
+        });
+    }
+
     test('une ressource inexistante renvoie la page 404.html', async () => {
         const r = await rawRequest(srv.port, '/nexiste-pas');
         assert.equal(r.status, 404);
@@ -173,12 +194,12 @@ describe('en-têtes Cache-Control des fichiers statiques', () => {
         ['/sw.js?v=1', 'no-cache', /javascript/],
         ['/manifest.json', 'no-cache', /application\/json/],
         ['/js/config.js', 'no-cache', /javascript/],
-        ['/js/analyse.js?v=2026112406', IMMUTABLE, /javascript/],
+        ['/js/analyse.js?v=2026112701', IMMUTABLE, /javascript/],
         ['/js/api.js?v=', 'no-cache', /javascript/],
         ['/js/api.js?v[]=x', 'no-cache', /javascript/],
         ['/js/api.js?v=%3Cscript%3E', 'no-cache', /javascript/],
         ['/style.min.css', 'no-cache', /text\/css/],
-        ['/style.min.css?v=202611251800', IMMUTABLE, /text\/css/],
+        ['/style.min.css?v=202611271200', IMMUTABLE, /text\/css/],
         ['/css/webfonts/fa-solid-900.woff2', 'public, max-age=31536000', /font\/woff2/],
         ['/css/webfonts/fa-solid-900.woff2?v=650a', 'public, max-age=31536000', /font\/woff2/],
         ['/css/fontawesome/fa-offrez.min.css', 'no-cache', /text\/css/],
@@ -212,8 +233,8 @@ describe('PWA : service worker, manifest, en-têtes des pages', () => {
     const PUBLIC = path.join(__dirname, '..', '..', 'public');
     const swSource = fs.readFileSync(path.join(PUBLIC, 'sw.js'), 'utf8');
 
-    test("sw.js : CACHE_NAME = 'OFFREZ-v33' et /offline.html précachée", () => {
-        assert.match(swSource, /const CACHE_NAME = 'OFFREZ-v33';/);
+    test("sw.js : CACHE_NAME = 'OFFREZ-v34' et /offline.html précachée", () => {
+        assert.match(swSource, /const CACHE_NAME = 'OFFREZ-v34';/);
         assert.match(swSource, /const OFFLINE_URL = '\/offline\.html';/);
         assert.match(swSource, /PRECACHE_URLS = \[[\s\S]*OFFLINE_URL[\s\S]*?\];/);
     });
@@ -222,7 +243,7 @@ describe('PWA : service worker, manifest, en-têtes des pages', () => {
         assert.match(swSource, /const RUNTIME_CACHE = 'OFFREZ-v17-runtime';/);
         assert.match(swSource, /key !== CACHE_NAME && key !== RUNTIME_CACHE[\s\S]*?caches\.delete\(key\)/);
         const tokens = new Set([...swSource.matchAll(/\.js\?v=(\d+)/g)].map(m => m[1]));
-        assert.deepEqual([...tokens], ['2026112406'], 'un seul jeton ?v= pour les modules JS précachés');
+        assert.deepEqual([...tokens], ['2026112701'], 'un seul jeton ?v= pour les modules JS précachés');
     });
 
     test('chaque URL précachée par sw.js répond 200 (cache.addAll échoue sinon)', async () => {

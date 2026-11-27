@@ -5,7 +5,7 @@
  * avec les bloqueurs de popups) : aucun preventDefault ni window.open différé ici.
  */
 
-import { SHARE_FEEDBACK_MS } from './settings.js?v=2026112406';
+import { SHARE_FEEDBACK_MS } from './settings.js?v=2026112701';
 
 const SHARE_URL = 'https://offrez.net';
 
@@ -107,10 +107,36 @@ function showPurchaseModal(recipientName, trigger) {
     if (overlay) overlay.onclick = closePurchaseModal;
 }
 
+/**
+ * Modale ouverte (aria-modal) : Tab et Maj+Tab restent dans la fenêtre (du dernier élément au premier
+ * et inversement), sans laisser le focus partir dans la page masquée derrière.
+ * @param {KeyboardEvent} e
+ */
+function trapFocusInModal(e) {
+    const modal = document.getElementById('purchaseModal');
+    if (!modal || modal.style.display === 'none') return;
+    const content = modal.querySelector('.modal-content') || modal;
+    const focusable = Array.from(content.querySelectorAll(
+        'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )).filter(el => el.offsetParent !== null);
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement;
+    if (e.shiftKey && (active === first || !content.contains(active))) {
+        e.preventDefault();
+        last.focus();
+    } else if (!e.shiftKey && (active === last || !content.contains(active))) {
+        e.preventDefault();
+        first.focus();
+    }
+}
+
 /** Délégation globale des clics sur les liens suivis (.js-track-click). À appeler une seule fois. */
 export function initPurchaseTracking() {
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') closePurchaseModal();
+        if (e.key === 'Tab') trapFocusInModal(e);
     });
 
     document.addEventListener('click', (e) => {

@@ -113,7 +113,7 @@
 }
 
 .legal-section li::before {
-    content: "?";
+    content: "\2022"; /* puce • (échappement : pas de caractère non ASCII dans le CSS) */
     color: var(--primary);
     position: absolute;
     left: 0;

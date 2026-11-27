@@ -46,7 +46,13 @@
     border-radius: 999px;
     font-size: 0.75rem;
     background: rgba(99, 102, 241, 0.18);
-    color: #6366f1;
+    /* #a5b4fc : contraste AA (> 4,5:1) sur la carte sombre (l'ancien #6366f1 était sous 3:1) */
+    color: #a5b4fc;
+}
+
+/* Titre des fiches bénéficiaires (h2 pour la hiérarchie des titres, taille de l'ancien h3) */
+.profile-title {
+    font-size: 1.17em;
 }
 
 /* Analysis layout */

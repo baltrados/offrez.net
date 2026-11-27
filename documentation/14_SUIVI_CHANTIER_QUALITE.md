@@ -167,19 +167,19 @@ Tout ce qui est dans `public/` est en ligne. Rien d'autre ne l'est. Ne jamais y 
 - [ ] Compteurs et caches persistants (Redis) si plusieurs instances un jour.
 - [ ] Quota global : réservation par bloc d'IP ou jeton de session (voir §4).
 - [ ] `/api/health` public : ne renvoie plus que `{"status":"ok"}` (rien à restreindre pour l'instant).
-- [ ] `.well-known/security.txt` : son contenu désigne encore « OFFRLY / offrly.fr » ; le corriger puis l'autoriser explicitement dans le filtre des dotfiles (`server.js`).
+- [x] `.well-known/security.txt` réécrit (RFC 9116, contact@offrez.net) et servi par une route dédiée (`server.js`), le filtre des dotfiles restant inchangé (2026-11-27).
 
 ### Accessibilité / UX (repéré, hors périmètre du Lot 3)
-- [ ] `profils.html` : un `</div>` orphelin (~ligne 94) sort une partie du contenu de `<main>`.
-- [ ] Modale d'achat (`analyse.js`) : pas de `role="dialog"` ni de gestion du focus.
-- [ ] Boutons ‹ › de navigation entre suggestions : ajouter un `aria-label`.
-- [ ] Chips de montant (`chip-cro`) : pas d'état ARIA.
-- [ ] `.badge-step` (#6366f1 sur fond sombre) : contraste faible.
-- [ ] `blog.html` : pas de `<h1>`.
-- [ ] Saut de titres h1 → h3 sur `profils.html` ; fil d'étapes en `div` (pourrait être une liste `<ol>`).
-- [ ] `politique-confidentialite.html` déborde horizontalement en 375 px (tableau, 484 px) — défaut antérieur.
-- [ ] Puces des listes légales affichées « ? » (`_10-legal.css` ~ligne 116, `content: "?"`, caractère cassé).
-- [ ] `404.html` utilise des chemins relatifs : sans style si l'URL introuvable est dans un sous-dossier.
+- [x] `profils.html` : `</div>` orphelin supprimé, tout le contenu est dans `<main>` (2026-11-27).
+- [x] Modale d'achat : `role="dialog"`, Échap, focus restitué, et Tab / Maj+Tab maintenus dans la fenêtre (2026-11-27).
+- [x] Boutons ‹ › de navigation entre suggestions : `aria-label` présents.
+- [x] Chips de montant (`chip-cro`) : `aria-pressed` (2026-11-27).
+- [x] `.badge-step` : #a5b4fc, contraste 7,4:1 (au lieu de 3,3:1) (2026-11-27).
+- [x] `blog.html` : `<h1>` présent.
+- [x] `profils.html` : titres des fiches en h2 ; fil d'étapes exposé comme liste (`role="list"`, connecteurs `aria-hidden`) sur les 3 pages (2026-11-27).
+- [x] `politique-confidentialite.html` : plus de débordement horizontal en 375 px (PR #12, vérifié par `tests/e2e/audit-ux.spec.js`).
+- [x] Puces des listes légales : `content: "2"` (2026-11-27).
+- [x] `404.html` : `<base href="/">`, styles chargés quel que soit le sous-dossier.
 - [ ] `offline.html` affiche désormais le logo en Outfit (avant : police système) — écart volontaire mineur, à valider.
 - [ ] Faux « temps de réflexion » artificiels dans l'analyse (à reconsidérer) ; badge « € économisés » trompeur (budget − prix).
 
