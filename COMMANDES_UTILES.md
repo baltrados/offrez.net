@@ -67,15 +67,4 @@ fetch('/api/search?term=livre&min_price=10&max_price=50').then(r => r.json()).th
 - Erreur Amazon : vérifier `RAPIDAPI_KEY`, l'abonnement RapidAPI et son quota.
 - Pages non mises à jour : `Ctrl+Shift+R`.
 
-## Ancien serveur (jusqu'à la bascule vers Render)
-
-Le CM3588 reste en production jusqu'à la bascule DNS. Ces commandes seront à supprimer ensuite.
-
-```powershell
-ssh pi@192.168.1.100 "~/offrly/deploy.sh"                 # déployer
-ssh pi@192.168.1.100 "pm2 status"                         # état
-ssh pi@192.168.1.100 "pm2 logs offrly --lines 20"         # logs
-ssh pi@192.168.1.100 "pm2 restart offrly"                 # redémarrer
-```
-
 *Dernière mise à jour : novembre 2026*

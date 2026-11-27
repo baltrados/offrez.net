@@ -187,7 +187,6 @@ Aucune donnée utilisateur n'est écrite sur le disque : pas d'emails, pas de su
 | `README.md` | Point d'entrée du projet |
 | `COMMANDES_UTILES.md` | Commandes npm, Git, vérification en production |
 | `documentation/00_VUE_ENSEMBLE.md` | Introduction (ce fichier) |
-| `documentation/11_SETUP_CM3588_SERVEUR.md` | Ancien serveur (obsolète après la bascule vers Render) |
 | `documentation/13_GIT_ET_GITHUB.md` | Git, GitHub, déploiement |
 | `documentation/14_SUIVI_CHANTIER_QUALITE.md` | Suivi qualité et sécurité, backlog |
 | `documentation/15_DEPLOIEMENT_RENDER.md` | Déploiement sur Render, bascule DNS |

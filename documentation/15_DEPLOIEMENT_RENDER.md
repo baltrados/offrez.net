@@ -2,7 +2,7 @@
 
 Hébergement cible : Render, offre gratuite, région Frankfurt (UE), une seule instance. Render déploie automatiquement la branche `main`. Le domaine `offrez.net` est conservé.
 
-L'ancien serveur (CM3588, PM2, tunnel Cloudflare) reste en production jusqu'à la bascule DNS (section 5).
+L'ancien serveur (CM3588, PM2, tunnel Cloudflare) est décommissionné depuis novembre 2026 : la bascule DNS (section 5) et le nettoyage (section 6) sont faits.
 
 ---
 
@@ -76,14 +76,11 @@ Indispensable : les compteurs du site repartent à zéro à chaque redémarrage,
 
 ---
 
-## 6. Après la bascule : nettoyage de l'ancien serveur
+## 6. Après la bascule : nettoyage de l'ancien serveur (fait)
 
-Ne PAS le faire avant que `offrez.net` tourne sur Render.
-
-- Supprimer du dépôt : `tools/deploy-server.sh`, `tools/setup-server-git.sh`, `ssh-tunnel.yml`, `documentation/11_SETUP_CM3588_SERVEUR.md`, et les lignes Cloudflare du `.gitignore`. Raison : le script de déploiement fait un `git pull` sur le CM3588 ; supprimer `ssh-tunnel.yml` avant la bascule pourrait couper le tunnel SSH.
-- Cloudflare : supprimer le tunnel et l'enregistrement `ssh.offrez.net`.
-- CM3588 : arrêter PM2, effacer `searches.csv`, `clicks.csv` et le fichier `.env` (clés API).
-- Par sécurité, régénérer les clés Gemini et RapidAPI (elles étaient sur le CM3588) et mettre les nouvelles dans Render.
+- Les scripts et la configuration du CM3588 (`tools/deploy-server.sh`, `tools/setup-server-git.sh`, `ssh-tunnel.yml`, `documentation/11_SETUP_CM3588_SERVEUR.md`) ont été retirés du dépôt. Les lignes Cloudflare du `.gitignore` sont gardées par prudence (elles empêchent de committer un fichier d'identifiants par erreur).
+- Le CM3588 est décommissionné : plus aucune donnée ni clé dessus.
+- Reste conseillé : supprimer le tunnel et l'enregistrement `ssh.offrez.net` chez Cloudflare s'ils existent encore, et régénérer les clés Gemini et RapidAPI (elles ont été stockées sur le CM3588) puis mettre les nouvelles dans Render.
 
 ---
 

@@ -17,8 +17,6 @@ PC local (branche)  →  GitHub (PR)  →  fusion dans main  →  Render (déplo
 | `.env` (clés API) | PC local ; variables d'environnement sur Render | ❌ Non |
 | `node_modules/` | PC | ❌ Non (réinstaller avec `npm ci`) |
 
-> L'ancien serveur CM3588 reste en production jusqu'à la bascule DNS vers Render : voir `COMMANDES_UTILES.md` (section « Ancien serveur ») et `15_DEPLOIEMENT_RENDER.md`.
-
 ---
 
 ## 2. DÉPÔT GITHUB
@@ -111,8 +109,6 @@ git commit -m "CSS: description du changement"
 |--------|------|
 | `tools/minify_css.py` | Compilation CSS `public/css/partials/` → `public/style.min.css` |
 | `tools/fontawesome/build_fa.py` | Régénération du sous-ensemble Font Awesome |
-
-Les scripts de l'ancien serveur (`tools/deploy-server.sh`, `tools/setup-server-git.sh`) restent dans le dépôt jusqu'à la bascule vers Render, puis seront supprimés.
 
 ---
 
