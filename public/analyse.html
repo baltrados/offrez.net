@@ -31,7 +31,7 @@
 
     <!-- Performance (police Outfit auto-hébergée, préchargée) -->
     <link rel="preload" href="fonts/outfit-latin.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="style.min.css?v=202611251800">
+    <link rel="stylesheet" href="style.min.css?v=202611271200">
     <link rel="stylesheet" href="css/fontawesome/fa-offrez.min.css">
 </head>
 
@@ -49,18 +49,18 @@
 
         <main class="container">
             <!-- Stepper : Étape 3 active -->
-            <div class="steps">
-                <div class="step step--done">
+            <div class="steps" role="list" aria-label="Étapes">
+                <div class="step step--done" role="listitem">
                     <div class="step-index"><i class="fas fa-check"></i></div>
                     <div class="step-label">Mission & budget</div>
                 </div>
-                <div class="step-connector step-connector--done"></div>
-                <div class="step step--done">
+                <div class="step-connector step-connector--done" aria-hidden="true"></div>
+                <div class="step step--done" role="listitem">
                     <div class="step-index"><i class="fas fa-check"></i></div>
                     <div class="step-label">Profils</div>
                 </div>
-                <div class="step-connector step-connector--done"></div>
-                <div class="step step--active" aria-current="step">
+                <div class="step-connector step-connector--done" aria-hidden="true"></div>
+                <div class="step step--active" role="listitem" aria-current="step">
                     <div class="step-index">3</div>
                     <div class="step-label">Recommandations</div>
                 </div>
@@ -149,7 +149,7 @@
     </div>
 
     <!-- Script logique principal (Le cerveau) -->
-    <script src="js/analyse.js?v=2026112406" type="module"></script>
+    <script src="js/analyse.js?v=2026112701" type="module"></script>
 
     <!-- Footer -->
     <footer class="site-footer">

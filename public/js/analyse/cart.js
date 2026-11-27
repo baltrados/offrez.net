@@ -4,7 +4,7 @@
  * Extraction d'ASIN, produits sélectionnés, total et URL « ajouter au panier » multi-articles.
  */
 
-import { AFFILIATE_TAG } from './settings.js?v=2026112406';
+import { AFFILIATE_TAG } from './settings.js?v=2026112701';
 
 const CART_ADD_URL = 'https://www.amazon.fr/gp/aws/cart/add.html';
 // Formats supportés : /dp/ASIN ou /gp/product/ASIN (ASIN = 10 caractères alphanumériques)

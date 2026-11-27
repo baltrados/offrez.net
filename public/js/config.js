@@ -86,8 +86,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // ============================================
     document.querySelectorAll('.chip-cro[data-amount]').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            document.querySelectorAll('.chip-cro').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.chip-cro').forEach(b => {
+                b.classList.remove('active');
+                b.setAttribute('aria-pressed', 'false');
+            });
             e.currentTarget.classList.add('active');
+            e.currentTarget.setAttribute('aria-pressed', 'true');
 
             const amount = e.currentTarget.dataset.amount;
             if (budgetAmountInput) {

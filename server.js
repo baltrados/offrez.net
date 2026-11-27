@@ -298,6 +298,17 @@ function sendNotFound(res) {
     return res.status(404).sendFile(NOT_FOUND_PAGE);
 }
 
+// security.txt (RFC 9116) : seul fichier « caché » servi, par une route explicite, AVANT le filtre
+// qui refuse tout segment commençant par '.' (ce filtre reste inchangé pour le reste du site).
+const SECURITY_TXT = path.join(PUBLIC_DIR, '.well-known', 'security.txt');
+app.get('/.well-known/security.txt', (req, res) => {
+    res.type('text/plain; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.sendFile(SECURITY_TXT, { dotfiles: 'allow' }, (err) => {
+        if (err && !res.headersSent) sendNotFound(res);
+    });
+});
+
 // FIX #17 / [LOT0 C2/C3] Défense en profondeur AVANT express.static.
 // public/ ne contient que des assets publics ; ce filtre bloque en plus, sur le chemin DÉCODÉ :
 // encodage invalide, octets NUL, segments '..', dotfiles et extensions sensibles.

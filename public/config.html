@@ -10,7 +10,7 @@
 
     <!-- Design & Fonts -->
     <link rel="preload" href="fonts/outfit-latin.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="style.min.css?v=202611251800">
+    <link rel="stylesheet" href="style.min.css?v=202611271200">
     <link rel="stylesheet" href="css/fontawesome/fa-offrez.min.css">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -34,18 +34,18 @@
 
         <main class="container">
             <!-- Stepper -->
-            <div class="steps">
-                <div class="step step--active" aria-current="step">
+            <div class="steps" role="list" aria-label="Étapes">
+                <div class="step step--active" role="listitem" aria-current="step">
                     <div class="step-index">1</div>
                     <div class="step-label">Mission & budget</div>
                 </div>
-                <div class="step-connector"></div>
-                <div class="step">
+                <div class="step-connector" aria-hidden="true"></div>
+                <div class="step" role="listitem">
                     <div class="step-index">2</div>
                     <div class="step-label">Profils</div>
                 </div>
-                <div class="step-connector"></div>
-                <div class="step">
+                <div class="step-connector" aria-hidden="true"></div>
+                <div class="step" role="listitem">
                     <div class="step-index">3</div>
                     <div class="step-label">Recommandations</div>
                 </div>
@@ -186,10 +186,10 @@
 
                     <!-- Chips CRO (Suggestions rapides) -->
                     <div class="chips-container">
-                        <button type="button" class="chip-cro" data-amount="30">30€</button>
-                        <button type="button" class="chip-cro" data-amount="50">50€</button>
-                        <button type="button" class="chip-cro" data-amount="100">100€</button>
-                        <button type="button" class="chip-cro" data-amount="200">200€</button>
+                        <button type="button" class="chip-cro" data-amount="30" aria-pressed="false">30€</button>
+                        <button type="button" class="chip-cro" data-amount="50" aria-pressed="false">50€</button>
+                        <button type="button" class="chip-cro" data-amount="100" aria-pressed="false">100€</button>
+                        <button type="button" class="chip-cro" data-amount="200" aria-pressed="false">200€</button>
                     </div>
                 </div>
 

@@ -21,6 +21,11 @@
     gap: 0.5rem;
 }
 
+/* Sous une carte (profils.html) : dégage le texte de l'ombre portée de la carte */
+.card + .cta-microcopy {
+    margin-top: 3.5rem;
+}
+
 .cta-microcopy i {
     color: #fbbf24;
 }
