@@ -160,7 +160,7 @@ Tout ce qui est dans `public/` est en ligne. Rien d'autre ne l'est. Ne jamais y 
 ### Nettoyage et conformité
 - [ ] Nettoyer le CSS mort (`.email-*`, `.cookie-banner`, `#resultNavigation`) : nécessite `python tools/minify_css.py` et un changement du jeton `?v=` (et `CACHE_NAME` du service worker).
 - [ ] Relecture juridique de la politique de confidentialité (commentaires `À FAIRE RELIRE` dans `public/politique-confidentialite.html`).
-- [ ] Compléter l'adresse postale et le téléphone de l'hébergeur (Render) dans les mentions légales (obligation LCEN ; commentaire `À COMPLÉTER`).
+- [x] Adresse de l'hébergeur (Render Services, Inc., 525 Brannan Street, Suite 300, San Francisco) ajoutée aux mentions légales le 2026-11-27 ; Render ne publie pas de téléphone : contact legal@render.com indiqué.
 
 ### Sécurité / exploitation
 - [ ] Regrouper les requêtes Gemini identiques simultanées (une seule requête envoyée, les autres attendent son résultat).
