@@ -16,7 +16,7 @@ Documentation détaillée fichier par fichier, générée en février 2026. Remp
 - `README.md` — vue rapide
 - `COMMANDES_UTILES.md` — commandes quotidiennes
 - `documentation/00_VUE_ENSEMBLE.md` — introduction
-- `documentation/11_SETUP_CM3588_SERVEUR.md` — serveur
+- `documentation/11_SETUP_CM3588_SERVEUR.md` — serveur (supprimé en novembre 2026 : ancien serveur décommissionné)
 - `documentation/12_BREVO.md` — emails
 - `documentation/13_GIT_ET_GITHUB.md` — Git et déploiement
 - `.agents/workflows/` — guides agents IA
